@@ -1,0 +1,2377 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.claude/
+  helpers/
+    graft-hooks.cjs
+    graft-statusline.cjs
+  skills/
+    graft/
+      SKILL.md
+  settings.json
+gradle/
+  wrapper/
+    gradle-wrapper.jar
+    gradle-wrapper.properties
+src/
+  main/
+    java/
+      com/
+        nhom9/
+          oldbook_marketplace/
+            controller/
+              api/
+                SachController.java
+            dto/
+              ApiResponse.java
+            entity/
+              catalog/
+                CuaHang.java
+                DanhMuc.java
+                Sach.java
+                SachDaXem.java
+                UserBookKey.java
+                YeuThich.java
+              identity/
+                DiaChi.java
+                NguoiDung.java
+                TaiKhoan.java
+              order/
+                ChiTietDonHang.java
+                ChiTietGioHang.java
+                DonHang.java
+                DonHangCuaHang.java
+                GioHang.java
+                YeuCauHuyDon.java
+              payment/
+                CauHinhChietKhau.java
+                KhuyenMai.java
+                SuDungVoucher.java
+                ThanhToan.java
+              shipping/
+                CauHinhVanChuyen.java
+                DonViVanChuyen.java
+                VanChuyen.java
+              system/
+                DanhGia.java
+                DanhGiaMedia.java
+                NhatKyHeThong.java
+            repository/
+              SachRepository.java
+            service/
+              SachService.java
+            OldbookMarketplaceApplication.java
+    resources/
+      application.properties
+  test/
+    java/
+      com/
+        nhom9/
+          oldbook_marketplace/
+            OldbookMarketplaceApplicationTests.java
+.gitattributes
+.gitignore
+build.gradle.kts
+gradlew
+gradlew.bat
+settings.gradle.kts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".claude/helpers/graft-hooks.cjs">
+#!/usr/bin/env node
+const path = require('path');
+const fs = require('fs');
+const { pathToFileURL } = require('url');
+const { execFileSync } = require('child_process');
+const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const BAKED = "C:\\Users\\ADMIN\\AppData\\Roaming\\npm\\node_modules\\@nanonets\\graft\\dist\\claude";
+
+// The dist/claude dir of @nanonets/graft resolved from a base whose node_modules is searched.
+function fromPkg(base) {
+  try {
+    const pkg = require.resolve('@nanonets/graft/package.json', { paths: [base] });
+    return path.join(path.dirname(pkg), 'dist', 'claude');
+  } catch { return null; }
+}
+
+// The global node_modules dir per npm (handles Homebrew/Windows/volta). Queried on demand.
+function globalRoot() {
+  try {
+    const root = execFileSync('npm', ['root', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32' }).trim();
+    return root || null;
+  } catch { return null; /* npm unavailable */ }
+}
+
+// The version of the package a dist/claude dir belongs to, or null if unreadable.
+function versionOf(distClaude) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(distClaude, '..', '..', 'package.json'), 'utf8')).version || null;
+  } catch { return null; }
+}
+
+// Numeric-dotted compare of the release part; an unreadable version loses to any known one.
+function newer(a, b) {
+  if (!a) return false;
+  if (!b) return true;
+  const p = (v) => String(v).split('-')[0].split('.').map((n) => Number(n) || 0);
+  const pa = p(a), pb = p(b);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d > 0;
+  }
+  return false;
+}
+
+// The highest-versioned dir in `dirs` that actually contains `name`, or null.
+function best(dirs, name) {
+  let bestDir = null, bestVer = null;
+  for (const d of dirs) {
+    if (!d || !fs.existsSync(path.join(d, name))) continue;
+    const v = versionOf(d);
+    if (bestDir === null || newer(v, bestVer)) { bestDir = d; bestVer = v; }
+  }
+  return bestDir;
+}
+
+function entry(name) {
+  // Cheap candidates first, and only shell out to npm when every one of them misses.
+  const cheap = [BAKED, fromPkg(dir), fromPkg(path.join(path.dirname(process.execPath), '..', 'lib'))];
+  const hit = best(cheap, name);
+  if (hit) return path.join(hit, name);
+  const gr = globalRoot();
+  const global = gr && path.join(gr, '@nanonets', 'graft', 'dist', 'claude');
+  if (global && fs.existsSync(path.join(global, name))) return path.join(global, name);
+  return path.join(dir, 'dist', 'claude', name); // last-ditch; import will no-op if absent
+}
+
+import(pathToFileURL(entry("hooks.js")).href).then((m) => m.main(process.argv[2])).catch(() => { /* graft unavailable — no-op */ });
+</file>
+
+<file path=".claude/helpers/graft-statusline.cjs">
+#!/usr/bin/env node
+const path = require('path');
+const fs = require('fs');
+const { pathToFileURL } = require('url');
+const { execFileSync } = require('child_process');
+const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const BAKED = "C:\\Users\\ADMIN\\AppData\\Roaming\\npm\\node_modules\\@nanonets\\graft\\dist\\claude";
+
+// The dist/claude dir of @nanonets/graft resolved from a base whose node_modules is searched.
+function fromPkg(base) {
+  try {
+    const pkg = require.resolve('@nanonets/graft/package.json', { paths: [base] });
+    return path.join(path.dirname(pkg), 'dist', 'claude');
+  } catch { return null; }
+}
+
+// The global node_modules dir per npm (handles Homebrew/Windows/volta). Queried on demand.
+function globalRoot() {
+  try {
+    const root = execFileSync('npm', ['root', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32' }).trim();
+    return root || null;
+  } catch { return null; /* npm unavailable */ }
+}
+
+// The version of the package a dist/claude dir belongs to, or null if unreadable.
+function versionOf(distClaude) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(distClaude, '..', '..', 'package.json'), 'utf8')).version || null;
+  } catch { return null; }
+}
+
+// Numeric-dotted compare of the release part; an unreadable version loses to any known one.
+function newer(a, b) {
+  if (!a) return false;
+  if (!b) return true;
+  const p = (v) => String(v).split('-')[0].split('.').map((n) => Number(n) || 0);
+  const pa = p(a), pb = p(b);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d > 0;
+  }
+  return false;
+}
+
+// The highest-versioned dir in `dirs` that actually contains `name`, or null.
+function best(dirs, name) {
+  let bestDir = null, bestVer = null;
+  for (const d of dirs) {
+    if (!d || !fs.existsSync(path.join(d, name))) continue;
+    const v = versionOf(d);
+    if (bestDir === null || newer(v, bestVer)) { bestDir = d; bestVer = v; }
+  }
+  return bestDir;
+}
+
+function entry(name) {
+  // Cheap candidates first, and only shell out to npm when every one of them misses.
+  const cheap = [BAKED, fromPkg(dir), fromPkg(path.join(path.dirname(process.execPath), '..', 'lib'))];
+  const hit = best(cheap, name);
+  if (hit) return path.join(hit, name);
+  const gr = globalRoot();
+  const global = gr && path.join(gr, '@nanonets', 'graft', 'dist', 'claude');
+  if (global && fs.existsSync(path.join(global, name))) return path.join(global, name);
+  return path.join(dir, 'dist', 'claude', name); // last-ditch; import will no-op if absent
+}
+
+import(pathToFileURL(entry("statusline.js")).href).then((m) => m.main()).catch(() => { /* graft unavailable — no-op */ });
+</file>
+
+<file path=".claude/skills/graft/SKILL.md">
+---
+name: graft
+description: This repo is indexed by graft/. For ANY task here, whether
+  understanding how something works, finding where code lives, tracing what
+  calls a symbol or what a change breaks, or scoping an edit, get your context
+  from graft before grepping or reading source files.
+---
+
+# graft
+
+`graft/` holds a graph of this repo: small markdown nodes that each explain one
+part in prose and name the exact `file:line` spans they cover, plus a wiring
+graph of who-calls-what. Querying a node costs a few hundred tokens; rebuilding
+that understanding by reading source costs thousands, and misses the edges.
+
+Every command below is `$0`, needs no API key, and returns in under a second.
+There are six of them. **Pick the one that fits the task, run it, act on the
+answer; don't chain tools hoping for more. Most tasks need one call.**
+
+## The tools
+
+### 1 · `graft ask "<question>" --source`: locate + understand (the default)
+Ranked retrieval over the graph, routed automatically between prose nodes and
+the wiring graph, returning the top hits with exact `file:line`.
+- `--source` inlines the code at each hit, the ≤8-line **crux** of each
+  definition, so the result IS the code you need, no follow-up file read. Add
+  `--full` only when the crux is too small to act on.
+- `--in <path>` narrows to a subtree before ranking; `-n N` caps results (default 8).
+- **Use it when** the question is conceptual or locational: "how does auth
+  work", "where is rate-limiting handled", "what assembles the request pipeline".
+- One ask usually answers. A genuinely multi-part question needs one ask per
+  distinct sub-aspect, never the same question reworded. Few or weak hits mean
+  switch tool (grep / skeleton / callers), don't re-ask.
+
+### 2 · `graft grep "<pattern>"`: exhaustive find
+Regex (or `--fixed` for a literal) over every indexed file, hits **grouped by
+enclosing symbol** and ranked by coupling; it also reports files it couldn't read.
+- **Use it when** you need every occurrence: all call sites, all uses of a
+  constant, all providers. `ask` is ranked top-N and *will* miss instances;
+  grep won't. One grep replaces a spray of asks.
+- Search a **short symbol name or literal**, not a full guessed signature: an
+  over-specific regex (`func (s *Server) GenerateHandler`) returns nothing even
+  when the code is indexed. If a grep misses, **loosen it** (drop the receiver
+  and signature, keep the bare name) and retry `graft grep` — do NOT switch to
+  raw `grep -rn`, which is slower and unranked.
+- `-i` case-insensitive; `--in <path>` scopes to a subtree. Raw `grep -rn` is
+  only for files graft genuinely doesn't index (docs, configs, brand-new files).
+
+### 3 · `graft skeleton <file>`: a file's API at a glance
+Signatures-only view of one file (every function / method / type with its span)
+in ~200 tokens, ~10x cheaper than reading the file.
+- **Use it when** you need "what's in this file / what can I call here" before
+  editing or wiring into it. One skeleton is the whole answer for a file; don't
+  re-skeleton the same file, and don't skeleton every file `map` already named.
+
+### 4 · `graft callers <symbol>`: the exact edges
+Precomputed call/reference edges, not a text search. Symbol can be bare
+(`Foo`), qualified (`Class.method`), or package-qualified (`pkg.Fn`).
+- default `--direction in`: **who calls/references** this; run before you
+  rename, delete, or change its signature.
+- `--direction out`: **what this symbol itself calls/depends on** (the old `callees`).
+- `--depth N`: walk transitively N hops for the **full blast radius** (the old
+  `impact`); `--depth 2` is the usual "what breaks if I touch this".
+- `--depth all`: the **entire connected closure** — every source reachable
+  through the edges. Reach for this before a **refactor, rename, or any
+  multi-file change**: it surfaces the sibling and downstream files (platform
+  variants, a module you must split out) that a single-file edit would miss.
+
+### 5 · `graft map`: orientation for an unfamiliar repo or area
+A token-budgeted tour: directory clusters, per-directory hubs, and global
+hotspots, straight from the wiring graph.
+- **Use it when** you land in a repo cold or are asked for "the architecture".
+  `map` alone is the answer: read the hub cards it names; do NOT then skeleton
+  or ask your way through every subsystem it lists. `--max-dirs N` widens it.
+
+### 6 · Lifecycle: `graft build` / `graft check`
+Every tool above refreshes the graph itself before answering, so what those tools
+return always describes the code as it is right now — including edits you just made
+and have not committed. You do **not** need to run `build` after editing.
+
+One caveat, if you `grep` the markdown under `graft/` directly: those cards are a
+projection, rebuilt at the end of the turn rather than on each query, so after an edit
+they can lag. The tools above never do — prefer them, and treat a card's spans as
+stale if you have edited that file this turn.
+
+`build` is for the LLM layer (`--deep` adds a concept map; skip unless asked);
+`check` fails when `graft/` is stale, for CI.
+
+## Scenarios: the shortest path through a coding task
+
+| When you're… | Reach for | Calls |
+|---|---|---|
+| Onboarding / "explain this codebase" | `graft map`, then read the named hub cards | 1 |
+| Understanding a flow ("how does X work") | `graft ask "<flow>" --source` | 1 |
+| Finding where a change belongs | `graft ask "where is <behavior>" --source` | 1 |
+| Editing a symbol you can already name | `graft grep "<symbol>"`, edit at the `file:line` (skip `ask` — you know where it is) | 1 |
+| Renaming / deleting / changing a signature | `graft callers <sym> --depth 2` first | 1 |
+| Refactor / multi-file change (before editing) | `graft callers <sym> --depth all` — map every connected file, don't stop at the first | 1 |
+| "What does this depend on?" | `graft callers <sym> --direction out` | 1 |
+| Finding every occurrence of a pattern | `graft grep "<literal>"` | 1 |
+| "What's the API of this file?" | `graft skeleton <file>` | 1 |
+| Debugging a failure in area X | `graft ask "<symptom>" --source`, then `callers` on the suspect | 1–2 |
+| Judging a diff's risk before merge | `graft callers <changed sym> --depth 2` | 1 / symbol |
+| Working inside one repo of a monorepo | add `--in <scope>/` to ask / grep / callers | n/a |
+
+In a multi-repo workspace, graft ranks fairly so the biggest repo can't drown
+the rest, and every hit carries a `[scope/]` label naming its sub-project; when
+you already know where you're working, narrow with `graft ask "<task>" --in <scope>/`.
+
+## Spend the fewest calls
+- A node's `covers:` list already gives exact `file:line` for every symbol, so
+  cite straight from it. The spans are generated from source and authoritative;
+  don't re-open or re-grep files to "double-check".
+- When the task already names the file or symbol to change, go straight there:
+  `graft grep "<symbol>"` for the exact `file:line`, then edit. Reserve
+  `graft ask` for when you don't yet know where the code lives — an `ask`
+  round-trip is wasted on a target you can already name.
+- Trust the answer and act. Reach for a second tool only when the first genuinely
+  fell short: weak hits, a truncated span, or a need to be exhaustive.
+- If graft names a path that isn't on disk, its index is ahead of your checkout
+  (a branch switch or unpulled move). Don't read the missing file — `graft grep`
+  the symbol to find where it lives now, or run `graft build` to refresh.
+
+## Report what graft saved, every turn
+Each retrieval tool **opens** its output with a `[graft] tokens saved ≈ N` line:
+the estimated tokens that call saved versus reading the files it covers whole.
+Whenever you used any graft tool in a turn, close your reply with a one-line
+tally summing those numbers across every graft call you made, e.g.
+`🌱 graft saved ~12,400 tokens this turn (3 calls)`. A call with no such line
+(tiny files, where the pointers cost as much as the source) saved nothing, so
+skip it. This is the per-turn figure; the statusline carries the running
+session total.
+
+Once a turn has been billed, each line also states what that call was worth in
+dollars, at the rate this session is actually paying for input tokens — include
+that total alongside the tokens, e.g. `🌱 graft saved ~12,400 tokens (~$0.04)
+this turn`. When a line carries no dollar figure, report tokens alone rather
+than pricing them yourself.
+
+**Never pipe a graft command through `head`, `tail`, or `sed -n`.** Every tool
+is already capped and states what it dropped; clipping it costs you hits you
+asked for, and it silently drops the savings line the statusline's running
+total is parsed from.
+
+## When graft isn't enough
+- Span truncated ("+N more lines"): open the file at that exact range.
+- A node lacks a detail: ask a more specific question; only then read source at
+  the exact `file:line`, never a whole file to rebuild understanding graft gives.
+- You may also grep / ls / cat inside `graft/` directly (plain markdown;
+  `graft/INDEX.md` indexes the nodes), but the tools above are faster and
+  exhaustive where it matters, so reach for them first.
+
+When the graft MCP server is connected, these are exposed as tools too:
+`graft_find_code`, `graft_find_all`, `graft_file_api`, `graft_trace_calls` (with
+`direction` / `depth`), `graft_repo_map`, `graft_check_freshness`. Use whichever surface is
+available; the guidance is identical.
+</file>
+
+<file path=".claude/settings.json">
+{
+  "statusLine": {
+    "type": "command",
+    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-statusline.cjs\""
+  },
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-statusline.cjs\""
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" post-edit",
+            "timeout": 10000
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|mcp__graft__|Read|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" tool-savings",
+            "timeout": 8000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" prompt",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" session-start",
+            "timeout": 8000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" stop",
+            "timeout": 8000
+          }
+        ]
+      }
+    ]
+  },
+  "footerLinksRegexes": [
+    "graft/[\\w./-]+\\.md"
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(graft:*)",
+      "Bash(npx graft:*)",
+      "Bash(graft-dev:*)",
+      "Bash(node dist/cli.js:*)"
+    ]
+  }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/controller/api/SachController.java">
+package com.nhom9.oldbook_marketplace.controller;
+
+import com.nhom9.oldbook_marketplace.dto.ApiResponse;
+import com.nhom9.oldbook_marketplace.entity.catalog.Sach;
+import com.nhom9.oldbook_marketplace.service.SachService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/sach")
+public class SachController {
+
+    private final SachService sachService;
+
+    public SachController(SachService sachService) {
+        this.sachService = sachService;
+    }
+
+    @GetMapping
+    public ApiResponse<List<Sach>> getAll() {
+        return ApiResponse.success(sachService.getAll());
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/dto/ApiResponse.java">
+package com.nhom9.oldbook_marketplace.dto;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.*;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+// Nếu trường data bị null, Spring Boot sẽ tự động ẩn nó đi khỏi file JSON trả về
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ApiResponse<T> {
+
+    private int code;
+    private String message;
+    private T data;
+
+    // Hàm tiện ích: Trả về thành công có dữ liệu
+    public static <T> ApiResponse<T> success(T data) {
+        return ApiResponse.<T>builder()
+                .code(200)
+                .message("Success")
+                .data(data)
+                .build();
+    }
+
+    // Hàm tiện ích: Trả về thành công nhưng không cần kèm dữ liệu (Ví dụ: Xóa thành công)
+    public static <T> ApiResponse<T> success(String message) {
+        return ApiResponse.<T>builder()
+                .code(200)
+                .message(message)
+                .build();
+    }
+
+    // Hàm tiện ích: Trả về lỗi
+    public static <T> ApiResponse<T> error(int code, String message) {
+        return ApiResponse.<T>builder()
+                .code(code)
+                .message(message)
+                .build();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/repository/SachRepository.java">
+package com.nhom9.oldbook_marketplace.repository;
+
+import com.nhom9.oldbook_marketplace.entity.catalog.Sach;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface SachRepository extends JpaRepository<Sach, Integer> {
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/service/SachService.java">
+package com.nhom9.oldbook_marketplace.service;
+
+import com.nhom9.oldbook_marketplace.entity.catalog.Sach;
+import com.nhom9.oldbook_marketplace.repository.SachRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class SachService {
+
+    private final SachRepository sachRepository;
+
+    public SachService(SachRepository sachRepository) {
+        this.sachRepository = sachRepository;
+    }
+
+    public List<Sach> getAll() {
+        return sachRepository.findAll();
+    }
+}
+</file>
+
+<file path="gradle/wrapper/gradle-wrapper.properties">
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.7.1-bin.zip
+networkTimeout=10000
+retries=0
+retryBackOffMs=500
+validateDistributionUrl=true
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/catalog/CuaHang.java">
+package com.nhom9.oldbook_marketplace.entity.catalog;
+
+import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung; // Import từ package khác
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "cua_hang")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CuaHang {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_ch")
+    private Integer maCH;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_nd_chu_shop", referencedColumnName = "ma_nd", unique = true, nullable = false)
+    private NguoiDung chuShop;
+
+    @Column(name = "ten_cua_hang", unique = true, nullable = false, length = 255)
+    private String tenCuaHang;
+
+    @Column(name = "mo_ta", length = 1000)
+    private String moTa;
+
+    @Column(name = "dia_chi_ch", length = 500)
+    private String diaChiCH;
+
+    @Column(name = "so_dien_thoai_ch", length = 20)
+    private String soDienThoaiCH;
+
+    @Column(name = "trang_thai_duyet", length = 50)
+    private String trangThaiDuyet;
+
+    @Column(name = "ngay_tao", updatable = false)
+    private LocalDateTime ngayTao;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayTao = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/catalog/DanhMuc.java">
+package com.nhom9.oldbook_marketplace.entity.catalog;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "danh_muc")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class DanhMuc {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_dm")
+    private Integer maDM;
+
+    @Column(name = "ten_danh_muc", unique = true, nullable = false, length = 255)
+    private String tenDanhMuc;
+
+    @Column(name = "mo_ta", length = 500)
+    private String moTa;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/catalog/Sach.java">
+package com.nhom9.oldbook_marketplace.entity.catalog;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "sach")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Sach {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_sach")
+    private Integer maSach;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_ch", referencedColumnName = "ma_ch", nullable = false)
+    private CuaHang cuaHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dm", referencedColumnName = "ma_dm", nullable = false)
+    private DanhMuc danhMuc;
+
+    @Column(name = "ten_sach", nullable = false, length = 255)
+    private String tenSach;
+
+    @Column(name = "tac_gia", length = 255)
+    private String tacGia;
+
+    @Column(name = "nha_xuat_ban", length = 255)
+    private String nhaXuatBan;
+
+    @Column(name = "nam_xuat_ban")
+    private Integer namXuatBan;
+
+    @Column(name = "gia_bia", precision = 15, scale = 2)
+    private BigDecimal giaBia;
+
+    @Column(name = "gia_ban_cu", precision = 15, scale = 2)
+    private BigDecimal giaBanCu;
+
+    @Column(name = "do_moi_percent", precision = 5, scale = 2)
+    private BigDecimal doMoiPercent;
+
+    @Column(name = "tinh_trang_vat_ly", length = 255)
+    private String tinhTrangVatLy;
+
+    @Column(name = "mo_ta_chi_tiet", columnDefinition = "TEXT")
+    private String moTaChiTiet;
+
+    @Column(name = "so_luong_ton")
+    private Integer soLuongTon;
+
+    @Column(name = "hinh_anh_url", length = 500)
+    private String hinhAnhUrl;
+
+    @Column(name = "trang_thai_duyet", length = 50)
+    private String trangThaiDuyet;
+
+    @Column(name = "trang_thai_ban", length = 50)
+    private String trangThaiBan;
+
+    @Column(name = "ly_do_tu_choi", length = 500)
+    private String lyDoTuChoi;
+
+    @Column(name = "ngay_tao", updatable = false)
+    private LocalDateTime ngayTao;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayTao = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/catalog/SachDaXem.java">
+package com.nhom9.oldbook_marketplace.entity.catalog;
+
+import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung;
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "sach_da_xem")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class SachDaXem {
+
+    @EmbeddedId
+    private UserBookKey id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("maND")
+    @JoinColumn(name = "ma_nd")
+    private NguoiDung nguoiDung;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("maSach")
+    @JoinColumn(name = "ma_sach")
+    private Sach sach;
+
+    @Column(name = "lan_xem_gan_nhat")
+    private LocalDateTime lanXemGanNhat;
+
+    // Tự động cập nhật thời gian mỗi khi xem lại sách
+    @PrePersist
+    @PreUpdate
+    protected void onUpdate() {
+        this.lanXemGanNhat = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/catalog/UserBookKey.java">
+package com.nhom9.oldbook_marketplace.entity.catalog;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.*;
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserBookKey implements Serializable {
+
+    @Column(name = "ma_nd")
+    private Integer maND;
+
+    @Column(name = "ma_sach")
+    private Integer maSach;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/catalog/YeuThich.java">
+package com.nhom9.oldbook_marketplace.entity.catalog;
+
+import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung;
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "yeu_thich")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class YeuThich {
+
+    @EmbeddedId
+    private UserBookKey id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("maND") // Ánh xạ tới maND trong UserBookKey
+    @JoinColumn(name = "ma_nd")
+    private NguoiDung nguoiDung;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("maSach") // Ánh xạ tới maSach trong UserBookKey
+    @JoinColumn(name = "ma_sach")
+    private Sach sach;
+
+    @Column(name = "ngay_them", updatable = false)
+    private LocalDateTime ngayThem;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayThem = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/identity/DiaChi.java">
+package com.nhom9.oldbook_marketplace.entity.identity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "dia_chi")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class DiaChi {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_dia_chi")
+    private Integer maDiaChi;
+
+    // Quan hệ Nhiều-1: Nhiều địa chỉ có thể thuộc về một người dùng
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_nd", referencedColumnName = "ma_nd", nullable = false)
+    private NguoiDung nguoiDung;
+
+    @Column(name = "ten_nguoi_nhan", length = 255)
+    private String tenNguoiNhan;
+
+    @Column(name = "so_dien_thoai", length = 20)
+    private String soDienThoai;
+
+    @Column(name = "tinh_thanh", length = 100)
+    private String tinhThanh;
+
+    @Column(name = "quan_huyen", length = 100)
+    private String quanHuyen;
+
+    @Column(name = "phuong_xa", length = 100)
+    private String phuongXa;
+
+    @Column(name = "dia_chi_chi_tiet", length = 500)
+    private String diaChiChiTiet;
+
+    @Column(name = "la_mac_dinh")
+    private Boolean laMacDinh;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/identity/NguoiDung.java">
+package com.nhom9.oldbook_marketplace.entity.identity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "nguoi_dung")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class NguoiDung {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_nd")
+    private Integer maND;
+
+    // Quan hệ 1-1: Một người dùng gắn với một tài khoản duy nhất
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_tk", referencedColumnName = "ma_tk", unique = true, nullable = false)
+    private TaiKhoan taiKhoan;
+
+    @Column(name = "ho_ten", length = 255)
+    private String hoTen;
+
+    @Column(name = "so_dien_thoai", unique = true, length = 20)
+    private String soDienThoai;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
+    @Column(name = "ngay_tao", updatable = false)
+    private LocalDateTime ngayTao;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayTao = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/identity/TaiKhoan.java">
+package com.nhom9.oldbook_marketplace.entity.identity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "tai_khoan")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class TaiKhoan {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_tk")
+    private Integer maTK;
+
+    @Column(name = "email", unique = true, nullable = false, length = 255)
+    private String email;
+
+    @Column(name = "mat_khau", nullable = false, length = 255)
+    private String matKhau;
+
+    @Column(name = "vai_tro", length = 50)
+    private String vaiTro;
+
+    @Column(name = "trang_thai", length = 50)
+    private String trangThai;
+
+    @Column(name = "ngay_tao", updatable = false)
+    private LocalDateTime ngayTao;
+
+    // Tự động gán thời gian hiện tại khi tạo mới tài khoản
+    @PrePersist
+    protected void onCreate() {
+        this.ngayTao = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/order/ChiTietDonHang.java">
+package com.nhom9.oldbook_marketplace.entity.order;
+
+import com.nhom9.oldbook_marketplace.entity.catalog.Sach;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+
+@Entity
+@Table(name = "chi_tiet_don_hang")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ChiTietDonHang {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_ctdh")
+    private Integer maCTDH;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dhch", referencedColumnName = "ma_dhch", nullable = false)
+    private DonHangCuaHang donHangCuaHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_sach", referencedColumnName = "ma_sach", nullable = false)
+    private Sach sach;
+
+    @Column(name = "so_luong", nullable = false)
+    private Integer soLuong;
+
+    @Column(name = "don_gia", precision = 15, scale = 2)
+    private BigDecimal donGia;
+
+    @Column(name = "thanh_tien", precision = 15, scale = 2)
+    private BigDecimal thanhTien;
+
+    @Column(name = "ty_le_chiet_khau", precision = 5, scale = 2)
+    private BigDecimal tyLeChietKhau;
+
+    @Column(name = "tien_chiet_khau", precision = 15, scale = 2)
+    private BigDecimal tienChietKhau;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/order/ChiTietGioHang.java">
+package com.nhom9.oldbook_marketplace.entity.order;
+
+import com.nhom9.oldbook_marketplace.entity.catalog.Sach;
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(
+        name = "chi_tiet_gio_hang",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_gio_hang_sach",
+                        columnNames = {"ma_gio_hang", "ma_sach"}
+                )
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ChiTietGioHang {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_ct_gio_hang")
+    private Integer maCTGioHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_gio_hang", referencedColumnName = "ma_gio_hang", nullable = false)
+    private GioHang gioHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_sach", referencedColumnName = "ma_sach", nullable = false)
+    private Sach sach;
+
+    @Column(name = "so_luong", nullable = false)
+    private Integer soLuong;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/order/DonHang.java">
+package com.nhom9.oldbook_marketplace.entity.order;
+
+import com.nhom9.oldbook_marketplace.entity.identity.DiaChi;
+import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung;
+import com.nhom9.oldbook_marketplace.entity.payment.KhuyenMai;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "don_hang")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class DonHang {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_dh")
+    private Integer maDH;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_nd_nguoi_mua", referencedColumnName = "ma_nd", nullable = false)
+    private NguoiDung nguoiMua;
+
+    // Giữ kiểu Integer cho mã Khuyến Mãi sàn (Sẽ liên kết lỏng với module Payment sau)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "ma_km_san",
+            referencedColumnName = "ma_km"
+    )
+    private KhuyenMai khuyenMaiSan;
+
+    @Column(name = "giam_gia_san", precision = 15, scale = 2)
+    private BigDecimal giamGiaSan;
+
+    @Column(name = "tong_tien_hang", precision = 15, scale = 2)
+    private BigDecimal tongTienHang;
+
+    @Column(name = "tong_phi_ship", precision = 15, scale = 2)
+    private BigDecimal tongPhiShip;
+
+    @Column(name = "tong_giam_gia", precision = 15, scale = 2)
+    private BigDecimal tongGiamGia;
+
+    @Column(name = "tong_thanh_toan", precision = 15, scale = 2)
+    private BigDecimal tongThanhToan;
+
+    @Column(name = "phuong_thuc_tt", length = 50)
+    private String phuongThucTT;
+
+    @Column(name = "trang_thai_thanh_toan", length = 50)
+    private String trangThaiThanhToan;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dia_chi_giao", referencedColumnName = "ma_dia_chi")
+    private DiaChi diaChiGiao;
+
+    // Snapshot thông tin giao hàng
+    @Column(name = "ten_nguoi_nhan", length = 255)
+    private String tenNguoiNhan;
+
+    @Column(name = "so_dien_thoai_nhan", length = 20)
+    private String soDienThoaiNhan;
+
+    @Column(name = "tinh_thanh_giao", length = 100)
+    private String tinhThanhGiao;
+
+    @Column(name = "quan_huyen_giao", length = 100)
+    private String quanHuyenGiao;
+
+    @Column(name = "phuong_xa_giao", length = 100)
+    private String phuongXaGiao;
+
+    @Column(name = "dia_chi_giao_chi_tiet", length = 500)
+    private String diaChiGiaoChiTiet;
+
+    @Column(name = "ngay_tao", updatable = false)
+    private LocalDateTime ngayTao;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayTao = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/order/DonHangCuaHang.java">
+package com.nhom9.oldbook_marketplace.entity.order;
+
+import com.nhom9.oldbook_marketplace.entity.catalog.CuaHang;
+import com.nhom9.oldbook_marketplace.entity.payment.KhuyenMai;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(
+        name = "don_hang_cua_hang",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_don_hang_cua_hang",
+                        columnNames = {"ma_dh", "ma_ch"}
+                )
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class DonHangCuaHang {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_dhch")
+    private Integer maDHCH;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dh", referencedColumnName = "ma_dh", nullable = false)
+    private DonHang donHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_ch", referencedColumnName = "ma_ch", nullable = false)
+    private CuaHang cuaHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "ma_km_shop",
+            referencedColumnName = "ma_km"
+    )
+    private KhuyenMai khuyenMaiShop;
+
+    @Column(name = "giam_gia_shop", precision = 15, scale = 2)
+    private BigDecimal giamGiaShop;
+
+    @Column(name = "giam_gia_san_phan_bo", precision = 15, scale = 2)
+    private BigDecimal giamGiaSanPhanBo;
+
+    @Column(name = "tien_hang_ch", precision = 15, scale = 2)
+    private BigDecimal tienHangCH;
+
+    @Column(name = "phi_ship_ch", precision = 15, scale = 2)
+    private BigDecimal phiShipCH;
+
+    @Column(name = "commission_tien", precision = 15, scale = 2)
+    private BigDecimal commissionTien;
+
+    @Column(name = "tong_tien_shop_order", precision = 15, scale = 2)
+    private BigDecimal tongTienShopOrder;
+
+    @Column(name = "trang_thai_don_hang", length = 50)
+    private String trangThaiDonHang;
+
+    @Column(name = "trang_thai_thanh_toan_shop", length = 50)
+    private String trangThaiThanhToanShop;
+
+    @Column(name = "tien_hoan_tra", precision = 15, scale = 2)
+    private BigDecimal tienHoanTra;
+
+    @Column(name = "ngay_cap_nhat")
+    private LocalDateTime ngayCapNhat;
+
+    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+    private String ghiChu;
+
+    @PrePersist
+    @PreUpdate
+    protected void onUpdate() {
+        this.ngayCapNhat = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/order/GioHang.java">
+package com.nhom9.oldbook_marketplace.entity.order;
+
+import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung;
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "gio_hang")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class GioHang {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_gio_hang")
+    private Integer maGioHang;
+
+    // Quan hệ 1-1 với NguoiDung
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_nd", referencedColumnName = "ma_nd", unique = true, nullable = false)
+    private NguoiDung nguoiDung;
+
+    @Column(name = "ngay_cap_nhat")
+    private LocalDateTime ngayCapNhat;
+
+    @PrePersist
+    @PreUpdate
+    protected void onUpdate() {
+        this.ngayCapNhat = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/order/YeuCauHuyDon.java">
+package com.nhom9.oldbook_marketplace.entity.order;
+
+import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "yeu_cau_huy_don")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class YeuCauHuyDon {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_yeu_cau")
+    private Integer maYeuCau;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dhch", referencedColumnName = "ma_dhch", nullable = false)
+    private DonHangCuaHang donHangCuaHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_nd_yeu_cau", referencedColumnName = "ma_nd", nullable = false)
+    private NguoiDung nguoiDung;
+
+    @Column(name = "ly_do", columnDefinition = "TEXT")
+    private String lyDo;
+
+    @Column(name = "trang_thai_yeu_cau", length = 50)
+    private String trangThaiYeuCau;
+
+    @Column(name = "ngay_gui", updatable = false)
+    private LocalDateTime ngayGui;
+
+    @Column(name = "ngay_xu_ly")
+    private LocalDateTime ngayXuLy;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayGui = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/payment/CauHinhChietKhau.java">
+package com.nhom9.oldbook_marketplace.entity.payment;
+
+import com.nhom9.oldbook_marketplace.entity.catalog.DanhMuc;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "cau_hinh_chiet_khau")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CauHinhChietKhau {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_cau_hinh_chiet_khau")
+    private Integer maCauHinhChietKhau;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dm", referencedColumnName = "ma_dm", nullable = false)
+    private DanhMuc danhMuc;
+
+    @Column(name = "ty_le_chiet_khau", precision = 5, scale = 2)
+    private BigDecimal tyLeChietKhau;
+
+    @Column(name = "trang_thai", length = 50)
+    private String trangThai;
+
+    @Column(name = "ngay_bat_dau")
+    private LocalDateTime ngayBatDau;
+
+    @Column(name = "ngay_ket_thuc")
+    private LocalDateTime ngayKetThuc;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/payment/KhuyenMai.java">
+package com.nhom9.oldbook_marketplace.entity.payment;
+
+import com.nhom9.oldbook_marketplace.entity.catalog.CuaHang;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "khuyen_mai")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class KhuyenMai {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_km")
+    private Integer maKM;
+
+    // Khuyến mãi có thể thuộc về 1 cửa hàng, hoặc thuộc về Sàn (nullable = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_ch", referencedColumnName = "ma_ch", nullable = true)
+    private CuaHang cuaHang;
+
+    @Column(name = "code", unique = true, nullable = false, length = 50)
+    private String code;
+
+    @Column(name = "ten_khuyen_mai", length = 255)
+    private String tenKhuyenMai;
+
+    @Column(name = "loai_voucher", length = 50)
+    private String loaiVoucher;
+
+    @Column(name = "loai_giam_gia", length = 50)
+    private String loaiGiamGia;
+
+    @Column(name = "gia_tri_giam", precision = 15, scale = 2)
+    private BigDecimal giaTriGiam;
+
+    @Column(name = "gia_tri_giam_toi_da", precision = 15, scale = 2)
+    private BigDecimal giaTriGiamToiDa;
+
+    @Column(name = "gia_tri_don_toi_thieu", precision = 15, scale = 2)
+    private BigDecimal giaTriDonToiThieu;
+
+    @Column(name = "so_luong")
+    private Integer soLuong;
+
+    @Column(name = "da_su_dung")
+    private Integer daSuDung;
+
+    @Column(name = "ngay_bat_dau")
+    private LocalDateTime ngayBatDau;
+
+    @Column(name = "ngay_ket_thuc")
+    private LocalDateTime ngayKetThuc;
+
+    @Column(name = "trang_thai", length = 50)
+    private String trangThai;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/payment/SuDungVoucher.java">
+package com.nhom9.oldbook_marketplace.entity.payment;
+
+import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung;
+import com.nhom9.oldbook_marketplace.entity.order.DonHang;
+import com.nhom9.oldbook_marketplace.entity.order.DonHangCuaHang;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "su_dung_voucher")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class SuDungVoucher {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_sdv")
+    private Integer maSDV;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_km", referencedColumnName = "ma_km", nullable = false)
+    private KhuyenMai khuyenMai;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dh", referencedColumnName = "ma_dh", nullable = false)
+    private DonHang donHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dhch", referencedColumnName = "ma_dhch", nullable = true)
+    private DonHangCuaHang donHangCuaHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_nd", referencedColumnName = "ma_nd", nullable = false)
+    private NguoiDung nguoiDung;
+
+    @Column(name = "gia_tri_giam_thuc_te", precision = 15, scale = 2)
+    private BigDecimal giaTriGiamThucTe;
+
+    @Column(name = "ngay_su_dung", updatable = false)
+    private LocalDateTime ngaySuDung;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngaySuDung = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/payment/ThanhToan.java">
+package com.nhom9.oldbook_marketplace.entity.payment;
+
+import com.nhom9.oldbook_marketplace.entity.order.DonHang;
+import com.nhom9.oldbook_marketplace.entity.order.DonHangCuaHang;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "thanh_toan")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ThanhToan {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_giao_dich")
+    private Integer maGiaoDich;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dh", referencedColumnName = "ma_dh", nullable = false)
+    private DonHang donHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dhch", referencedColumnName = "ma_dhch", nullable = true)
+    private DonHangCuaHang donHangCuaHang;
+
+    @Column(name = "cong_thanh_toan", length = 50)
+    private String congThanhToan;
+
+    @Column(name = "loai_giao_dich", length = 50)
+    private String loaiGiaoDich;
+
+    @Column(name = "ma_giao_dich_cong", length = 255)
+    private String maGiaoDichCong;
+
+    @Column(name = "so_tien", precision = 15, scale = 2)
+    private BigDecimal soTien;
+
+    @Column(name = "trang_thai_giao_dich", length = 50)
+    private String trangThaiGiaoDich;
+
+    @Column(name = "thoi_gian_tt")
+    private LocalDateTime thoiGianTT;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/shipping/CauHinhVanChuyen.java">
+package com.nhom9.oldbook_marketplace.entity.shipping;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+
+@Entity
+@Table(name = "cau_hinh_van_chuyen")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CauHinhVanChuyen {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_cau_hinh_vc")
+    private Integer maCauHinhVC;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dvvc", referencedColumnName = "ma_dvvc", nullable = false)
+    private DonViVanChuyen donViVanChuyen;
+
+    @Column(name = "khu_vuc", length = 255)
+    private String khuVuc;
+
+    @Column(name = "phi_co_ban", precision = 15, scale = 2)
+    private BigDecimal phiCoBan;
+
+    @Column(name = "phi_theo_kg", precision = 15, scale = 2)
+    private BigDecimal phiTheoKg;
+
+    @Column(name = "thoi_gian_du_kien")
+    private Integer thoiGianDuKien;
+
+    @Column(name = "trang_thai", length = 50)
+    private String trangThai;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/shipping/DonViVanChuyen.java">
+package com.nhom9.oldbook_marketplace.entity.shipping;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "don_vi_van_chuyen")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class DonViVanChuyen {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_dvvc")
+    private Integer maDVVC;
+
+    @Column(name = "ten_don_vi", length = 255)
+    private String tenDonVi;
+
+    @Column(name = "so_dien_thoai", length = 20)
+    private String soDienThoai;
+
+    @Column(name = "email", length = 255)
+    private String email;
+
+    @Column(name = "trang_thai", length = 50)
+    private String trangThai;
+
+    @Column(name = "thong_tin_tich_hop", length = 500)
+    private String thongTinTichHop;
+
+    @Column(name = "ngay_tao", updatable = false)
+    private LocalDate ngayTao;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayTao = LocalDate.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/shipping/VanChuyen.java">
+package com.nhom9.oldbook_marketplace.entity.shipping;
+
+import com.nhom9.oldbook_marketplace.entity.order.DonHangCuaHang;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "van_chuyen")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class VanChuyen {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_van_chuyen")
+    private Integer maVanChuyen;
+
+    // Quan hệ 1-1: Mỗi đơn hàng của shop chỉ có 1 mã vận đơn tương ứng
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dhch", referencedColumnName = "ma_dhch", unique = true, nullable = false)
+    private DonHangCuaHang donHangCuaHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dvvc", referencedColumnName = "ma_dvvc", nullable = false)
+    private DonViVanChuyen donViVanChuyen;
+
+    @Column(name = "ma_van_don", unique = true, length = 255)
+    private String maVanDon;
+
+    @Column(name = "trang_thai_van_chuyen", length = 50)
+    private String trangThaiVanChuyen;
+
+    @Column(name = "so_lan_giao_that_bai")
+    private Integer soLanGiaoThatBai;
+
+    @Column(name = "ghi_chu_giao_hang", columnDefinition = "TEXT")
+    private String ghiChuGiaoHang;
+
+    @Column(name = "ngay_cap_nhat")
+    private LocalDateTime ngayCapNhat;
+
+    @PrePersist
+    @PreUpdate
+    protected void onUpdate() {
+        this.ngayCapNhat = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/system/DanhGia.java">
+package com.nhom9.oldbook_marketplace.entity.system;
+
+import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung;
+import com.nhom9.oldbook_marketplace.entity.order.ChiTietDonHang;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "danh_gia")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class DanhGia {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_danh_gia")
+    private Integer maDanhGia;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_ctdh", referencedColumnName = "ma_ctdh", unique = true, nullable = false)
+    private ChiTietDonHang chiTietDonHang;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_nd", referencedColumnName = "ma_nd", nullable = false)
+    private NguoiDung nguoiDung;
+
+    @Column(name = "so_sao")
+    private Integer soSao;
+
+    @Column(name = "binh_luan", columnDefinition = "TEXT")
+    private String binhLuan;
+
+    @Column(name = "ngay_danh_gia", updatable = false)
+    private LocalDateTime ngayDanhGia;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayDanhGia = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/system/DanhGiaMedia.java">
+package com.nhom9.oldbook_marketplace.entity.system;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "danh_gia_media")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class DanhGiaMedia {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_media")
+    private Integer maMedia;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_danh_gia", referencedColumnName = "ma_danh_gia", nullable = false)
+    private DanhGia danhGia;
+
+    @Column(name = "loai_media", length = 50)
+    private String loaiMedia;
+
+    @Column(name = "media_url", length = 500)
+    private String mediaUrl;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/entity/system/NhatKyHeThong.java">
+package com.nhom9.oldbook_marketplace.entity.system;
+
+import com.nhom9.oldbook_marketplace.entity.identity.TaiKhoan;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "nhat_ky_he_thong")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class NhatKyHeThong {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_nhat_ky")
+    private Integer maNhatKy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_tk", referencedColumnName = "ma_tk", nullable = false)
+    private TaiKhoan taiKhoan;
+
+    @Column(name = "hanh_dong", length = 255)
+    private String hanhDong;
+
+    @Column(name = "loai_doi_tuong", length = 100)
+    private String loaiDoiTuong;
+
+    @Column(name = "ma_doi_tuong")
+    private Integer maDoiTuong;
+
+    @Column(name = "mo_ta", columnDefinition = "TEXT")
+    private String moTa;
+
+    @Column(name = "dia_chi_ip", length = 50)
+    private String diaChiIp;
+
+    @Column(name = "thoi_gian", updatable = false)
+    private LocalDateTime thoiGian;
+
+    @PrePersist
+    protected void onCreate() {
+        this.thoiGian = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/OldbookMarketplaceApplication.java">
+package com.nhom9.oldbook_marketplace;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class OldbookMarketplaceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(OldbookMarketplaceApplication.class, args);
+	}
+
+}
+</file>
+
+<file path="src/main/resources/application.properties">
+# ===============================
+# C?U HÌNH K?T N?I POSTGRESQL
+# ===============================
+spring.datasource.url=jdbc:postgresql://localhost:5432/oldbook_db
+spring.datasource.username=postgres
+spring.datasource.password=060806
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# ===============================
+# C?U HÌNH JPA / HIBERNATE
+# ===============================
+# Cho phép Hibernate t? ??ng t?o/c?p nh?t b?ng d?a trên Entity Java
+spring.jpa.hibernate.ddl-auto=update
+
+# In ra console các câu l?nh SQL mà Hibernate t? ??ng sinh ra (R?t t?t ?? debug)
+spring.jpa.show-sql=true
+
+# Format l?i câu l?nh SQL trên console cho d? ??c
+spring.jpa.properties.hibernate.format_sql=true
+
+# Xác ??nh Dialect ?? Hibernate sinh code SQL chu?n xác nh?t cho PostgreSQL
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+# ===============================
+# C?U HÌNH KHÁC
+# ===============================
+# Ch?y ?ng d?ng ? port 8080
+server.port=8080
+</file>
+
+<file path="src/test/java/com/nhom9/oldbook_marketplace/OldbookMarketplaceApplicationTests.java">
+package com.nhom9.oldbook_marketplace;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class OldbookMarketplaceApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+</file>
+
+<file path=".gitattributes">
+/gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
+</file>
+
+<file path=".gitignore">
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+</file>
+
+<file path="build.gradle.kts">
+plugins {
+	java
+	id("org.springframework.boot") version "4.1.1"
+	id("io.spring.dependency-management") version "1.1.7"
+}
+
+group = "com.nhom9"
+version = "0.0.1-SNAPSHOT"
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	compileOnly("org.projectlombok:lombok")
+	runtimeOnly("org.postgresql:postgresql")
+	annotationProcessor("org.projectlombok:lombok")
+	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testCompileOnly("org.projectlombok:lombok")
+	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	testAnnotationProcessor("org.projectlombok:lombok")
+}
+
+tasks.withType<Test> {
+	useJUnitPlatform()
+}
+</file>
+
+<file path="gradlew">
+#!/bin/sh
+
+#
+# Copyright © 2015 the original authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+##############################################################################
+#
+#   gradlew start up script for POSIX generated by Gradle.
+#
+#   Important for running:
+#
+#   (1) You need a POSIX-compliant shell to run this script. If your /bin/sh is
+#       noncompliant, but you have some other compliant shell such as ksh or
+#       bash, then to run this script, type that shell name before the whole
+#       command line, like:
+#
+#           ksh gradlew
+#
+#       Busybox and similar reduced shells will NOT work, because this script
+#       requires all of these POSIX shell features:
+#         * functions;
+#         * expansions «$var», «${var}», «${var:-default}», «${var+SET}»,
+#           «${var#prefix}», «${var%suffix}», and «$( cmd )»;
+#         * compound commands having a testable exit status, especially «case»;
+#         * various built-in commands including «command», «set», and «ulimit».
+#
+#   Important for patching:
+#
+#   (2) This script targets any POSIX shell, so it avoids extensions provided
+#       by Bash, Ksh, etc; in particular arrays are avoided.
+#
+#       The "traditional" practice of packing multiple parameters into a
+#       space-separated string is a well documented source of bugs and security
+#       problems, so this is (mostly) avoided, by progressively accumulating
+#       options in "$@", and eventually passing that to Java.
+#
+#       Where the inherited environment variables (DEFAULT_JVM_OPTS, JAVA_OPTS,
+#       and GRADLE_OPTS) rely on word-splitting, this is performed explicitly;
+#       see the in-line comments for details.
+#
+#       There are tweaks for specific operating systems such as AIX, CygWin,
+#       Darwin, MinGW, and NonStop.
+#
+#   (3) This script is generated from the Groovy template
+#       https://github.com/gradle/gradle/blob/3d91ce3b8caaf77ad09f381f43615b715b53f72c/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
+#       within the Gradle project.
+#
+#       You can find Gradle at https://github.com/gradle/gradle/.
+#
+##############################################################################
+
+# Attempt to set APP_HOME
+
+# Resolve links: $0 may be a link
+app_path=$0
+
+# Need this for daisy-chained symlinks.
+while
+    APP_HOME=${app_path%"${app_path##*/}"}  # leaves a trailing /; empty if no leading path
+    [ -h "$app_path" ]
+do
+    ls=$( ls -ld "$app_path" )
+    link=${ls#*' -> '}
+    case $link in             #(
+      /*)   app_path=$link ;; #(
+      *)    app_path=$APP_HOME$link ;;
+    esac
+done
+
+# This is normally unused
+# shellcheck disable=SC2034
+APP_BASE_NAME=${0##*/}
+# Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
+APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exit
+
+# Use the maximum available, or set MAX_FD != -1 to use that value.
+MAX_FD=maximum
+
+warn () {
+    echo "$*"
+} >&2
+
+die () {
+    echo
+    echo "$*"
+    echo
+    exit 1
+} >&2
+
+# OS specific support (must be 'true' or 'false').
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "$( uname )" in                #(
+  CYGWIN* )         cygwin=true  ;; #(
+  Darwin* )         darwin=true  ;; #(
+  MSYS* | MINGW* )  msys=true    ;; #(
+  NONSTOP* )        nonstop=true ;;
+esac
+
+
+
+# Determine the Java command to use to start the JVM.
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+        # IBM's JDK on AIX uses strange locations for the executables
+        JAVACMD=$JAVA_HOME/jre/sh/java
+    else
+        JAVACMD=$JAVA_HOME/bin/java
+    fi
+    if [ ! -x "$JAVACMD" ] ; then
+        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+else
+    JAVACMD=java
+    if ! command -v java >/dev/null 2>&1
+    then
+        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+fi
+
+# Increase the maximum file descriptors if we can.
+if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
+    case $MAX_FD in #(
+      max*)
+        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
+        # shellcheck disable=SC2039,SC3045
+        MAX_FD=$( ulimit -H -n ) ||
+            warn "Could not query maximum file descriptor limit"
+    esac
+    case $MAX_FD in  #(
+      '' | soft) :;; #(
+      *)
+        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
+        # shellcheck disable=SC2039,SC3045
+        ulimit -n "$MAX_FD" ||
+            warn "Could not set maximum file descriptor limit to $MAX_FD"
+    esac
+fi
+
+# Collect all arguments for the java command, stacking in reverse order:
+#   * args from the command line
+#   * the main class name
+#   * -classpath
+#   * -D...appname settings
+#   * --module-path (only if needed)
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and GRADLE_OPTS environment variables.
+
+# For Cygwin or MSYS, switch paths to Windows format before running java
+if "$cygwin" || "$msys" ; then
+    APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
+
+    JAVACMD=$( cygpath --unix "$JAVACMD" )
+
+    # Now convert the arguments - kludge to limit ourselves to /bin/sh
+    for arg do
+        if
+            case $arg in                                #(
+              -*)   false ;;                            # don't mess with options #(
+              /?*)  t=${arg#/} t=/${t%%/*}              # looks like a POSIX filepath
+                    [ -e "$t" ] ;;                      #(
+              *)    false ;;
+            esac
+        then
+            arg=$( cygpath --path --ignore --mixed "$arg" )
+        fi
+        # Roll the args list around exactly as many times as the number of
+        # args, so each arg winds up back in the position where it started, but
+        # possibly modified.
+        #
+        # NB: a `for` loop captures its iteration list before it begins, so
+        # changing the positional parameters here affects neither the number of
+        # iterations, nor the values presented in `arg`.
+        shift                   # remove old arg
+        set -- "$@" "$arg"      # push replacement arg
+    done
+fi
+
+
+# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
+# Collect all arguments for the java command:
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
+#     and any embedded shellness will be escaped.
+#   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
+#     treated as '${Hostname}' itself on the command line.
+
+set -- \
+        "-Dorg.gradle.appname=$APP_BASE_NAME" \
+        -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
+        "$@"
+
+# Stop when "xargs" is not available.
+if ! command -v xargs >/dev/null 2>&1
+then
+    die "xargs is not available"
+fi
+
+# Use "xargs" to parse quoted args.
+#
+# With -n1 it outputs one arg per line, with the quotes and backslashes removed.
+#
+# In Bash we could simply go:
+#
+#   readarray ARGS < <( xargs -n1 <<<"$var" ) &&
+#   set -- "${ARGS[@]}" "$@"
+#
+# but POSIX shell has neither arrays nor command substitution, so instead we
+# post-process each arg (as a line of input to sed) to backslash-escape any
+# character that might be a shell metacharacter, then use eval to reverse
+# that process (while maintaining the separation between arguments), and wrap
+# the whole thing up as a single "set" statement.
+#
+# This will of course break if any of these variables contains a newline or
+# an unmatched quote.
+#
+
+eval "set -- $(
+        printf '%s\n' "$DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS" |
+        xargs -n1 |
+        sed ' s~[^-[:alnum:]+,./:=@_]~\\&~g; ' |
+        tr '\n' ' '
+    )" '"$@"'
+
+exec "$JAVACMD" "$@"
+</file>
+
+<file path="gradlew.bat">
+@rem
+@rem Copyright 2015 the original author or authors.
+@rem
+@rem Licensed under the Apache License, Version 2.0 (the "License");
+@rem you may not use this file except in compliance with the License.
+@rem You may obtain a copy of the License at
+@rem
+@rem      https://www.apache.org/licenses/LICENSE-2.0
+@rem
+@rem Unless required by applicable law or agreed to in writing, software
+@rem distributed under the License is distributed on an "AS IS" BASIS,
+@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+@rem See the License for the specific language governing permissions and
+@rem limitations under the License.
+@rem
+@rem SPDX-License-Identifier: Apache-2.0
+@rem
+
+@if "%DEBUG%"=="" @echo off
+@rem ##########################################################################
+@rem
+@rem  gradlew startup script for Windows
+@rem
+@rem ##########################################################################
+
+@rem Set local scope for the variables, and ensure extensions are enabled
+setlocal EnableExtensions
+
+set DIRNAME=%~dp0
+if "%DIRNAME%"=="" set DIRNAME=.
+@rem This is normally unused
+set APP_BASE_NAME=%~n0
+set APP_HOME=%DIRNAME%
+
+@rem Resolve any "." and ".." in APP_HOME to make it shorter.
+for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
+
+@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+
+@rem Find java.exe
+if defined JAVA_HOME goto findJavaFromJavaHome
+
+set JAVA_EXE=java.exe
+%JAVA_EXE% -version >NUL 2>&1
+if %ERRORLEVEL% equ 0 goto execute
+
+echo. 1>&2
+echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
+echo. 1>&2
+echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+echo location of your Java installation. 1>&2
+
+"%COMSPEC%" /c exit 1
+
+:findJavaFromJavaHome
+set JAVA_HOME=%JAVA_HOME:"=%
+set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+
+if exist "%JAVA_EXE%" goto execute
+
+echo. 1>&2
+echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
+echo. 1>&2
+echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+echo location of your Java installation. 1>&2
+
+"%COMSPEC%" /c exit 1
+
+:execute
+@rem Setup the command line
+
+
+
+@rem Execute gradlew
+@rem endlocal doesn't take effect until after the line is parsed and variables are expanded
+@rem which allows us to clear the local environment before executing the java command
+endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %* & call :exitWithErrorLevel
+
+:exitWithErrorLevel
+@rem Use "%COMSPEC%" /c exit to allow operators to work properly in scripts
+"%COMSPEC%" /c exit %ERRORLEVEL%
+</file>
+
+<file path="settings.gradle.kts">
+rootProject.name = "oldbook-marketplace"
+</file>
+
+</files>

@@ -2,6 +2,7 @@ package com.nhom9.oldbook_marketplace.entity.order;
 
 import com.nhom9.oldbook_marketplace.entity.identity.DiaChi;
 import com.nhom9.oldbook_marketplace.entity.identity.NguoiDung;
+import com.nhom9.oldbook_marketplace.entity.payment.KhuyenMai;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,8 +28,12 @@ public class DonHang {
     private NguoiDung nguoiMua;
 
     // Giữ kiểu Integer cho mã Khuyến Mãi sàn (Sẽ liên kết lỏng với module Payment sau)
-    @Column(name = "ma_km_san")
-    private Integer maKMSan;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "ma_km_san",
+            referencedColumnName = "ma_km"
+    )
+    private KhuyenMai khuyenMaiSan;
 
     @Column(name = "giam_gia_san", precision = 15, scale = 2)
     private BigDecimal giamGiaSan;

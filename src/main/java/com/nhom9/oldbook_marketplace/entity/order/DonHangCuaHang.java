@@ -1,6 +1,7 @@
 package com.nhom9.oldbook_marketplace.entity.order;
 
 import com.nhom9.oldbook_marketplace.entity.catalog.CuaHang;
+import com.nhom9.oldbook_marketplace.entity.payment.KhuyenMai;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,7 +9,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "don_hang_cua_hang")
+@Table(
+        name = "don_hang_cua_hang",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_don_hang_cua_hang",
+                        columnNames = {"ma_dh", "ma_ch"}
+                )
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,8 +38,12 @@ public class DonHangCuaHang {
     @JoinColumn(name = "ma_ch", referencedColumnName = "ma_ch", nullable = false)
     private CuaHang cuaHang;
 
-    @Column(name = "ma_km_shop")
-    private Integer maKMShop;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "ma_km_shop",
+            referencedColumnName = "ma_km"
+    )
+    private KhuyenMai khuyenMaiShop;
 
     @Column(name = "giam_gia_shop", precision = 15, scale = 2)
     private BigDecimal giamGiaShop;
