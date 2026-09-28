@@ -13,6 +13,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.nhom9.oldbook_marketplace.auth.dto.ResendRegisterOtpRequest;
 
+import com.nhom9.oldbook_marketplace.auth.dto.ForgotPasswordRequest;
+import com.nhom9.oldbook_marketplace.auth.dto.ResetPasswordRequest;
+import com.nhom9.oldbook_marketplace.auth.dto.ResendForgotPasswordOtpRequest;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -47,6 +51,41 @@ public class AuthController {
     }
 
     /**
+     * Đăng xuất.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader(
+                    value = HttpHeaders.AUTHORIZATION,
+                    required = false
+            ) String authorization
+    ) {
+
+        if (authorization == null
+                || !authorization.startsWith("Bearer ")) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(
+                            ApiResponse.error(
+                                    401,
+                                    "Thiếu token xác thực"
+                            )
+                    );
+        }
+
+        String token = authorization.substring(7);
+
+        authService.logout(token);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Đăng xuất thành công"
+                )
+        );
+    }
+
+    /**
      * Chọn vai trò để lấy JWT chính thức.
      */
     @PostMapping("/select-role")
@@ -65,6 +104,48 @@ public class AuthController {
         LoginResponse response = authService.selectRole(token, request.getMaTK());
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+
+        authService.forgotPassword(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Đã gửi mã OTP đặt lại mật khẩu"
+                )
+        );
+    }
+
+    @PostMapping("/resend-forgot-password-otp")
+    public ResponseEntity<ApiResponse<Void>> resendForgotPasswordOtp(
+            @Valid @RequestBody ResendForgotPasswordOtpRequest request
+    ) {
+
+        authService.resendForgotPasswordOtp(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Đã gửi lại mã OTP đặt lại mật khẩu"
+                )
+        );
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+
+        authService.resetPassword(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Đặt lại mật khẩu thành công"
+                )
+        );
     }
 
     @PostMapping("/change-password")

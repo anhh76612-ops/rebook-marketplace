@@ -6,6 +6,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -31,6 +32,7 @@ public class JwtService {
     }
 
     // JWT chính thức
+    // JWT chính thức
     public String generateToken(
             Integer maND,
             Integer maTK,
@@ -43,6 +45,7 @@ public class JwtService {
         );
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(maND.toString())
                 .claim("maND", maND)
                 .claim("maTK", maTK)
@@ -51,6 +54,16 @@ public class JwtService {
                 .expiration(expirationDate)
                 .signWith(secretKey)
                 .compact();
+    }
+
+    public String extractJti(String token) {
+        return extractClaims(token)
+                .getId();
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaims(token)
+                .getExpiration();
     }
 
     // JWT tạm, chỉ dùng trong bước chọn vai trò

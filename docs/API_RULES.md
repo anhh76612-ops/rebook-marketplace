@@ -21,6 +21,9 @@ POST /api/auth/login
 POST /api/auth/select-role
 POST /api/auth/verify-register-otp
 POST /api/auth/resend-register-otp
+POST /api/auth/forgot-password
+POST /api/auth/resend-forgot-password-otp
+POST /api/auth/reset-password
 
 API xem sách:
 GET /api/sach/**
