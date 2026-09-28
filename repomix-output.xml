@@ -65,16 +65,6 @@ src/
       com/
         nhom9/
           oldbook_marketplace/
-            admin/
-              controller/
-                AdminTaiKhoanController.java
-              dto/
-                AdminTaiKhoanResponse.java
-                ChangeRoleRequest.java
-                CreateTaiKhoanRequest.java
-                LockTaiKhoanRequest.java
-              service/
-                AdminTaiKhoanService.java
             auth/
               config/
                 PasswordConfig.java
@@ -129,10 +119,12 @@ src/
                 GlobalExceptionHandler.java
             identity/
               controller/
+                AdminTaiKhoanController.java
                 ProfileController.java
               dto/
                 AdminTaiKhoanResponse.java
                 ChangeRoleRequest.java
+                CreateTaiKhoanRequest.java
                 LockTaiKhoanRequest.java
                 ProfileResponse.java
                 UpdateProfileRequest.java
@@ -144,6 +136,7 @@ src/
                 NguoiDungRepository.java
                 TaiKhoanRepository.java
               service/
+                AdminTaiKhoanService.java
                 ProfileService.java
             order/
               entity/
@@ -191,1442 +184,6 @@ settings.gradle.kts
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="src/database/seed/01_seed_accounts.sql">
--- =========================================================
--- OLD BOOK MARKETPLACE
--- Seed tài khoản phát triển
---
--- Admin:
---   email: admin@oldbook.local
---   password: Admin@12345
---
--- Manager:
---   email: manager@oldbook.local
---   password: Manager@12345
---
--- CHỈ DÙNG CHO MÔI TRƯỜNG PHÁT TRIỂN / TEST
--- =========================================================
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-
--- =========================================================
--- 1. TẠO NGƯỜI DÙNG ADMIN
--- =========================================================
-
-INSERT INTO nguoi_dung (
-    email,
-    mat_khau,
-    ho_ten,
-    so_dien_thoai,
-    ngay_tao
-)
-VALUES (
-           'admin@oldbook.local',
-           crypt('Admin@12345', gen_salt('bf', 10)),
-           'Quản trị viên hệ thống',
-           '0900000001',
-           CURRENT_TIMESTAMP
-       )
-    ON CONFLICT (email) DO NOTHING;
-
-
--- =========================================================
--- 2. TẠO TÀI KHOẢN ADMIN
--- =========================================================
-
-INSERT INTO tai_khoan (
-    ma_nd,
-    vai_tro,
-    trang_thai,
-    ngay_tao
-)
-SELECT
-    nd.ma_nd,
-    'QUAN_TRI_VIEN',
-    'HOAT_DONG',
-    CURRENT_TIMESTAMP
-FROM nguoi_dung nd
-WHERE nd.email = 'admin@oldbook.local'
-    ON CONFLICT (ma_nd, vai_tro) DO NOTHING;
-
-
--- =========================================================
--- 3. TẠO NGƯỜI DÙNG MANAGER
--- =========================================================
-
-INSERT INTO nguoi_dung (
-    email,
-    mat_khau,
-    ho_ten,
-    so_dien_thoai,
-    ngay_tao
-)
-VALUES (
-           'manager@oldbook.local',
-           crypt('Manager@12345', gen_salt('bf', 10)),
-           'Quản lý cửa hàng',
-           '0900000002',
-           CURRENT_TIMESTAMP
-       )
-    ON CONFLICT (email) DO NOTHING;
-
-
--- =========================================================
--- 4. TẠO TÀI KHOẢN MANAGER
--- =========================================================
-
-INSERT INTO tai_khoan (
-    ma_nd,
-    vai_tro,
-    trang_thai,
-    ngay_tao
-)
-SELECT
-    nd.ma_nd,
-    'QUAN_LY',
-    'HOAT_DONG',
-    CURRENT_TIMESTAMP
-FROM nguoi_dung nd
-WHERE nd.email = 'manager@oldbook.local'
-    ON CONFLICT (ma_nd, vai_tro) DO NOTHING;
-
-
--- =========================================================
--- 5. KIỂM TRA
--- =========================================================
-
-SELECT
-    nd.ma_nd,
-    nd.email,
-    nd.ho_ten,
-    tk.ma_tk,
-    tk.vai_tro,
-    tk.trang_thai
-FROM nguoi_dung nd
-         JOIN tai_khoan tk
-              ON tk.ma_nd = nd.ma_nd
-WHERE nd.email IN (
-                   'admin@oldbook.local',
-                   'manager@oldbook.local'
-    )
-ORDER BY tk.ma_tk;
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/admin/controller/AdminTaiKhoanController.java">
-package com.nhom9.oldbook_marketplace.admin.controller;
-
-import com.nhom9.oldbook_marketplace.admin.dto.AdminTaiKhoanResponse;
-import com.nhom9.oldbook_marketplace.admin.dto.ChangeRoleRequest;
-import com.nhom9.oldbook_marketplace.admin.dto.CreateTaiKhoanRequest;
-import com.nhom9.oldbook_marketplace.admin.dto.LockTaiKhoanRequest;
-import com.nhom9.oldbook_marketplace.identity.service.AdminTaiKhoanService;
-import com.nhom9.oldbook_marketplace.auth.filter.JwtAuthenticationFilter.AuthenticatedUserDetails;
-import com.nhom9.oldbook_marketplace.common.dto.ApiResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/admin/tai-khoan")
-@RequiredArgsConstructor
-public class AdminTaiKhoanController {
-
-    private final AdminTaiKhoanService adminTaiKhoanService;
-
-    /**
-     * =========================================================
-     * 1. XEM DANH SÁCH / TÌM KIẾM / LỌC TÀI KHOẢN
-     * =========================================================
-     *
-     * GET /api/admin/tai-khoan
-     *
-     * Ví dụ:
-     * GET /api/admin/tai-khoan
-     * GET /api/admin/tai-khoan?tuKhoa=abc
-     * GET /api/admin/tai-khoan?vaiTro=KHACH_HANG
-     * GET /api/admin/tai-khoan?trangThai=HOAT_DONG
-     * GET /api/admin/tai-khoan?tuKhoa=abc&vaiTro=KHACH_HANG&trangThai=HOAT_DONG
-     */
-    @GetMapping
-    public ApiResponse<List<AdminTaiKhoanResponse>> getAll(
-            @RequestParam(required = false) String tuKhoa,
-            @RequestParam(required = false) String vaiTro,
-            @RequestParam(required = false) String trangThai
-    ) {
-        return ApiResponse.success(
-                adminTaiKhoanService.getAll(
-                        tuKhoa,
-                        vaiTro,
-                        trangThai
-                )
-        );
-    }
-
-    /**
-     * =========================================================
-     * 2. TẠO TÀI KHOẢN
-     * =========================================================
-     *
-     * POST /api/admin/tai-khoan
-     */
-    @PostMapping
-    public ApiResponse<AdminTaiKhoanResponse> create(
-            @RequestBody CreateTaiKhoanRequest request
-    ) {
-        AuthenticatedUserDetails currentUser =
-                getCurrentUser();
-
-        AdminTaiKhoanResponse response =
-                adminTaiKhoanService.create(
-                        request,
-                        currentUser.maTK(),
-                        getClientIp()
-                );
-
-        return ApiResponse.success(response);
-    }
-
-    /**
-     * =========================================================
-     * 3. KHÓA TÀI KHOẢN
-     * =========================================================
-     *
-     * PUT /api/admin/tai-khoan/{maTK}/khoa
-     */
-    @PutMapping("/{maTK}/khoa")
-    public ApiResponse<Void> lock(
-            @PathVariable Integer maTK,
-            @RequestBody LockTaiKhoanRequest request
-    ) {
-        AuthenticatedUserDetails currentUser =
-                getCurrentUser();
-
-        adminTaiKhoanService.lock(
-                maTK,
-                request,
-                currentUser.maTK(),
-                getClientIp()
-        );
-
-        return ApiResponse.success(
-                "Khóa tài khoản thành công"
-        );
-    }
-
-    /**
-     * =========================================================
-     * 4. MỞ KHÓA TÀI KHOẢN
-     * =========================================================
-     *
-     * PUT /api/admin/tai-khoan/{maTK}/mo-khoa
-     */
-    @PutMapping("/{maTK}/mo-khoa")
-    public ApiResponse<Void> unlock(
-            @PathVariable Integer maTK
-    ) {
-        AuthenticatedUserDetails currentUser =
-                getCurrentUser();
-
-        adminTaiKhoanService.unlock(
-                maTK,
-                currentUser.maTK(),
-                getClientIp()
-        );
-
-        return ApiResponse.success(
-                "Mở khóa tài khoản thành công"
-        );
-    }
-
-    /**
-     * =========================================================
-     * 5. ĐỔI VAI TRÒ
-     * =========================================================
-     *
-     * PUT /api/admin/tai-khoan/{maTK}/vai-tro
-     */
-    @PutMapping("/{maTK}/vai-tro")
-    public ApiResponse<AdminTaiKhoanResponse> changeRole(
-            @PathVariable Integer maTK,
-            @RequestBody ChangeRoleRequest request
-    ) {
-        AuthenticatedUserDetails currentUser =
-                getCurrentUser();
-
-        AdminTaiKhoanResponse response =
-                adminTaiKhoanService.changeRole(
-                        maTK,
-                        request,
-                        currentUser.maTK(),
-                        getClientIp()
-                );
-
-        return ApiResponse.success(response);
-    }
-
-    /**
-     * =========================================================
-     * HÀM LẤY USER HIỆN TẠI TỪ JWT
-     * =========================================================
-     */
-    private AuthenticatedUserDetails getCurrentUser() {
-
-        Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        if (authentication == null) {
-            throw new IllegalStateException(
-                    "Không xác định được người dùng hiện tại"
-            );
-        }
-
-        Object details =
-                authentication.getDetails();
-
-        if (!(details instanceof AuthenticatedUserDetails userDetails)) {
-            throw new IllegalStateException(
-                    "Thông tin xác thực không hợp lệ"
-            );
-        }
-
-        return userDetails;
-    }
-
-    /**
-     * =========================================================
-     * LẤY IP CLIENT
-     * =========================================================
-     */
-    private String getClientIp() {
-
-        HttpServletRequest request =
-                getCurrentHttpRequest();
-
-        String xForwardedFor =
-                request.getHeader("X-Forwarded-For");
-
-        if (xForwardedFor != null
-                && !xForwardedFor.isBlank()) {
-
-            return xForwardedFor
-                    .split(",")[0]
-                    .trim();
-        }
-
-        String xRealIp =
-                request.getHeader("X-Real-IP");
-
-        if (xRealIp != null
-                && !xRealIp.isBlank()) {
-
-            return xRealIp;
-        }
-
-        return request.getRemoteAddr();
-    }
-
-    /**
-     * =========================================================
-     * LẤY HTTP REQUEST HIỆN TẠI
-     * =========================================================
-     */
-    private HttpServletRequest getCurrentHttpRequest() {
-
-        return ((org.springframework.web.context.request.ServletRequestAttributes)
-                org.springframework.web.context.request.RequestContextHolder
-                        .currentRequestAttributes())
-                .getRequest();
-    }
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/admin/dto/AdminTaiKhoanResponse.java">
-package com.nhom9.oldbook_marketplace.admin.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-
-import java.time.LocalDateTime;
-
-@Getter
-@Builder
-@AllArgsConstructor
-public class AdminTaiKhoanResponse {
-
-    private Integer maTK;
-    private Integer maND;
-
-    private String email;
-    private String hoTen;
-    private String soDienThoai;
-
-    private String vaiTro;
-    private String trangThai;
-
-    private LocalDateTime ngayTao;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/admin/dto/ChangeRoleRequest.java">
-package com.nhom9.oldbook_marketplace.admin.dto;
-
-import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class ChangeRoleRequest {
-
-    @NotBlank(message = "Vai trò không được để trống")
-    private String vaiTro;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/admin/dto/CreateTaiKhoanRequest.java">
-package com.nhom9.oldbook_marketplace.admin.dto;
-
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class CreateTaiKhoanRequest {
-
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không hợp lệ")
-    private String email;
-
-    @NotBlank(message = "Mật khẩu không được để trống")
-    @Size(min = 6, message = "Mật khẩu phải có ít nhất 6 ký tự")
-    private String matKhau;
-
-    @NotBlank(message = "Họ tên không được để trống")
-    private String hoTen;
-
-    private String soDienThoai;
-
-    @NotBlank(message = "Vai trò không được để trống")
-    private String vaiTro;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/admin/dto/LockTaiKhoanRequest.java">
-package com.nhom9.oldbook_marketplace.admin.dto;
-
-import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class LockTaiKhoanRequest {
-
-    @NotBlank(message = "Lý do khóa tài khoản không được để trống")
-    private String lyDo;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/admin/service/AdminTaiKhoanService.java">
-package com.nhom9.oldbook_marketplace.admin.service;
-
-import com.nhom9.oldbook_marketplace.admin.dto.AdminTaiKhoanResponse;
-import com.nhom9.oldbook_marketplace.admin.dto.ChangeRoleRequest;
-import com.nhom9.oldbook_marketplace.admin.dto.CreateTaiKhoanRequest;
-import com.nhom9.oldbook_marketplace.admin.dto.LockTaiKhoanRequest;
-import com.nhom9.oldbook_marketplace.auth.constant.TrangThaiTaiKhoan;
-import com.nhom9.oldbook_marketplace.auth.constant.VaiTro;
-import com.nhom9.oldbook_marketplace.auth.service.EmailService;
-import com.nhom9.oldbook_marketplace.auth.service.TaiKhoanTokenService;
-import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
-import com.nhom9.oldbook_marketplace.identity.entity.NguoiDung;
-import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
-import com.nhom9.oldbook_marketplace.identity.repository.NguoiDungRepository;
-import com.nhom9.oldbook_marketplace.identity.repository.TaiKhoanRepository;
-import com.nhom9.oldbook_marketplace.system.entity.NhatKyHeThong;
-import com.nhom9.oldbook_marketplace.system.repository.NhatKyHeThongRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Locale;
-
-@Service
-@RequiredArgsConstructor
-public class AdminTaiKhoanService {
-
-    private final NguoiDungRepository nguoiDungRepository;
-    private final TaiKhoanRepository taiKhoanRepository;
-    private final NhatKyHeThongRepository nhatKyHeThongRepository;
-
-    private final PasswordEncoder passwordEncoder;
-    private final TaiKhoanTokenService taiKhoanTokenService;
-
-    private final EmailService emailService;
-
-    /*
-     * =========================================================
-     * 1. XEM DANH SÁCH / TÌM KIẾM
-     * =========================================================
-     */
-
-    @Transactional(readOnly = true)
-    public List<AdminTaiKhoanResponse> getAll(
-            String tuKhoa,
-            String vaiTro,
-            String trangThai
-    ) {
-
-        String keyword =
-                tuKhoa == null
-                        ? ""
-                        : tuKhoa.trim().toLowerCase(Locale.ROOT);
-
-        String roleFilter =
-                vaiTro == null
-                        ? ""
-                        : vaiTro.trim();
-
-        String statusFilter =
-                trangThai == null
-                        ? ""
-                        : trangThai.trim();
-
-        return taiKhoanRepository.findAll()
-                .stream()
-                .filter(tk -> matchesKeyword(tk, keyword))
-                .filter(tk ->
-                        roleFilter.isBlank()
-                                || roleFilter.equals(
-                                tk.getVaiTro()
-                        )
-                )
-                .filter(tk ->
-                        statusFilter.isBlank()
-                                || statusFilter.equals(
-                                tk.getTrangThai()
-                        )
-                )
-                .map(this::toResponse)
-                .toList();
-    }
-
-    private boolean matchesKeyword(
-            TaiKhoan taiKhoan,
-            String keyword
-    ) {
-
-        if (keyword.isBlank()) {
-            return true;
-        }
-
-        NguoiDung nd = taiKhoan.getNguoiDung();
-
-        return contains(nd.getEmail(), keyword)
-                || contains(nd.getHoTen(), keyword)
-                || contains(
-                nd.getSoDienThoai(),
-                keyword
-        )
-                || String.valueOf(
-                taiKhoan.getMaTK()
-        ).contains(keyword)
-                || String.valueOf(
-                nd.getMaND()
-        ).contains(keyword);
-    }
-
-    private boolean contains(
-            String value,
-            String keyword
-    ) {
-
-        return value != null
-                && value.toLowerCase(
-                Locale.ROOT
-        ).contains(keyword);
-    }
-
-    /*
-     * =========================================================
-     * 2. TẠO TÀI KHOẢN
-     * =========================================================
-     */
-
-    @Transactional
-    public AdminTaiKhoanResponse create(
-            CreateTaiKhoanRequest request,
-            Integer maTKAdmin,
-            String ip
-    ) {
-
-        String email =
-                request.getEmail()
-                        .trim()
-                        .toLowerCase(Locale.ROOT);
-
-        String soDienThoai =
-                normalizePhone(
-                        request.getSoDienThoai()
-                );
-
-        VaiTro vaiTro = parseRole(
-                request.getVaiTro()
-        );
-
-        // Email không được trùng
-        if (nguoiDungRepository.existsByEmail(email)) {
-            throw new BusinessException(
-                    "Email đã được sử dụng"
-            );
-        }
-
-        // Số điện thoại nếu có nhập không được trùng
-        if (soDienThoai != null
-                && nguoiDungRepository
-                .existsBySoDienThoai(soDienThoai)) {
-
-            throw new BusinessException(
-                    "Số điện thoại đã được sử dụng"
-            );
-        }
-
-        NguoiDung nguoiDung =
-                NguoiDung.builder()
-                        .email(email)
-                        .matKhau(
-                                passwordEncoder.encode(
-                                        request.getMatKhau()
-                                )
-                        )
-                        .hoTen(
-                                request.getHoTen().trim()
-                        )
-                        .soDienThoai(soDienThoai)
-                        .build();
-
-        nguoiDung =
-                nguoiDungRepository.save(
-                        nguoiDung
-                );
-
-        TaiKhoan taiKhoan =
-                TaiKhoan.builder()
-                        .nguoiDung(nguoiDung)
-                        .vaiTro(vaiTro.name())
-                        .trangThai(
-                                TrangThaiTaiKhoan
-                                        .HOAT_DONG.name()
-                        )
-                        .build();
-
-        taiKhoan =
-                taiKhoanRepository.save(
-                        taiKhoan
-                );
-
-        ghiNhatKy(
-                maTKAdmin,
-                "TAO_TAI_KHOAN",
-                taiKhoan.getMaTK(),
-                "Tạo tài khoản mới với vai trò "
-                        + vaiTro.name(),
-                ip
-        );
-
-        emailService.sendAdminAccountCreatedEmail(
-                nguoiDung.getEmail(),
-                nguoiDung.getHoTen(),
-                vaiTro.name()
-        );
-
-
-        return toResponse(taiKhoan);
-    }
-
-    /*
-     * =========================================================
-     * 3. KHÓA
-     * =========================================================
-     */
-
-    @Transactional
-    public void lock(
-            Integer maTKTarget,
-            LockTaiKhoanRequest request,
-            Integer maTKAdmin,
-            String ip
-    ) {
-
-        // Không được tự khóa
-        if (maTKTarget.equals(maTKAdmin)) {
-            throw new BusinessException(
-                    "Hệ thống không cho phép Quản trị viên tự khóa tài khoản của chính mình"
-            );
-        }
-
-        TaiKhoan taiKhoan =
-                getTaiKhoan(maTKTarget);
-
-        if (TrangThaiTaiKhoan.BI_KHOA.name()
-                .equals(taiKhoan.getTrangThai())) {
-
-            throw new BusinessException(
-                    "Tài khoản đã bị khóa"
-            );
-        }
-
-        taiKhoan.setTrangThai(
-                TrangThaiTaiKhoan.BI_KHOA.name()
-        );
-
-        taiKhoanRepository.save(taiKhoan);
-
-        // Vô hiệu mọi JWT đang tồn tại
-        taiKhoanTokenService.invalidateAllTokens(
-                maTKTarget
-        );
-
-        ghiNhatKy(
-                maTKAdmin,
-                "KHOA_TAI_KHOAN",
-                maTKTarget,
-                "Khóa tài khoản. Lý do: "
-                        + request.getLyDo().trim(),
-                ip
-        );
-
-        emailService.sendAccountLockedEmail(
-                taiKhoan.getNguoiDung().getEmail(),
-                request.getLyDo().trim()
-        );
-    }
-
-    /*
-     * =========================================================
-     * 4. MỞ KHÓA
-     * =========================================================
-     */
-
-    @Transactional
-    public void unlock(
-            Integer maTKTarget,
-            Integer maTKAdmin,
-            String ip
-    ) {
-
-        TaiKhoan taiKhoan =
-                getTaiKhoan(maTKTarget);
-
-        if (!TrangThaiTaiKhoan.BI_KHOA.name()
-                .equals(taiKhoan.getTrangThai())) {
-
-            throw new BusinessException(
-                    "Tài khoản hiện không bị khóa"
-            );
-        }
-
-        taiKhoan.setTrangThai(
-                TrangThaiTaiKhoan.HOAT_DONG.name()
-        );
-
-        taiKhoanRepository.save(taiKhoan);
-
-        // Không xóa invalidBefore.
-        // Token cũ vẫn không được phép sống lại.
-        ghiNhatKy(
-                maTKAdmin,
-                "MO_KHOA_TAI_KHOAN",
-                maTKTarget,
-                "Mở khóa tài khoản",
-                ip
-        );
-        emailService.sendAccountUnlockedEmail(
-                taiKhoan.getNguoiDung().getEmail()
-        );
-    }
-
-    /*
-     * =========================================================
-     * 5. ĐỔI VAI TRÒ
-     * =========================================================
-     */
-
-    @Transactional
-    public AdminTaiKhoanResponse changeRole(
-            Integer maTKTarget,
-            ChangeRoleRequest request,
-            Integer maTKAdmin,
-            String ip
-    ) {
-
-        TaiKhoan taiKhoan =
-                getTaiKhoan(maTKTarget);
-
-        VaiTro vaiTroMoi =
-                parseRole(request.getVaiTro());
-
-        String vaiTroCu =
-                taiKhoan.getVaiTro();
-
-        if (vaiTroCu.equals(vaiTroMoi.name())) {
-            throw new BusinessException(
-                    "Tài khoản đã có vai trò này"
-            );
-        }
-
-        Integer maND =
-                taiKhoan.getNguoiDung().getMaND();
-
-        if (taiKhoanRepository
-                .existsByNguoiDung_MaNDAndVaiTroAndMaTKNot(
-                        maND,
-                        vaiTroMoi.name(),
-                        maTKTarget
-                )) {
-
-            throw new BusinessException(
-                    "Người dùng đã có tài khoản với vai trò "
-                            + vaiTroMoi.name()
-            );
-        }
-
-        taiKhoan.setVaiTro(
-                vaiTroMoi.name()
-        );
-
-        taiKhoanRepository.save(taiKhoan);
-
-        ghiNhatKy(
-                maTKAdmin,
-                "THAY_DOI_VAI_TRO",
-                maTKTarget,
-                "Thay đổi vai trò từ "
-                        + vaiTroCu
-                        + " sang "
-                        + vaiTroMoi.name(),
-                ip
-        );
-
-        return toResponse(taiKhoan);
-    }
-
-    /*
-     * =========================================================
-     * 6. HÀM HỖ TRỢ
-     * =========================================================
-     */
-
-    private TaiKhoan getTaiKhoan(
-            Integer maTK
-    ) {
-
-        return taiKhoanRepository.findById(maTK)
-                .orElseThrow(() ->
-                        new BusinessException(
-                                "Tài khoản không tồn tại"
-                        )
-                );
-    }
-
-    private VaiTro parseRole(
-            String vaiTro
-    ) {
-
-        try {
-            return VaiTro.valueOf(
-                    vaiTro.trim()
-                            .toUpperCase(Locale.ROOT)
-            );
-
-        } catch (Exception e) {
-
-            throw new BusinessException(
-                    "Vai trò không hợp lệ"
-            );
-        }
-    }
-
-    private String normalizePhone(
-            String soDienThoai
-    ) {
-
-        if (soDienThoai == null) {
-            return null;
-        }
-
-        String phone =
-                soDienThoai.trim();
-
-        return phone.isBlank()
-                ? null
-                : phone;
-    }
-
-    private AdminTaiKhoanResponse toResponse(
-            TaiKhoan taiKhoan
-    ) {
-
-        NguoiDung nd =
-                taiKhoan.getNguoiDung();
-
-        return AdminTaiKhoanResponse.builder()
-                .maTK(taiKhoan.getMaTK())
-                .maND(nd.getMaND())
-                .email(nd.getEmail())
-                .hoTen(nd.getHoTen())
-                .soDienThoai(nd.getSoDienThoai())
-                .vaiTro(taiKhoan.getVaiTro())
-                .trangThai(taiKhoan.getTrangThai())
-                .ngayTao(taiKhoan.getNgayTao())
-                .build();
-    }
-
-    private void ghiNhatKy(
-            Integer maTKAdmin,
-            String hanhDong,
-            Integer maDoiTuong,
-            String moTa,
-            String ip
-    ) {
-
-        TaiKhoan admin =
-                taiKhoanRepository.findById(maTKAdmin)
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        "Tài khoản quản trị không tồn tại"
-                                )
-                        );
-
-        NhatKyHeThong log =
-                NhatKyHeThong.builder()
-                        .taiKhoan(admin)
-                        .hanhDong(hanhDong)
-                        .loaiDoiTuong("TAI_KHOAN")
-                        .maDoiTuong(maDoiTuong)
-                        .moTa(moTa)
-                        .diaChiIp(ip)
-                        .thoiGian(LocalDateTime.now())
-                        .build();
-
-        nhatKyHeThongRepository.save(log);
-    }
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ForgotPasswordRequest.java">
-// src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ForgotPasswordRequest.java
-
-package com.nhom9.oldbook_marketplace.auth.dto;
-
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class ForgotPasswordRequest {
-
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không hợp lệ")
-    private String email;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResendForgotPasswordOtpRequest.java">
-// src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResendForgotPasswordOtpRequest.java
-
-package com.nhom9.oldbook_marketplace.auth.dto;
-
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class ResendForgotPasswordOtpRequest {
-
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không hợp lệ")
-    private String email;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResetPasswordRequest.java">
-// src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResetPasswordRequest.java
-
-package com.nhom9.oldbook_marketplace.auth.dto;
-
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class ResetPasswordRequest {
-
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không hợp lệ")
-    private String email;
-
-    @NotBlank(message = "Mã OTP không được để trống")
-    @Pattern(
-            regexp = "^\\d{6}$",
-            message = "Mã OTP phải gồm đúng 6 chữ số"
-    )
-    private String maOtp;
-
-    @NotBlank(message = "Mật khẩu mới không được để trống")
-    @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự")
-    @Pattern(
-            regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
-            message = "Mật khẩu phải gồm ít nhất chữ và số"
-    )
-    private String matKhauMoi;
-
-    @NotBlank(message = "Xác nhận mật khẩu mới không được để trống")
-    private String xacNhanMatKhauMoi;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/RevokedTokenService.java">
-package com.nhom9.oldbook_marketplace.auth.service;
-
-import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-@Service
-public class RevokedTokenService {
-
-    /*
-     * Lưu:
-     * jti -> thời điểm hết hạn của token
-     */
-    private final Map<String, Instant> revokedTokens =
-            new ConcurrentHashMap<>();
-
-    /**
-     * Đánh dấu token đã bị thu hồi.
-     */
-    public void revokeToken(String jti, Instant expiration) {
-        cleanupExpiredTokens();
-
-        revokedTokens.put(jti, expiration);
-    }
-
-    /**
-     * Kiểm tra token có bị thu hồi hay chưa.
-     */
-    public boolean isRevoked(String jti) {
-        cleanupExpiredTokens();
-
-        return revokedTokens.containsKey(jti);
-    }
-
-    /**
-     * Xóa các token đã hết hạn khỏi bộ nhớ.
-     */
-    private void cleanupExpiredTokens() {
-
-        Instant now = Instant.now();
-
-        revokedTokens.entrySet().removeIf(entry ->
-                entry.getValue().isBefore(now)
-        );
-    }
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/TaiKhoanTokenService.java">
-package com.nhom9.oldbook_marketplace.auth.service;
-
-import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-@Service
-public class TaiKhoanTokenService {
-
-    /*
-     * maTK -> thời điểm mà tất cả token trước thời điểm này
-     * trở nên không hợp lệ.
-     */
-    private final Map<Integer, Instant> invalidBefore =
-            new ConcurrentHashMap<>();
-
-    /**
-     * Vô hiệu toàn bộ token hiện tại của tài khoản.
-     */
-    public void invalidateAllTokens(Integer maTK) {
-        invalidBefore.put(maTK, Instant.now());
-    }
-
-    /**
-     * Kiểm tra token có được tạo trước thời điểm vô hiệu hóa hay không.
-     */
-    public boolean isTokenInvalid(
-            Integer maTK,
-            Instant issuedAt
-    ) {
-
-        Instant invalidTime = invalidBefore.get(maTK);
-
-        if (invalidTime == null) {
-            return false;
-        }
-
-        return !issuedAt.isAfter(invalidTime);
-    }
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/controller/ProfileController.java">
-// src/main/java/com/nhom9/oldbook_marketplace/identity/controller/ProfileController.java
-
-package com.nhom9.oldbook_marketplace.identity.controller;
-
-import com.nhom9.oldbook_marketplace.common.dto.ApiResponse;
-import com.nhom9.oldbook_marketplace.identity.dto.ProfileResponse;
-import com.nhom9.oldbook_marketplace.identity.dto.UpdateProfileRequest;
-import com.nhom9.oldbook_marketplace.identity.service.ProfileService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/api/profile")
-@RequiredArgsConstructor
-public class ProfileController {
-
-    private final ProfileService profileService;
-
-    @GetMapping
-    public ResponseEntity<ApiResponse<ProfileResponse>> getProfile() {
-
-        Integer maND = getMaND();
-
-        ProfileResponse response =
-                profileService.getProfile(maND);
-
-        return ResponseEntity.ok(
-                ApiResponse.success(response)
-        );
-    }
-
-    @PutMapping
-    public ResponseEntity<ApiResponse<ProfileResponse>> updateProfile(
-            @Valid @RequestBody UpdateProfileRequest request
-    ) {
-
-        Integer maND = getMaND();
-
-        ProfileResponse response =
-                profileService.updateProfile(
-                        maND,
-                        request
-                );
-
-        return ResponseEntity.ok(
-                ApiResponse.success(response)
-        );
-    }
-
-    private Integer getMaND() {
-
-        Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        return (Integer) authentication.getPrincipal();
-    }
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/AdminTaiKhoanResponse.java">
-package com.nhom9.oldbook_marketplace.identity.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-
-import java.time.LocalDateTime;
-
-@Getter
-@Builder
-@AllArgsConstructor
-public class AdminTaiKhoanResponse {
-
-    private Integer maTK;
-
-    private Integer maND;
-
-    private String email;
-
-    private String hoTen;
-
-    private String soDienThoai;
-
-    private String vaiTro;
-
-    private String trangThai;
-
-    private LocalDateTime ngayTao;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/ChangeRoleRequest.java">
-package com.nhom9.oldbook_marketplace.identity.dto;
-
-import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class ChangeRoleRequest {
-
-    @NotBlank(message = "Vai trò không được để trống")
-    private String vaiTro;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/LockTaiKhoanRequest.java">
-package com.nhom9.oldbook_marketplace.identity.dto;
-
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class LockTaiKhoanRequest {
-
-    @NotBlank(message = "Lý do khóa tài khoản không được để trống")
-    @Size(max = 500, message = "Lý do khóa không được vượt quá 500 ký tự")
-    private String lyDo;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/ProfileResponse.java">
-// src/main/java/com/nhom9/oldbook_marketplace/identity/dto/ProfileResponse.java
-
-package com.nhom9.oldbook_marketplace.identity.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-
-@Getter
-@Builder
-@AllArgsConstructor
-public class ProfileResponse {
-
-    private Integer maND;
-
-    private String email;
-
-    private String hoTen;
-
-    private String soDienThoai;
-
-    private String avatarUrl;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/UpdateProfileRequest.java">
-package com.nhom9.oldbook_marketplace.identity.dto;
-
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class UpdateProfileRequest {
-
-    @NotBlank(message = "Họ tên không được để trống")
-    @Size(max = 255, message = "Họ tên không được vượt quá 255 ký tự")
-    private String hoTen;
-
-    @Pattern(
-            regexp = "^$|^0\\d{9,10}$",
-            message = "Số điện thoại không hợp lệ"
-    )
-    private String soDienThoai;
-
-    @Size(max = 500, message = "URL avatar không được vượt quá 500 ký tự")
-    private String avatarUrl;
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/service/ProfileService.java">
-// src/main/java/com/nhom9/oldbook_marketplace/identity/service/ProfileService.java
-
-package com.nhom9.oldbook_marketplace.identity.service;
-
-import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
-import com.nhom9.oldbook_marketplace.identity.dto.ProfileResponse;
-import com.nhom9.oldbook_marketplace.identity.dto.UpdateProfileRequest;
-import com.nhom9.oldbook_marketplace.identity.entity.NguoiDung;
-import com.nhom9.oldbook_marketplace.identity.repository.NguoiDungRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-@Service
-@RequiredArgsConstructor
-public class ProfileService {
-
-    private final NguoiDungRepository nguoiDungRepository;
-
-    @Transactional
-    public ProfileResponse updateProfile(
-            Integer maND,
-            UpdateProfileRequest request
-    ) {
-
-        // 1. Tìm người dùng từ JWT
-        NguoiDung nguoiDung = nguoiDungRepository.findById(maND)
-                .orElseThrow(() ->
-                        new BusinessException(
-                                "Người dùng không tồn tại"
-                        )
-                );
-
-        // 2. Chuẩn hóa họ tên
-        String hoTen = request.getHoTen().trim();
-
-        if (hoTen.isEmpty()) {
-            throw new BusinessException(
-                    "Họ tên không được để trống"
-            );
-        }
-
-        // 3. Chuẩn hóa số điện thoại
-        String soDienThoai = normalizePhone(
-                request.getSoDienThoai()
-        );
-
-        // 4. Kiểm tra số điện thoại có thuộc người khác không
-        if (soDienThoai != null
-                && nguoiDungRepository.existsBySoDienThoaiAndMaNDNot(
-                soDienThoai,
-                maND
-        )) {
-
-            throw new BusinessException(
-                    "Số điện thoại đã được sử dụng"
-            );
-        }
-
-        // 5. Cập nhật thông tin
-        nguoiDung.setHoTen(hoTen);
-        nguoiDung.setSoDienThoai(soDienThoai);
-
-        String avatarUrl = request.getAvatarUrl();
-
-        if (avatarUrl != null) {
-            avatarUrl = avatarUrl.trim();
-
-            if (avatarUrl.isEmpty()) {
-                avatarUrl = null;
-            }
-        }
-
-        nguoiDung.setAvatarUrl(avatarUrl);
-
-        // 6. Lưu
-        nguoiDungRepository.save(nguoiDung);
-
-        // 7. Trả dữ liệu sau khi cập nhật
-        return toProfileResponse(nguoiDung);
-    }
-
-    @Transactional(readOnly = true)
-    public ProfileResponse getProfile(Integer maND) {
-
-        NguoiDung nguoiDung = nguoiDungRepository.findById(maND)
-                .orElseThrow(() ->
-                        new BusinessException(
-                                "Người dùng không tồn tại"
-                        )
-                );
-
-        return toProfileResponse(nguoiDung);
-    }
-
-    private ProfileResponse toProfileResponse(
-            NguoiDung nguoiDung
-    ) {
-        return ProfileResponse.builder()
-                .maND(nguoiDung.getMaND())
-                .email(nguoiDung.getEmail())
-                .hoTen(nguoiDung.getHoTen())
-                .soDienThoai(nguoiDung.getSoDienThoai())
-                .avatarUrl(nguoiDung.getAvatarUrl())
-                .build();
-    }
-
-    private String normalizePhone(String soDienThoai) {
-
-        if (soDienThoai == null) {
-            return null;
-        }
-
-        String phone = soDienThoai.trim();
-
-        if (phone.isEmpty()) {
-            return null;
-        }
-
-        return phone;
-    }
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/system/repository/NhatKyHeThongRepository.java">
-package com.nhom9.oldbook_marketplace.system.repository;
-
-import com.nhom9.oldbook_marketplace.system.entity.NhatKyHeThong;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface NhatKyHeThongRepository
-        extends JpaRepository<NhatKyHeThong, Integer> {
-}
-</file>
 
 <file path=".claude/helpers/graft-hooks.cjs">
 #!/usr/bin/env node
@@ -2577,6 +1134,128 @@ zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 </file>
 
+<file path="src/database/seed/01_seed_accounts.sql">
+-- =========================================================
+-- OLD BOOK MARKETPLACE
+-- Seed tài khoản phát triển
+--
+-- Admin:
+--   email: admin@oldbook.local
+--   password: Admin@12345
+--
+-- Manager:
+--   email: manager@oldbook.local
+--   password: Manager@12345
+--
+-- CHỈ DÙNG CHO MÔI TRƯỜNG PHÁT TRIỂN / TEST
+-- =========================================================
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+
+-- =========================================================
+-- 1. TẠO NGƯỜI DÙNG ADMIN
+-- =========================================================
+
+INSERT INTO nguoi_dung (
+    email,
+    mat_khau,
+    ho_ten,
+    so_dien_thoai,
+    ngay_tao
+)
+VALUES (
+           'admin@oldbook.local',
+           crypt('Admin@12345', gen_salt('bf', 10)),
+           'Quản trị viên hệ thống',
+           '0900000001',
+           CURRENT_TIMESTAMP
+       )
+    ON CONFLICT (email) DO NOTHING;
+
+
+-- =========================================================
+-- 2. TẠO TÀI KHOẢN ADMIN
+-- =========================================================
+
+INSERT INTO tai_khoan (
+    ma_nd,
+    vai_tro,
+    trang_thai,
+    ngay_tao
+)
+SELECT
+    nd.ma_nd,
+    'QUAN_TRI_VIEN',
+    'HOAT_DONG',
+    CURRENT_TIMESTAMP
+FROM nguoi_dung nd
+WHERE nd.email = 'admin@oldbook.local'
+    ON CONFLICT (ma_nd, vai_tro) DO NOTHING;
+
+
+-- =========================================================
+-- 3. TẠO NGƯỜI DÙNG MANAGER
+-- =========================================================
+
+INSERT INTO nguoi_dung (
+    email,
+    mat_khau,
+    ho_ten,
+    so_dien_thoai,
+    ngay_tao
+)
+VALUES (
+           'manager@oldbook.local',
+           crypt('Manager@12345', gen_salt('bf', 10)),
+           'Quản lý cửa hàng',
+           '0900000002',
+           CURRENT_TIMESTAMP
+       )
+    ON CONFLICT (email) DO NOTHING;
+
+
+-- =========================================================
+-- 4. TẠO TÀI KHOẢN MANAGER
+-- =========================================================
+
+INSERT INTO tai_khoan (
+    ma_nd,
+    vai_tro,
+    trang_thai,
+    ngay_tao
+)
+SELECT
+    nd.ma_nd,
+    'QUAN_LY',
+    'HOAT_DONG',
+    CURRENT_TIMESTAMP
+FROM nguoi_dung nd
+WHERE nd.email = 'manager@oldbook.local'
+    ON CONFLICT (ma_nd, vai_tro) DO NOTHING;
+
+
+-- =========================================================
+-- 5. KIỂM TRA
+-- =========================================================
+
+SELECT
+    nd.ma_nd,
+    nd.email,
+    nd.ho_ten,
+    tk.ma_tk,
+    tk.vai_tro,
+    tk.trang_thai
+FROM nguoi_dung nd
+         JOIN tai_khoan tk
+              ON tk.ma_nd = nd.ma_nd
+WHERE nd.email IN (
+                   'admin@oldbook.local',
+                   'manager@oldbook.local'
+    )
+ORDER BY tk.ma_tk;
+</file>
+
 <file path="src/main/java/com/nhom9/oldbook_marketplace/auth/config/PasswordConfig.java">
 package com.nhom9.oldbook_marketplace.auth.config;
 
@@ -2646,6 +1325,26 @@ public class ChangePasswordRequest {
 }
 </file>
 
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ForgotPasswordRequest.java">
+// src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ForgotPasswordRequest.java
+
+package com.nhom9.oldbook_marketplace.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class ForgotPasswordRequest {
+
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    private String email;
+}
+</file>
+
 <file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/LoginRequest.java">
 package com.nhom9.oldbook_marketplace.auth.dto;
 
@@ -2711,6 +1410,26 @@ public class LoginResponse {
 }
 </file>
 
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResendForgotPasswordOtpRequest.java">
+// src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResendForgotPasswordOtpRequest.java
+
+package com.nhom9.oldbook_marketplace.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class ResendForgotPasswordOtpRequest {
+
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    private String email;
+}
+</file>
+
 <file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResendRegisterOtpRequest.java">
 package com.nhom9.oldbook_marketplace.auth.dto;
 
@@ -2726,6 +1445,46 @@ public class ResendRegisterOtpRequest {
     @NotBlank(message = "Email không được để trống")
     @Email(message = "Email không hợp lệ")
     private String email;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResetPasswordRequest.java">
+// src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResetPasswordRequest.java
+
+package com.nhom9.oldbook_marketplace.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class ResetPasswordRequest {
+
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    private String email;
+
+    @NotBlank(message = "Mã OTP không được để trống")
+    @Pattern(
+            regexp = "^\\d{6}$",
+            message = "Mã OTP phải gồm đúng 6 chữ số"
+    )
+    private String maOtp;
+
+    @NotBlank(message = "Mật khẩu mới không được để trống")
+    @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự")
+    @Pattern(
+            regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+            message = "Mật khẩu phải gồm ít nhất chữ và số"
+    )
+    private String matKhauMoi;
+
+    @NotBlank(message = "Xác nhận mật khẩu mới không được để trống")
+    private String xacNhanMatKhauMoi;
 }
 </file>
 
@@ -2824,191 +1583,6 @@ public class MaXacThuc {
 }
 </file>
 
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/filter/JwtAuthenticationFilter.java">
-package com.nhom9.oldbook_marketplace.auth.filter;
-
-import com.nhom9.oldbook_marketplace.auth.constant.TrangThaiTaiKhoan;
-import com.nhom9.oldbook_marketplace.auth.constant.VaiTro;
-import com.nhom9.oldbook_marketplace.auth.service.JwtService;
-import com.nhom9.oldbook_marketplace.auth.service.RevokedTokenService;
-import com.nhom9.oldbook_marketplace.auth.service.TaiKhoanTokenService;
-import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
-import com.nhom9.oldbook_marketplace.identity.repository.TaiKhoanRepository;
-import io.jsonwebtoken.Claims;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.time.Instant;
-import java.util.List;
-
-@Component
-@RequiredArgsConstructor
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
-
-    private final JwtService jwtService;
-    private final RevokedTokenService revokedTokenService;
-    private final TaiKhoanTokenService taiKhoanTokenService;
-    private final TaiKhoanRepository taiKhoanRepository;
-
-    @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
-
-        String authorizationHeader =
-                request.getHeader("Authorization");
-
-        if (authorizationHeader == null
-                || !authorizationHeader.startsWith("Bearer ")) {
-
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String token = authorizationHeader.substring(7);
-
-        try {
-
-            // 1. JWT còn hợp lệ về chữ ký + thời hạn
-            if (!jwtService.isTokenValid(token)) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            Claims claims = jwtService.extractClaims(token);
-
-            Integer maND = claims.get("maND", Integer.class);
-            Integer maTK = claims.get("maTK", Integer.class);
-
-            if (maND == null || maTK == null) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // 2. Token có bị logout hay chưa?
-            String jti = claims.getId();
-
-            if (jti == null
-                    || revokedTokenService.isRevoked(jti)) {
-
-                SecurityContextHolder.clearContext();
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // 3. Lấy thời điểm tạo token
-            if (claims.getIssuedAt() == null) {
-                SecurityContextHolder.clearContext();
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            Instant issuedAt =
-                    claims.getIssuedAt().toInstant();
-
-            // 4. Token có bị vô hiệu do khóa tài khoản không?
-            if (taiKhoanTokenService.isTokenInvalid(
-                    maTK,
-                    issuedAt
-            )) {
-
-                SecurityContextHolder.clearContext();
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // 5. Tìm tài khoản hiện tại trong DB
-            TaiKhoan taiKhoan =
-                    taiKhoanRepository.findById(maTK)
-                            .orElse(null);
-
-            if (taiKhoan == null) {
-                SecurityContextHolder.clearContext();
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // 6. Đảm bảo tài khoản thuộc đúng người dùng
-            if (taiKhoan.getNguoiDung() == null
-                    || !maND.equals(
-                    taiKhoan.getNguoiDung().getMaND()
-            )) {
-
-                SecurityContextHolder.clearContext();
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // 7. Tài khoản phải đang hoạt động
-            if (!TrangThaiTaiKhoan.HOAT_DONG.name()
-                    .equals(taiKhoan.getTrangThai())) {
-
-                SecurityContextHolder.clearContext();
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // 8. QUAN TRỌNG:
-            // Không lấy vai trò từ JWT làm nguồn chính.
-            // Lấy vai trò hiện tại từ database.
-            String vaiTroHienTai =
-                    taiKhoan.getVaiTro();
-
-            VaiTro role =
-                    VaiTro.valueOf(vaiTroHienTai);
-
-            SimpleGrantedAuthority authority =
-                    new SimpleGrantedAuthority(
-                            role.getAuthority()
-                    );
-
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            maND,
-                            null,
-                            List.of(authority)
-                    );
-
-            authentication.setDetails(
-                    new AuthenticatedUserDetails(
-                            maND,
-                            maTK,
-                            vaiTroHienTai
-                    )
-            );
-
-            SecurityContextHolder
-                    .getContext()
-                    .setAuthentication(authentication);
-
-        } catch (Exception e) {
-
-            SecurityContextHolder.clearContext();
-        }
-
-        filterChain.doFilter(request, response);
-    }
-
-    public record AuthenticatedUserDetails(
-            Integer maND,
-            Integer maTK,
-            String vaiTro
-    ) {
-    }
-}
-</file>
-
 <file path="src/main/java/com/nhom9/oldbook_marketplace/auth/repository/MaXacThucRepository.java">
 package com.nhom9.oldbook_marketplace.auth.repository;
 
@@ -3027,373 +1601,98 @@ public interface MaXacThucRepository
 }
 </file>
 
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/EmailService.java">
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/RevokedTokenService.java">
 package com.nhom9.oldbook_marketplace.auth.service;
 
-import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-@Slf4j
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Service
-@RequiredArgsConstructor
-public class EmailService {
+public class RevokedTokenService {
 
-    private final JavaMailSender mailSender;
-
-    @Value("${spring.mail.username}")
-    private String emailNguoiGui;
+    /*
+     * Lưu:
+     * jti -> thời điểm hết hạn của token
+     */
+    private final Map<String, Instant> revokedTokens =
+            new ConcurrentHashMap<>();
 
     /**
-     * =========================================================
-     * 1. EMAIL OTP ĐĂNG KÝ
-     * =========================================================
+     * Đánh dấu token đã bị thu hồi.
      */
-    public void sendRegisterOtpEmail(
-            String emailNguoiNhan,
-            String maOtp
-    ) {
-        sendOtpEmail(
-                emailNguoiNhan,
-                maOtp,
-                "Mã OTP xác thực tài khoản - OldBook Marketplace",
-                "Bạn vừa thực hiện đăng ký tài khoản tại OldBook Marketplace."
-        );
+    public void revokeToken(String jti, Instant expiration) {
+        cleanupExpiredTokens();
+
+        revokedTokens.put(jti, expiration);
     }
 
     /**
-     * =========================================================
-     * 2. EMAIL OTP QUÊN MẬT KHẨU
-     * =========================================================
+     * Kiểm tra token có bị thu hồi hay chưa.
      */
-    public void sendForgotPasswordOtpEmail(
-            String emailNguoiNhan,
-            String maOtp
-    ) {
-        sendOtpEmail(
-                emailNguoiNhan,
-                maOtp,
-                "Mã OTP đặt lại mật khẩu - OldBook Marketplace",
-                "Bạn vừa yêu cầu đặt lại mật khẩu tài khoản tại OldBook Marketplace."
-        );
+    public boolean isRevoked(String jti) {
+        cleanupExpiredTokens();
+
+        return revokedTokens.containsKey(jti);
     }
 
     /**
-     * =========================================================
-     * 3. DÙNG CHUNG CHO EMAIL OTP
-     * =========================================================
+     * Xóa các token đã hết hạn khỏi bộ nhớ.
      */
-    private void sendOtpEmail(
-            String emailNguoiNhan,
-            String maOtp,
-            String tieuDe,
-            String moTa
-    ) {
-        SimpleMailMessage message = new SimpleMailMessage();
+    private void cleanupExpiredTokens() {
 
-        message.setFrom(emailNguoiGui);
-        message.setTo(emailNguoiNhan);
-        message.setSubject(tieuDe);
+        Instant now = Instant.now();
 
-        message.setText(
-                "Xin chào,\n\n"
-                        + moTa + "\n\n"
-                        + "Mã OTP của bạn là: " + maOtp + "\n\n"
-                        + "Mã OTP có hiệu lực trong 5 phút.\n"
-                        + "Không chia sẻ mã OTP này với người khác.\n\n"
-                        + "Trân trọng,\n"
-                        + "OldBook Marketplace"
+        revokedTokens.entrySet().removeIf(entry ->
+                entry.getValue().isBefore(now)
         );
-
-        try {
-            mailSender.send(message);
-        } catch (MailException e) {
-            log.error(
-                    "Không thể gửi email OTP đến {}",
-                    emailNguoiNhan,
-                    e
-            );
-
-            throw new BusinessException(
-                    "Không thể gửi email OTP"
-            );
-        }
-    }
-
-    /**
-     * =========================================================
-     * 4. EMAIL THÔNG BÁO KHÓA TÀI KHOẢN
-     * =========================================================
-     */
-    public void sendAccountLockedEmail(
-            String emailNguoiNhan,
-            String lyDo
-    ) {
-        sendAccountNotificationEmail(
-                emailNguoiNhan,
-                "Tài khoản đã bị khóa - OldBook Marketplace",
-                "Tài khoản của bạn đã bị Quản trị viên khóa.\n\n"
-                        + "Lý do: " + lyDo
-        );
-    }
-
-    /**
-     * =========================================================
-     * 5. EMAIL THÔNG BÁO MỞ KHÓA TÀI KHOẢN
-     * =========================================================
-     */
-    public void sendAccountUnlockedEmail(
-            String emailNguoiNhan
-    ) {
-        sendAccountNotificationEmail(
-                emailNguoiNhan,
-                "Tài khoản đã được mở khóa - OldBook Marketplace",
-                "Tài khoản của bạn đã được Quản trị viên mở khóa."
-        );
-    }
-
-    /**
-     * =========================================================
-     * 6. DÙNG CHUNG CHO EMAIL KHÓA / MỞ KHÓA
-     * =========================================================
-     */
-    private void sendAccountNotificationEmail(
-            String emailNguoiNhan,
-            String tieuDe,
-            String noiDung
-    ) {
-        SimpleMailMessage message = new SimpleMailMessage();
-
-        message.setFrom(emailNguoiGui);
-        message.setTo(emailNguoiNhan);
-        message.setSubject(tieuDe);
-
-        message.setText(
-                "Xin chào,\n\n"
-                        + noiDung
-                        + "\n\nTrân trọng,\n"
-                        + "OldBook Marketplace"
-        );
-
-        try {
-            mailSender.send(message);
-        } catch (MailException e) {
-            log.error(
-                    "Không thể gửi email thông báo đến {}",
-                    emailNguoiNhan,
-                    e
-            );
-
-            throw new BusinessException(
-                    "Không thể gửi email thông báo"
-            );
-        }
-    }
-
-    /**
-     * =========================================================
-     * 7. EMAIL THÔNG BÁO TẠO TÀI KHOẢN BỞI ADMIN
-     * =========================================================
-     */
-    public void sendAdminAccountCreatedEmail(
-            String email,
-            String hoTen,
-            String vaiTro
-    ) {
-        String noiDung =
-                "Xin chào " + hoTen + ",\n\n"
-                        + "Tài khoản của bạn đã được Quản trị viên tạo.\n"
-                        + "Vai trò: " + vaiTro + "\n\n"
-                        + "Vui lòng đăng nhập để sử dụng hệ thống.";
-
-        sendNormalEmail(
-                email,
-                "Tài khoản OldBook Marketplace đã được tạo",
-                noiDung
-        );
-    }
-
-    /**
-     * =========================================================
-     * 8. HÀM GỬI EMAIL THÔNG THƯỜNG
-     * =========================================================
-     */
-    private void sendNormalEmail(
-            String emailNguoiNhan,
-            String tieuDe,
-            String noiDung
-    ) {
-        SimpleMailMessage message = new SimpleMailMessage();
-
-        message.setFrom(emailNguoiGui);
-        message.setTo(emailNguoiNhan);
-        message.setSubject(tieuDe);
-        message.setText(
-                noiDung
-                        + "\n\nTrân trọng,\n"
-                        + "OldBook Marketplace"
-        );
-
-        try {
-            mailSender.send(message);
-        } catch (MailException e) {
-            log.error(
-                    "Không thể gửi email đến {}",
-                    emailNguoiNhan,
-                    e
-            );
-
-            throw new BusinessException(
-                    "Không thể gửi email"
-            );
-        }
     }
 }
 </file>
 
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/JwtService.java">
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/TaiKhoanTokenService.java">
 package com.nhom9.oldbook_marketplace.auth.service;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import java.util.UUID;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-public class JwtService {
+public class TaiKhoanTokenService {
 
-    private static final String LOAI_TOKEN = "loaiToken";
-    private static final String TOKEN_CHON_VAI_TRO = "CHON_VAI_TRO";
+    /*
+     * maTK -> thời điểm mà tất cả token trước thời điểm này
+     * trở nên không hợp lệ.
+     */
+    private final Map<Integer, Instant> invalidBefore =
+            new ConcurrentHashMap<>();
 
-    private final SecretKey secretKey;
-    private final long expiration;
-
-    public JwtService(
-            @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration}") long expiration
-    ) {
-        this.secretKey = Keys.hmacShaKeyFor(
-                Decoders.BASE64.decode(secret)
-        );
-
-        this.expiration = expiration;
+    /**
+     * Vô hiệu toàn bộ token hiện tại của tài khoản.
+     */
+    public void invalidateAllTokens(Integer maTK) {
+        invalidBefore.put(maTK, Instant.now());
     }
 
-    // JWT chính thức
-    // JWT chính thức
-    public String generateToken(
-            Integer maND,
+    /**
+     * Kiểm tra token có được tạo trước thời điểm vô hiệu hóa hay không.
+     */
+    public boolean isTokenInvalid(
             Integer maTK,
-            String vaiTro
+            Instant issuedAt
     ) {
 
-        Date now = new Date();
-        Date expirationDate = new Date(
-                now.getTime() + expiration
-        );
+        Instant invalidTime = invalidBefore.get(maTK);
 
-        return Jwts.builder()
-                .id(UUID.randomUUID().toString())
-                .subject(maND.toString())
-                .claim("maND", maND)
-                .claim("maTK", maTK)
-                .claim("vaiTro", vaiTro)
-                .issuedAt(now)
-                .expiration(expirationDate)
-                .signWith(secretKey)
-                .compact();
-    }
-
-    public String extractJti(String token) {
-        return extractClaims(token)
-                .getId();
-    }
-
-    public Date extractExpiration(String token) {
-        return extractClaims(token)
-                .getExpiration();
-    }
-
-    // JWT tạm, chỉ dùng trong bước chọn vai trò
-    public String generateRoleSelectionToken(Integer maND) {
-
-        Date now = new Date();
-
-        // Token chọn vai trò chỉ tồn tại 5 phút
-        Date expirationDate = new Date(
-                now.getTime() + (5 * 60 * 1000)
-        );
-
-        return Jwts.builder()
-                .subject(maND.toString())
-                .claim("maND", maND)
-                .claim(LOAI_TOKEN, TOKEN_CHON_VAI_TRO)
-                .issuedAt(now)
-                .expiration(expirationDate)
-                .signWith(secretKey)
-                .compact();
-    }
-
-    public Claims extractClaims(String token) {
-
-        return Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    public Integer extractMaND(String token) {
-        return extractClaims(token)
-                .get("maND", Integer.class);
-    }
-
-    public Integer extractMaTK(String token) {
-        return extractClaims(token)
-                .get("maTK", Integer.class);
-    }
-
-    public String extractVaiTro(String token) {
-        return extractClaims(token)
-                .get("vaiTro", String.class);
-    }
-
-    public String extractLoaiToken(String token) {
-        return extractClaims(token)
-                .get(LOAI_TOKEN, String.class);
-    }
-
-    public boolean isTokenValid(String token) {
-
-        try {
-            extractClaims(token);
-            return true;
-        } catch (Exception e) {
+        if (invalidTime == null) {
             return false;
         }
-    }
 
-    public boolean isRoleSelectionToken(String token) {
-
-        try {
-            String loaiToken = extractLoaiToken(token);
-
-            return TOKEN_CHON_VAI_TRO.equals(loaiToken);
-
-        } catch (Exception e) {
-            return false;
-        }
+        return !issuedAt.isAfter(invalidTime);
     }
 }
 </file>
@@ -3821,6 +2120,452 @@ public class GlobalExceptionHandler {
 }
 </file>
 
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/controller/AdminTaiKhoanController.java">
+package com.nhom9.oldbook_marketplace.identity.controller;
+
+import com.nhom9.oldbook_marketplace.identity.dto.AdminTaiKhoanResponse;
+import com.nhom9.oldbook_marketplace.identity.dto.ChangeRoleRequest;
+import com.nhom9.oldbook_marketplace.identity.dto.CreateTaiKhoanRequest;
+import com.nhom9.oldbook_marketplace.identity.dto.LockTaiKhoanRequest;
+import com.nhom9.oldbook_marketplace.identity.service.AdminTaiKhoanService;
+import com.nhom9.oldbook_marketplace.auth.filter.JwtAuthenticationFilter.AuthenticatedUserDetails;
+import com.nhom9.oldbook_marketplace.common.dto.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/admin/tai-khoan")
+@RequiredArgsConstructor
+public class AdminTaiKhoanController {
+
+    private final AdminTaiKhoanService adminTaiKhoanService;
+
+    /**
+     * =========================================================
+     * 1. XEM DANH SÁCH / TÌM KIẾM / LỌC TÀI KHOẢN
+     * =========================================================
+     *
+     * GET /api/admin/tai-khoan
+     *
+     * Ví dụ:
+     * GET /api/admin/tai-khoan
+     * GET /api/admin/tai-khoan?tuKhoa=abc
+     * GET /api/admin/tai-khoan?vaiTro=KHACH_HANG
+     * GET /api/admin/tai-khoan?trangThai=HOAT_DONG
+     * GET /api/admin/tai-khoan?tuKhoa=abc&vaiTro=KHACH_HANG&trangThai=HOAT_DONG
+     */
+    @GetMapping
+    public ApiResponse<List<AdminTaiKhoanResponse>> getAll(
+            @RequestParam(required = false) String tuKhoa,
+            @RequestParam(required = false) String vaiTro,
+            @RequestParam(required = false) String trangThai
+    ) {
+        return ApiResponse.success(
+                adminTaiKhoanService.getAll(
+                        tuKhoa,
+                        vaiTro,
+                        trangThai
+                )
+        );
+    }
+
+    /**
+     * =========================================================
+     * 2. TẠO TÀI KHOẢN
+     * =========================================================
+     *
+     * POST /api/admin/tai-khoan
+     */
+    @PostMapping
+    public ApiResponse<AdminTaiKhoanResponse> create(
+            @RequestBody CreateTaiKhoanRequest request
+    ) {
+        AuthenticatedUserDetails currentUser =
+                getCurrentUser();
+
+        AdminTaiKhoanResponse response =
+                adminTaiKhoanService.create(
+                        request,
+                        currentUser.maTK(),
+                        getClientIp()
+                );
+
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * =========================================================
+     * 3. KHÓA TÀI KHOẢN
+     * =========================================================
+     *
+     * PUT /api/admin/tai-khoan/{maTK}/khoa
+     */
+    @PutMapping("/{maTK}/khoa")
+    public ApiResponse<Void> lock(
+            @PathVariable Integer maTK,
+            @RequestBody LockTaiKhoanRequest request
+    ) {
+        AuthenticatedUserDetails currentUser =
+                getCurrentUser();
+
+        adminTaiKhoanService.lock(
+                maTK,
+                request,
+                currentUser.maTK(),
+                getClientIp()
+        );
+
+        return ApiResponse.success(
+                "Khóa tài khoản thành công"
+        );
+    }
+
+    /**
+     * =========================================================
+     * 4. MỞ KHÓA TÀI KHOẢN
+     * =========================================================
+     *
+     * PUT /api/admin/tai-khoan/{maTK}/mo-khoa
+     */
+    @PutMapping("/{maTK}/mo-khoa")
+    public ApiResponse<Void> unlock(
+            @PathVariable Integer maTK
+    ) {
+        AuthenticatedUserDetails currentUser =
+                getCurrentUser();
+
+        adminTaiKhoanService.unlock(
+                maTK,
+                currentUser.maTK(),
+                getClientIp()
+        );
+
+        return ApiResponse.success(
+                "Mở khóa tài khoản thành công"
+        );
+    }
+
+    /**
+     * =========================================================
+     * 5. ĐỔI VAI TRÒ
+     * =========================================================
+     *
+     * PUT /api/admin/tai-khoan/{maTK}/vai-tro
+     */
+    @PutMapping("/{maTK}/vai-tro")
+    public ApiResponse<AdminTaiKhoanResponse> changeRole(
+            @PathVariable Integer maTK,
+            @RequestBody ChangeRoleRequest request
+    ) {
+        AuthenticatedUserDetails currentUser =
+                getCurrentUser();
+
+        AdminTaiKhoanResponse response =
+                adminTaiKhoanService.changeRole(
+                        maTK,
+                        request,
+                        currentUser.maTK(),
+                        getClientIp()
+                );
+
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * =========================================================
+     * HÀM LẤY USER HIỆN TẠI TỪ JWT
+     * =========================================================
+     */
+    private AuthenticatedUserDetails getCurrentUser() {
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null) {
+            throw new IllegalStateException(
+                    "Không xác định được người dùng hiện tại"
+            );
+        }
+
+        Object details =
+                authentication.getDetails();
+
+        if (!(details instanceof AuthenticatedUserDetails userDetails)) {
+            throw new IllegalStateException(
+                    "Thông tin xác thực không hợp lệ"
+            );
+        }
+
+        return userDetails;
+    }
+
+    /**
+     * =========================================================
+     * LẤY IP CLIENT
+     * =========================================================
+     */
+    private String getClientIp() {
+
+        HttpServletRequest request =
+                getCurrentHttpRequest();
+
+        String xForwardedFor =
+                request.getHeader("X-Forwarded-For");
+
+        if (xForwardedFor != null
+                && !xForwardedFor.isBlank()) {
+
+            return xForwardedFor
+                    .split(",")[0]
+                    .trim();
+        }
+
+        String xRealIp =
+                request.getHeader("X-Real-IP");
+
+        if (xRealIp != null
+                && !xRealIp.isBlank()) {
+
+            return xRealIp;
+        }
+
+        return request.getRemoteAddr();
+    }
+
+    /**
+     * =========================================================
+     * LẤY HTTP REQUEST HIỆN TẠI
+     * =========================================================
+     */
+    private HttpServletRequest getCurrentHttpRequest() {
+
+        return ((org.springframework.web.context.request.ServletRequestAttributes)
+                org.springframework.web.context.request.RequestContextHolder
+                        .currentRequestAttributes())
+                .getRequest();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/controller/ProfileController.java">
+// src/main/java/com/nhom9/oldbook_marketplace/identity/controller/ProfileController.java
+
+package com.nhom9.oldbook_marketplace.identity.controller;
+
+import com.nhom9.oldbook_marketplace.common.dto.ApiResponse;
+import com.nhom9.oldbook_marketplace.identity.dto.ProfileResponse;
+import com.nhom9.oldbook_marketplace.identity.dto.UpdateProfileRequest;
+import com.nhom9.oldbook_marketplace.identity.service.ProfileService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/profile")
+@RequiredArgsConstructor
+public class ProfileController {
+
+    private final ProfileService profileService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<ProfileResponse>> getProfile() {
+
+        Integer maND = getMaND();
+
+        ProfileResponse response =
+                profileService.getProfile(maND);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
+        );
+    }
+
+    @PutMapping
+    public ResponseEntity<ApiResponse<ProfileResponse>> updateProfile(
+            @Valid @RequestBody UpdateProfileRequest request
+    ) {
+
+        Integer maND = getMaND();
+
+        ProfileResponse response =
+                profileService.updateProfile(
+                        maND,
+                        request
+                );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
+        );
+    }
+
+    private Integer getMaND() {
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        return (Integer) authentication.getPrincipal();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/AdminTaiKhoanResponse.java">
+package com.nhom9.oldbook_marketplace.identity.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Builder
+@AllArgsConstructor
+public class AdminTaiKhoanResponse {
+
+    private Integer maTK;
+    private Integer maND;
+
+    private String email;
+    private String hoTen;
+    private String soDienThoai;
+
+    private String vaiTro;
+    private String trangThai;
+
+    private LocalDateTime ngayTao;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/ChangeRoleRequest.java">
+package com.nhom9.oldbook_marketplace.identity.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class ChangeRoleRequest {
+
+    @NotBlank(message = "Vai trò không được để trống")
+    private String vaiTro;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/CreateTaiKhoanRequest.java">
+package com.nhom9.oldbook_marketplace.identity.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class CreateTaiKhoanRequest {
+
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    private String email;
+
+    @NotBlank(message = "Mật khẩu không được để trống")
+    @Size(min = 6, message = "Mật khẩu phải có ít nhất 6 ký tự")
+    private String matKhau;
+
+    @NotBlank(message = "Họ tên không được để trống")
+    private String hoTen;
+
+    private String soDienThoai;
+
+    @NotBlank(message = "Vai trò không được để trống")
+    private String vaiTro;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/LockTaiKhoanRequest.java">
+package com.nhom9.oldbook_marketplace.identity.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class LockTaiKhoanRequest {
+
+    @NotBlank(message = "Lý do khóa tài khoản không được để trống")
+    private String lyDo;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/ProfileResponse.java">
+// src/main/java/com/nhom9/oldbook_marketplace/identity/dto/ProfileResponse.java
+
+package com.nhom9.oldbook_marketplace.identity.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+@AllArgsConstructor
+public class ProfileResponse {
+
+    private Integer maND;
+
+    private String email;
+
+    private String hoTen;
+
+    private String soDienThoai;
+
+    private String avatarUrl;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/dto/UpdateProfileRequest.java">
+package com.nhom9.oldbook_marketplace.identity.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class UpdateProfileRequest {
+
+    @NotBlank(message = "Họ tên không được để trống")
+    @Size(max = 255, message = "Họ tên không được vượt quá 255 ký tự")
+    private String hoTen;
+
+    @Pattern(
+            regexp = "^$|^0\\d{9,10}$",
+            message = "Số điện thoại không hợp lệ"
+    )
+    private String soDienThoai;
+
+    @Size(max = 500, message = "URL avatar không được vượt quá 500 ký tự")
+    private String avatarUrl;
+}
+</file>
+
 <file path="src/main/java/com/nhom9/oldbook_marketplace/identity/entity/DiaChi.java">
 package com.nhom9.oldbook_marketplace.identity.entity;
 
@@ -3980,65 +2725,618 @@ public class TaiKhoan {
 }
 </file>
 
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/repository/NguoiDungRepository.java">
-package com.nhom9.oldbook_marketplace.identity.repository;
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/service/AdminTaiKhoanService.java">
+package com.nhom9.oldbook_marketplace.identity.service;
 
+import com.nhom9.oldbook_marketplace.identity.dto.AdminTaiKhoanResponse;
+import com.nhom9.oldbook_marketplace.identity.dto.ChangeRoleRequest;
+import com.nhom9.oldbook_marketplace.identity.dto.CreateTaiKhoanRequest;
+import com.nhom9.oldbook_marketplace.identity.dto.LockTaiKhoanRequest;
+import com.nhom9.oldbook_marketplace.auth.constant.TrangThaiTaiKhoan;
+import com.nhom9.oldbook_marketplace.auth.constant.VaiTro;
+import com.nhom9.oldbook_marketplace.auth.service.EmailService;
+import com.nhom9.oldbook_marketplace.auth.service.TaiKhoanTokenService;
+import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
 import com.nhom9.oldbook_marketplace.identity.entity.NguoiDung;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
+import com.nhom9.oldbook_marketplace.identity.repository.NguoiDungRepository;
+import com.nhom9.oldbook_marketplace.identity.repository.TaiKhoanRepository;
+import com.nhom9.oldbook_marketplace.system.entity.NhatKyHeThong;
+import com.nhom9.oldbook_marketplace.system.repository.NhatKyHeThongRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
 
-public interface NguoiDungRepository extends JpaRepository<NguoiDung, Integer> {
+@Service
+@RequiredArgsConstructor
+public class AdminTaiKhoanService {
 
-    // Tìm người dùng theo email đăng nhập
-    Optional<NguoiDung> findByEmail(String email);
+    private final NguoiDungRepository nguoiDungRepository;
+    private final TaiKhoanRepository taiKhoanRepository;
+    private final NhatKyHeThongRepository nhatKyHeThongRepository;
 
-    // Kiểm tra email đã tồn tại chưa
-    boolean existsByEmail(String email);
+    private final PasswordEncoder passwordEncoder;
+    private final TaiKhoanTokenService taiKhoanTokenService;
 
-    // Kiểm tra số điện thoại đã tồn tại chưa
-    boolean existsBySoDienThoai(String soDienThoai);
+    private final EmailService emailService;
 
-    boolean existsBySoDienThoaiAndMaNDNot(
-            String soDienThoai,
-            Integer maND
-    );
+    /*
+     * =========================================================
+     * 1. XEM DANH SÁCH / TÌM KIẾM
+     * =========================================================
+     */
+
+    @Transactional(readOnly = true)
+    public List<AdminTaiKhoanResponse> getAll(
+            String tuKhoa,
+            String vaiTro,
+            String trangThai
+    ) {
+
+        String keyword =
+                tuKhoa == null
+                        ? ""
+                        : tuKhoa.trim().toLowerCase(Locale.ROOT);
+
+        String roleFilter =
+                vaiTro == null
+                        ? ""
+                        : vaiTro.trim();
+
+        String statusFilter =
+                trangThai == null
+                        ? ""
+                        : trangThai.trim();
+
+        return taiKhoanRepository.findAll()
+                .stream()
+                .filter(tk -> matchesKeyword(tk, keyword))
+                .filter(tk ->
+                        roleFilter.isBlank()
+                                || roleFilter.equals(
+                                tk.getVaiTro()
+                        )
+                )
+                .filter(tk ->
+                        statusFilter.isBlank()
+                                || statusFilter.equals(
+                                tk.getTrangThai()
+                        )
+                )
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private boolean matchesKeyword(
+            TaiKhoan taiKhoan,
+            String keyword
+    ) {
+
+        if (keyword.isBlank()) {
+            return true;
+        }
+
+        NguoiDung nd = taiKhoan.getNguoiDung();
+
+        return contains(nd.getEmail(), keyword)
+                || contains(nd.getHoTen(), keyword)
+                || contains(
+                nd.getSoDienThoai(),
+                keyword
+        )
+                || String.valueOf(
+                taiKhoan.getMaTK()
+        ).contains(keyword)
+                || String.valueOf(
+                nd.getMaND()
+        ).contains(keyword);
+    }
+
+    private boolean contains(
+            String value,
+            String keyword
+    ) {
+
+        return value != null
+                && value.toLowerCase(
+                Locale.ROOT
+        ).contains(keyword);
+    }
+
+    /*
+     * =========================================================
+     * 2. TẠO TÀI KHOẢN
+     * =========================================================
+     */
+
+    @Transactional
+    public AdminTaiKhoanResponse create(
+            CreateTaiKhoanRequest request,
+            Integer maTKAdmin,
+            String ip
+    ) {
+
+        String email =
+                request.getEmail()
+                        .trim()
+                        .toLowerCase(Locale.ROOT);
+
+        String soDienThoai =
+                normalizePhone(
+                        request.getSoDienThoai()
+                );
+
+        VaiTro vaiTro = parseRole(
+                request.getVaiTro()
+        );
+
+        // Email không được trùng
+        if (nguoiDungRepository.existsByEmail(email)) {
+            throw new BusinessException(
+                    "Email đã được sử dụng"
+            );
+        }
+
+        // Số điện thoại nếu có nhập không được trùng
+        if (soDienThoai != null
+                && nguoiDungRepository
+                .existsBySoDienThoai(soDienThoai)) {
+
+            throw new BusinessException(
+                    "Số điện thoại đã được sử dụng"
+            );
+        }
+
+        NguoiDung nguoiDung =
+                NguoiDung.builder()
+                        .email(email)
+                        .matKhau(
+                                passwordEncoder.encode(
+                                        request.getMatKhau()
+                                )
+                        )
+                        .hoTen(
+                                request.getHoTen().trim()
+                        )
+                        .soDienThoai(soDienThoai)
+                        .build();
+
+        nguoiDung =
+                nguoiDungRepository.save(
+                        nguoiDung
+                );
+
+        TaiKhoan taiKhoan =
+                TaiKhoan.builder()
+                        .nguoiDung(nguoiDung)
+                        .vaiTro(vaiTro.name())
+                        .trangThai(
+                                TrangThaiTaiKhoan
+                                        .HOAT_DONG.name()
+                        )
+                        .build();
+
+        taiKhoan =
+                taiKhoanRepository.save(
+                        taiKhoan
+                );
+
+        ghiNhatKy(
+                maTKAdmin,
+                "TAO_TAI_KHOAN",
+                taiKhoan.getMaTK(),
+                "Tạo tài khoản mới với vai trò "
+                        + vaiTro.name(),
+                ip
+        );
+
+        emailService.sendAdminAccountCreatedEmail(
+                nguoiDung.getEmail(),
+                nguoiDung.getHoTen(),
+                vaiTro.name()
+        );
+
+
+        return toResponse(taiKhoan);
+    }
+
+    /*
+     * =========================================================
+     * 3. KHÓA
+     * =========================================================
+     */
+
+    @Transactional
+    public void lock(
+            Integer maTKTarget,
+            LockTaiKhoanRequest request,
+            Integer maTKAdmin,
+            String ip
+    ) {
+
+        // Không được tự khóa
+        if (maTKTarget.equals(maTKAdmin)) {
+            throw new BusinessException(
+                    "Hệ thống không cho phép Quản trị viên tự khóa tài khoản của chính mình"
+            );
+        }
+
+        TaiKhoan taiKhoan =
+                getTaiKhoan(maTKTarget);
+
+        if (TrangThaiTaiKhoan.BI_KHOA.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản đã bị khóa"
+            );
+        }
+
+        taiKhoan.setTrangThai(
+                TrangThaiTaiKhoan.BI_KHOA.name()
+        );
+
+        taiKhoanRepository.save(taiKhoan);
+
+        // Vô hiệu mọi JWT đang tồn tại
+        taiKhoanTokenService.invalidateAllTokens(
+                maTKTarget
+        );
+
+        ghiNhatKy(
+                maTKAdmin,
+                "KHOA_TAI_KHOAN",
+                maTKTarget,
+                "Khóa tài khoản. Lý do: "
+                        + request.getLyDo().trim(),
+                ip
+        );
+
+        emailService.sendAccountLockedEmail(
+                taiKhoan.getNguoiDung().getEmail(),
+                request.getLyDo().trim()
+        );
+    }
+
+    /*
+     * =========================================================
+     * 4. MỞ KHÓA
+     * =========================================================
+     */
+
+    @Transactional
+    public void unlock(
+            Integer maTKTarget,
+            Integer maTKAdmin,
+            String ip
+    ) {
+
+        TaiKhoan taiKhoan =
+                getTaiKhoan(maTKTarget);
+
+        if (!TrangThaiTaiKhoan.BI_KHOA.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản hiện không bị khóa"
+            );
+        }
+
+        taiKhoan.setTrangThai(
+                TrangThaiTaiKhoan.HOAT_DONG.name()
+        );
+
+        taiKhoanRepository.save(taiKhoan);
+
+        // Không xóa invalidBefore.
+        // Token cũ vẫn không được phép sống lại.
+        ghiNhatKy(
+                maTKAdmin,
+                "MO_KHOA_TAI_KHOAN",
+                maTKTarget,
+                "Mở khóa tài khoản",
+                ip
+        );
+        emailService.sendAccountUnlockedEmail(
+                taiKhoan.getNguoiDung().getEmail()
+        );
+    }
+
+    /*
+     * =========================================================
+     * 5. ĐỔI VAI TRÒ
+     * =========================================================
+     */
+
+    @Transactional
+    public AdminTaiKhoanResponse changeRole(
+            Integer maTKTarget,
+            ChangeRoleRequest request,
+            Integer maTKAdmin,
+            String ip
+    ) {
+
+        TaiKhoan taiKhoan =
+                getTaiKhoan(maTKTarget);
+
+        VaiTro vaiTroMoi =
+                parseRole(request.getVaiTro());
+
+        String vaiTroCu =
+                taiKhoan.getVaiTro();
+
+        if (vaiTroCu.equals(vaiTroMoi.name())) {
+            throw new BusinessException(
+                    "Tài khoản đã có vai trò này"
+            );
+        }
+
+        Integer maND =
+                taiKhoan.getNguoiDung().getMaND();
+
+        if (taiKhoanRepository
+                .existsByNguoiDung_MaNDAndVaiTroAndMaTKNot(
+                        maND,
+                        vaiTroMoi.name(),
+                        maTKTarget
+                )) {
+
+            throw new BusinessException(
+                    "Người dùng đã có tài khoản với vai trò "
+                            + vaiTroMoi.name()
+            );
+        }
+
+        taiKhoan.setVaiTro(
+                vaiTroMoi.name()
+        );
+
+        taiKhoanRepository.save(taiKhoan);
+
+        ghiNhatKy(
+                maTKAdmin,
+                "THAY_DOI_VAI_TRO",
+                maTKTarget,
+                "Thay đổi vai trò từ "
+                        + vaiTroCu
+                        + " sang "
+                        + vaiTroMoi.name(),
+                ip
+        );
+
+        return toResponse(taiKhoan);
+    }
+
+    /*
+     * =========================================================
+     * 6. HÀM HỖ TRỢ
+     * =========================================================
+     */
+
+    private TaiKhoan getTaiKhoan(
+            Integer maTK
+    ) {
+
+        return taiKhoanRepository.findById(maTK)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Tài khoản không tồn tại"
+                        )
+                );
+    }
+
+    private VaiTro parseRole(
+            String vaiTro
+    ) {
+
+        try {
+            return VaiTro.valueOf(
+                    vaiTro.trim()
+                            .toUpperCase(Locale.ROOT)
+            );
+
+        } catch (Exception e) {
+
+            throw new BusinessException(
+                    "Vai trò không hợp lệ"
+            );
+        }
+    }
+
+    private String normalizePhone(
+            String soDienThoai
+    ) {
+
+        if (soDienThoai == null) {
+            return null;
+        }
+
+        String phone =
+                soDienThoai.trim();
+
+        return phone.isBlank()
+                ? null
+                : phone;
+    }
+
+    private AdminTaiKhoanResponse toResponse(
+            TaiKhoan taiKhoan
+    ) {
+
+        NguoiDung nd =
+                taiKhoan.getNguoiDung();
+
+        return AdminTaiKhoanResponse.builder()
+                .maTK(taiKhoan.getMaTK())
+                .maND(nd.getMaND())
+                .email(nd.getEmail())
+                .hoTen(nd.getHoTen())
+                .soDienThoai(nd.getSoDienThoai())
+                .vaiTro(taiKhoan.getVaiTro())
+                .trangThai(taiKhoan.getTrangThai())
+                .ngayTao(taiKhoan.getNgayTao())
+                .build();
+    }
+
+    private void ghiNhatKy(
+            Integer maTKAdmin,
+            String hanhDong,
+            Integer maDoiTuong,
+            String moTa,
+            String ip
+    ) {
+
+        TaiKhoan admin =
+                taiKhoanRepository.findById(maTKAdmin)
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "Tài khoản quản trị không tồn tại"
+                                )
+                        );
+
+        NhatKyHeThong log =
+                NhatKyHeThong.builder()
+                        .taiKhoan(admin)
+                        .hanhDong(hanhDong)
+                        .loaiDoiTuong("TAI_KHOAN")
+                        .maDoiTuong(maDoiTuong)
+                        .moTa(moTa)
+                        .diaChiIp(ip)
+                        .thoiGian(LocalDateTime.now())
+                        .build();
+
+        nhatKyHeThongRepository.save(log);
+    }
 }
 </file>
 
-<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/repository/TaiKhoanRepository.java">
-package com.nhom9.oldbook_marketplace.identity.repository;
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/service/ProfileService.java">
+// src/main/java/com/nhom9/oldbook_marketplace/identity/service/ProfileService.java
 
-import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
-import org.springframework.data.jpa.repository.JpaRepository;
+package com.nhom9.oldbook_marketplace.identity.service;
 
-import java.util.List;
-import java.util.Optional;
+import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
+import com.nhom9.oldbook_marketplace.identity.dto.ProfileResponse;
+import com.nhom9.oldbook_marketplace.identity.dto.UpdateProfileRequest;
+import com.nhom9.oldbook_marketplace.identity.entity.NguoiDung;
+import com.nhom9.oldbook_marketplace.identity.repository.NguoiDungRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-public interface TaiKhoanRepository extends JpaRepository<TaiKhoan, Integer> {
+@Service
+@RequiredArgsConstructor
+public class ProfileService {
 
-    List<TaiKhoan> findByNguoiDung_MaND(Integer maND);
+    private final NguoiDungRepository nguoiDungRepository;
 
-    Optional<TaiKhoan> findByNguoiDung_MaNDAndVaiTro(
+    @Transactional
+    public ProfileResponse updateProfile(
             Integer maND,
-            String vaiTro
-    );
+            UpdateProfileRequest request
+    ) {
 
-    boolean existsByNguoiDung_MaNDAndVaiTro(
-            Integer maND,
-            String vaiTro
-    );
+        // 1. Tìm người dùng từ JWT
+        NguoiDung nguoiDung = nguoiDungRepository.findById(maND)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Người dùng không tồn tại"
+                        )
+                );
 
-    boolean existsByNguoiDung_MaNDAndVaiTroAndMaTKNot(
-            Integer maND,
-            String vaiTro,
-            Integer maTK
-    );
+        // 2. Chuẩn hóa họ tên
+        String hoTen = request.getHoTen().trim();
 
-    List<TaiKhoan> findByNguoiDung_MaNDAndTrangThai(
-            Integer maND,
-            String trangThai
-    );
+        if (hoTen.isEmpty()) {
+            throw new BusinessException(
+                    "Họ tên không được để trống"
+            );
+        }
+
+        // 3. Chuẩn hóa số điện thoại
+        String soDienThoai = normalizePhone(
+                request.getSoDienThoai()
+        );
+
+        // 4. Kiểm tra số điện thoại có thuộc người khác không
+        if (soDienThoai != null
+                && nguoiDungRepository.existsBySoDienThoaiAndMaNDNot(
+                soDienThoai,
+                maND
+        )) {
+
+            throw new BusinessException(
+                    "Số điện thoại đã được sử dụng"
+            );
+        }
+
+        // 5. Cập nhật thông tin
+        nguoiDung.setHoTen(hoTen);
+        nguoiDung.setSoDienThoai(soDienThoai);
+
+        String avatarUrl = request.getAvatarUrl();
+
+        if (avatarUrl != null) {
+            avatarUrl = avatarUrl.trim();
+
+            if (avatarUrl.isEmpty()) {
+                avatarUrl = null;
+            }
+        }
+
+        nguoiDung.setAvatarUrl(avatarUrl);
+
+        // 6. Lưu
+        nguoiDungRepository.save(nguoiDung);
+
+        // 7. Trả dữ liệu sau khi cập nhật
+        return toProfileResponse(nguoiDung);
+    }
+
+    @Transactional(readOnly = true)
+    public ProfileResponse getProfile(Integer maND) {
+
+        NguoiDung nguoiDung = nguoiDungRepository.findById(maND)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Người dùng không tồn tại"
+                        )
+                );
+
+        return toProfileResponse(nguoiDung);
+    }
+
+    private ProfileResponse toProfileResponse(
+            NguoiDung nguoiDung
+    ) {
+        return ProfileResponse.builder()
+                .maND(nguoiDung.getMaND())
+                .email(nguoiDung.getEmail())
+                .hoTen(nguoiDung.getHoTen())
+                .soDienThoai(nguoiDung.getSoDienThoai())
+                .avatarUrl(nguoiDung.getAvatarUrl())
+                .build();
+    }
+
+    private String normalizePhone(String soDienThoai) {
+
+        if (soDienThoai == null) {
+            return null;
+        }
+
+        String phone = soDienThoai.trim();
+
+        if (phone.isEmpty()) {
+            return null;
+        }
+
+        return phone;
+    }
 }
 </file>
 
@@ -4895,6 +4193,17 @@ public class NhatKyHeThong {
 }
 </file>
 
+<file path="src/main/java/com/nhom9/oldbook_marketplace/system/repository/NhatKyHeThongRepository.java">
+package com.nhom9.oldbook_marketplace.system.repository;
+
+import com.nhom9.oldbook_marketplace.system.entity.NhatKyHeThong;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface NhatKyHeThongRepository
+        extends JpaRepository<NhatKyHeThong, Integer> {
+}
+</file>
+
 <file path="src/main/resources/application-test.properties">
 # ===============================
 # TEST EMAIL
@@ -5255,123 +4564,6 @@ endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.grad
 rootProject.name = "oldbook-marketplace"
 </file>
 
-<file path="docs/API_RULES.md">
-# OldBook Marketplace - API Rules
-
-## Base URL
-
-/api
-
----
-
-## Authentication
-
-API cần xác thực sử dụng:
-
-Authorization: Bearer <JWT>
-
----
-
-## API công khai
-
-POST /api/auth/register
-POST /api/auth/login
-POST /api/auth/select-role
-POST /api/auth/verify-register-otp
-POST /api/auth/resend-register-otp
-POST /api/auth/forgot-password
-POST /api/auth/resend-forgot-password-otp
-POST /api/auth/reset-password
-
-API xem sách:
-GET /api/sach/**
-→ Cho phép Guest, không yêu cầu JWT.
-
-Các API khác mặc định yêu cầu JWT nếu SecurityConfig không khai báo public.
-
----
-
-## JWT chính thức
-
-JWT chứa:
-
-maND
-maTK
-vaiTro
-
-Không lấy danh tính người dùng từ:
-
-- maND trong request body
-- email do client gửi trong request nghiệp vụ
-
-Danh tính phải lấy từ JWT/SecurityContext.
-
----
-
-## Role
-
-Role code:
-
-KHACH_HANG
-CHU_CUA_HANG
-DON_VI_VAN_CHUYEN
-QUAN_LY
-QUAN_TRI_VIEN
-
----
-
-## Response
-
-API ưu tiên sử dụng:
-
-ApiResponse<T>
-
-Ví dụ:
-
-{
-"code": 200,
-"message": "Success",
-"data": {}
-}
-
----
-
-## HTTP Method
-
-GET:
-Lấy dữ liệu
-
-POST:
-Tạo dữ liệu / thực hiện nghiệp vụ
-
-PUT:
-Cập nhật dữ liệu
-
-PATCH:
-Cập nhật một phần
-
-DELETE:
-Xóa dữ liệu
-
----
-
-## Module API
-
-Mỗi module sử dụng prefix riêng.
-
-Ví dụ:
-
-/api/auth
-/api/sach
-/api/store
-/api/order
-/api/payment
-/api/shipping
-/api/admin
-
-Không tùy ý đặt endpoint khác convention của project.
-</file>
-
 <file path="docs/DEVELOPMENT_RULES.md">
 # OldBook Marketplace - Development Rules
 
@@ -5551,6 +4743,870 @@ feat(store): thêm tạo cửa hàng
 fix(order): sửa tính tổng đơn hàng
 </file>
 
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/constant/TrangThaiTaiKhoan.java">
+package com.nhom9.oldbook_marketplace.auth.constant;
+
+public enum TrangThaiTaiKhoan {
+
+    CHO_XAC_THUC("Chờ xác thực"),
+    HOAT_DONG("Hoạt động"),
+    BI_KHOA("Bị khóa");
+
+    private final String tenHienThi;
+
+    TrangThaiTaiKhoan(String tenHienThi) {
+        this.tenHienThi = tenHienThi;
+    }
+
+    public String getTenHienThi() {
+        return tenHienThi;
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/RegisterRequest.java">
+package com.nhom9.oldbook_marketplace.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class RegisterRequest {
+
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    private String email;
+
+    @NotBlank(message = "Mật khẩu không được để trống")
+    @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự")
+    @Pattern(
+            regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+            message = "Mật khẩu phải gồm ít nhất chữ và số"
+    )
+    private String matKhau;
+
+    @NotBlank(message = "Họ tên không được để trống")
+    private String hoTen;
+
+    private String soDienThoai;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/filter/JwtAuthenticationFilter.java">
+package com.nhom9.oldbook_marketplace.auth.filter;
+
+import com.nhom9.oldbook_marketplace.auth.constant.TrangThaiTaiKhoan;
+import com.nhom9.oldbook_marketplace.auth.constant.VaiTro;
+import com.nhom9.oldbook_marketplace.auth.service.JwtService;
+import com.nhom9.oldbook_marketplace.auth.service.RevokedTokenService;
+import com.nhom9.oldbook_marketplace.auth.service.TaiKhoanTokenService;
+import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
+import com.nhom9.oldbook_marketplace.identity.repository.TaiKhoanRepository;
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.time.Instant;
+import java.util.List;
+
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private final JwtService jwtService;
+    private final RevokedTokenService revokedTokenService;
+    private final TaiKhoanTokenService taiKhoanTokenService;
+    private final TaiKhoanRepository taiKhoanRepository;
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        String authorizationHeader =
+                request.getHeader("Authorization");
+
+        if (authorizationHeader == null
+                || !authorizationHeader.startsWith("Bearer ")) {
+
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = authorizationHeader.substring(7);
+
+        try {
+
+            // 1. JWT còn hợp lệ về chữ ký + thời hạn
+            if (!jwtService.isTokenValid(token)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            Claims claims = jwtService.extractClaims(token);
+
+            Integer maND = claims.get("maND", Integer.class);
+            Integer maTK = claims.get("maTK", Integer.class);
+
+            if (maND == null || maTK == null) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 2. Token có bị logout hay chưa?
+            String jti = claims.getId();
+
+            if (jti == null
+                    || revokedTokenService.isRevoked(jti)) {
+
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 3. Lấy thời điểm tạo token
+            if (claims.getIssuedAt() == null) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            Instant issuedAt =
+                    claims.getIssuedAt().toInstant();
+
+            // 4. Token có bị vô hiệu do khóa tài khoản không?
+            if (taiKhoanTokenService.isTokenInvalid(
+                    maTK,
+                    issuedAt
+            )) {
+
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 5. Tìm tài khoản hiện tại trong DB
+            TaiKhoan taiKhoan =
+                    taiKhoanRepository.findById(maTK)
+                            .orElse(null);
+
+            if (taiKhoan == null) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 6. Đảm bảo tài khoản thuộc đúng người dùng
+            if (taiKhoan.getNguoiDung() == null
+                    || !maND.equals(
+                    taiKhoan.getNguoiDung().getMaND()
+            )) {
+
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 7. Tài khoản phải đang hoạt động
+            if (!TrangThaiTaiKhoan.HOAT_DONG.name()
+                    .equals(taiKhoan.getTrangThai())) {
+
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 8. QUAN TRỌNG:
+            // Không lấy vai trò từ JWT làm nguồn chính.
+            // Lấy vai trò hiện tại từ database.
+            String vaiTroHienTai =
+                    taiKhoan.getVaiTro();
+
+            VaiTro role =
+                    VaiTro.valueOf(vaiTroHienTai);
+
+            SimpleGrantedAuthority authority =
+                    new SimpleGrantedAuthority(
+                            role.getAuthority()
+                    );
+
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            maND,
+                            null,
+                            List.of(authority)
+                    );
+
+            authentication.setDetails(
+                    new AuthenticatedUserDetails(
+                            maND,
+                            maTK,
+                            vaiTroHienTai
+                    )
+            );
+
+            SecurityContextHolder
+                    .getContext()
+                    .setAuthentication(authentication);
+
+        } catch (Exception e) {
+
+            SecurityContextHolder.clearContext();
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    public record AuthenticatedUserDetails(
+            Integer maND,
+            Integer maTK,
+            String vaiTro
+    ) {
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/EmailService.java">
+package com.nhom9.oldbook_marketplace.auth.service;
+
+import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.stereotype.Service;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class EmailService {
+
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String emailNguoiGui;
+
+    /**
+     * =========================================================
+     * 1. EMAIL OTP ĐĂNG KÝ
+     * =========================================================
+     */
+    public void sendRegisterOtpEmail(
+            String emailNguoiNhan,
+            String maOtp
+    ) {
+        sendOtpEmail(
+                emailNguoiNhan,
+                maOtp,
+                "Mã OTP xác thực tài khoản - OldBook Marketplace",
+                "Bạn vừa thực hiện đăng ký tài khoản tại OldBook Marketplace."
+        );
+    }
+
+    /**
+     * =========================================================
+     * 2. EMAIL OTP QUÊN MẬT KHẨU
+     * =========================================================
+     */
+    public void sendForgotPasswordOtpEmail(
+            String emailNguoiNhan,
+            String maOtp
+    ) {
+        sendOtpEmail(
+                emailNguoiNhan,
+                maOtp,
+                "Mã OTP đặt lại mật khẩu - OldBook Marketplace",
+                "Bạn vừa yêu cầu đặt lại mật khẩu tài khoản tại OldBook Marketplace."
+        );
+    }
+
+    /**
+     * =========================================================
+     * 3. DÙNG CHUNG CHO EMAIL OTP
+     * =========================================================
+     */
+    private void sendOtpEmail(
+            String emailNguoiNhan,
+            String maOtp,
+            String tieuDe,
+            String moTa
+    ) {
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setFrom(emailNguoiGui);
+        message.setTo(emailNguoiNhan);
+        message.setSubject(tieuDe);
+
+        message.setText(
+                "Xin chào,\n\n"
+                        + moTa + "\n\n"
+                        + "Mã OTP của bạn là: " + maOtp + "\n\n"
+                        + "Mã OTP có hiệu lực trong 5 phút.\n"
+                        + "Không chia sẻ mã OTP này với người khác.\n\n"
+                        + "Trân trọng,\n"
+                        + "OldBook Marketplace"
+        );
+
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            log.error(
+                    "Không thể gửi email OTP đến {}",
+                    emailNguoiNhan,
+                    e
+            );
+
+            throw new BusinessException(
+                    "Không thể gửi email OTP"
+            );
+        }
+    }
+
+    /**
+     * =========================================================
+     * 4. EMAIL THÔNG BÁO KHÓA TÀI KHOẢN
+     * =========================================================
+     */
+    public void sendAccountLockedEmail(
+            String emailNguoiNhan,
+            String lyDo
+    ) {
+        sendAccountNotificationEmail(
+                emailNguoiNhan,
+                "Tài khoản đã bị khóa - OldBook Marketplace",
+                "Tài khoản của bạn đã bị Quản trị viên khóa.\n\n"
+                        + "Lý do: " + lyDo
+        );
+    }
+
+    /**
+     * =========================================================
+     * 5. EMAIL THÔNG BÁO MỞ KHÓA TÀI KHOẢN
+     * =========================================================
+     */
+    public void sendAccountUnlockedEmail(
+            String emailNguoiNhan
+    ) {
+        sendAccountNotificationEmail(
+                emailNguoiNhan,
+                "Tài khoản đã được mở khóa - OldBook Marketplace",
+                "Tài khoản của bạn đã được Quản trị viên mở khóa."
+        );
+    }
+
+    /**
+     * =========================================================
+     * 6. DÙNG CHUNG CHO EMAIL KHÓA / MỞ KHÓA
+     * =========================================================
+     */
+    private void sendAccountNotificationEmail(
+            String emailNguoiNhan,
+            String tieuDe,
+            String noiDung
+    ) {
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setFrom(emailNguoiGui);
+        message.setTo(emailNguoiNhan);
+        message.setSubject(tieuDe);
+
+        message.setText(
+                "Xin chào,\n\n"
+                        + noiDung
+                        + "\n\nTrân trọng,\n"
+                        + "OldBook Marketplace"
+        );
+
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            log.error(
+                    "Không thể gửi email thông báo đến {}",
+                    emailNguoiNhan,
+                    e
+            );
+
+            throw new BusinessException(
+                    "Không thể gửi email thông báo"
+            );
+        }
+    }
+
+    /**
+     * =========================================================
+     * 7. EMAIL THÔNG BÁO TẠO TÀI KHOẢN BỞI ADMIN
+     * =========================================================
+     */
+    public void sendAdminAccountCreatedEmail(
+            String email,
+            String hoTen,
+            String vaiTro
+    ) {
+        String noiDung =
+                "Xin chào " + hoTen + ",\n\n"
+                        + "Tài khoản của bạn đã được Quản trị viên tạo.\n"
+                        + "Vai trò: " + vaiTro + "\n\n"
+                        + "Vui lòng đăng nhập để sử dụng hệ thống.";
+
+        sendNormalEmail(
+                email,
+                "Tài khoản OldBook Marketplace đã được tạo",
+                noiDung
+        );
+    }
+
+    /**
+     * =========================================================
+     * 8. HÀM GỬI EMAIL THÔNG THƯỜNG
+     * =========================================================
+     */
+    private void sendNormalEmail(
+            String emailNguoiNhan,
+            String tieuDe,
+            String noiDung
+    ) {
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setFrom(emailNguoiGui);
+        message.setTo(emailNguoiNhan);
+        message.setSubject(tieuDe);
+        message.setText(
+                noiDung
+                        + "\n\nTrân trọng,\n"
+                        + "OldBook Marketplace"
+        );
+
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            log.error(
+                    "Không thể gửi email đến {}",
+                    emailNguoiNhan,
+                    e
+            );
+
+            throw new BusinessException(
+                    "Không thể gửi email"
+            );
+        }
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/JwtService.java">
+package com.nhom9.oldbook_marketplace.auth.service;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import java.util.UUID;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+
+@Service
+public class JwtService {
+
+    private static final String LOAI_TOKEN = "loaiToken";
+    private static final String TOKEN_CHON_VAI_TRO = "CHON_VAI_TRO";
+
+    private final SecretKey secretKey;
+    private final long expiration;
+
+    public JwtService(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.expiration}") long expiration
+    ) {
+        this.secretKey = Keys.hmacShaKeyFor(
+                Decoders.BASE64.decode(secret)
+        );
+
+        this.expiration = expiration;
+    }
+
+    // JWT chính thức
+    // JWT chính thức
+    public String generateToken(
+            Integer maND,
+            Integer maTK,
+            String vaiTro
+    ) {
+
+        Date now = new Date();
+        Date expirationDate = new Date(
+                now.getTime() + expiration
+        );
+
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(maND.toString())
+                .claim("maND", maND)
+                .claim("maTK", maTK)
+                .claim("vaiTro", vaiTro)
+                .issuedAt(now)
+                .expiration(expirationDate)
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public String extractJti(String token) {
+        return extractClaims(token)
+                .getId();
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaims(token)
+                .getExpiration();
+    }
+
+    // JWT tạm, chỉ dùng trong bước chọn vai trò
+    public String generateRoleSelectionToken(Integer maND) {
+
+        Date now = new Date();
+
+        // Token chọn vai trò chỉ tồn tại 5 phút
+        Date expirationDate = new Date(
+                now.getTime() + (5 * 60 * 1000)
+        );
+
+        return Jwts.builder()
+                .subject(maND.toString())
+                .claim("maND", maND)
+                .claim(LOAI_TOKEN, TOKEN_CHON_VAI_TRO)
+                .issuedAt(now)
+                .expiration(expirationDate)
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public Claims extractClaims(String token) {
+
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public Integer extractMaND(String token) {
+        return extractClaims(token)
+                .get("maND", Integer.class);
+    }
+
+    public Integer extractMaTK(String token) {
+        return extractClaims(token)
+                .get("maTK", Integer.class);
+    }
+
+    public String extractVaiTro(String token) {
+        return extractClaims(token)
+                .get("vaiTro", String.class);
+    }
+
+    public String extractLoaiToken(String token) {
+        return extractClaims(token)
+                .get(LOAI_TOKEN, String.class);
+    }
+
+    public boolean isTokenValid(String token) {
+
+        try {
+            extractClaims(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isRoleSelectionToken(String token) {
+
+        try {
+            String loaiToken = extractLoaiToken(token);
+
+            return TOKEN_CHON_VAI_TRO.equals(loaiToken);
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/repository/NguoiDungRepository.java">
+package com.nhom9.oldbook_marketplace.identity.repository;
+
+import com.nhom9.oldbook_marketplace.identity.entity.NguoiDung;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface NguoiDungRepository extends JpaRepository<NguoiDung, Integer> {
+
+    // Tìm người dùng theo email đăng nhập
+    Optional<NguoiDung> findByEmail(String email);
+
+    // Kiểm tra email đã tồn tại chưa
+    boolean existsByEmail(String email);
+
+    // Kiểm tra số điện thoại đã tồn tại chưa
+    boolean existsBySoDienThoai(String soDienThoai);
+
+    boolean existsBySoDienThoaiAndMaNDNot(
+            String soDienThoai,
+            Integer maND
+    );
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/identity/repository/TaiKhoanRepository.java">
+package com.nhom9.oldbook_marketplace.identity.repository;
+
+import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface TaiKhoanRepository extends JpaRepository<TaiKhoan, Integer> {
+
+    List<TaiKhoan> findByNguoiDung_MaND(Integer maND);
+
+    Optional<TaiKhoan> findByNguoiDung_MaNDAndVaiTro(
+            Integer maND,
+            String vaiTro
+    );
+
+    boolean existsByNguoiDung_MaNDAndVaiTro(
+            Integer maND,
+            String vaiTro
+    );
+
+    boolean existsByNguoiDung_MaNDAndVaiTroAndMaTKNot(
+            Integer maND,
+            String vaiTro,
+            Integer maTK
+    );
+
+    List<TaiKhoan> findByNguoiDung_MaNDAndTrangThai(
+            Integer maND,
+            String trangThai
+    );
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/OldbookMarketplaceApplication.java">
+package com.nhom9.oldbook_marketplace;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class OldbookMarketplaceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(OldbookMarketplaceApplication.class, args);
+	}
+}
+</file>
+
+<file path="src/test/java/com/nhom9/oldbook_marketplace/OldbookMarketplaceApplicationTests.java">
+package com.nhom9.oldbook_marketplace;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+@SpringBootTest
+@ActiveProfiles("test")
+class OldbookMarketplaceApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+}
+</file>
+
+<file path=".gitignore">
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+</file>
+
+<file path="docs/API_RULES.md">
+# OldBook Marketplace - API Rules
+
+## Base URL
+
+/api
+
+---
+
+## Authentication
+
+API cần xác thực sử dụng:
+
+Authorization: Bearer <JWT>
+
+---
+
+## API công khai
+
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/select-role
+POST /api/auth/verify-register-otp
+POST /api/auth/resend-register-otp
+POST /api/auth/forgot-password
+POST /api/auth/resend-forgot-password-otp
+POST /api/auth/reset-password
+
+API xem sách:
+GET /api/sach/**
+→ Cho phép Guest, không yêu cầu JWT.
+
+Các API khác mặc định yêu cầu JWT nếu SecurityConfig không khai báo public.
+
+---
+
+## JWT chính thức
+
+JWT chứa:
+
+maND
+maTK
+vaiTro
+
+Không lấy danh tính người dùng từ:
+
+- maND trong request body
+- email do client gửi trong request nghiệp vụ
+
+Danh tính phải lấy từ JWT/SecurityContext.
+
+---
+
+## Role
+
+Role code:
+
+KHACH_HANG
+CHU_CUA_HANG
+DON_VI_VAN_CHUYEN
+QUAN_LY
+QUAN_TRI_VIEN
+
+---
+
+## Response
+
+API ưu tiên sử dụng:
+
+ApiResponse<T>
+
+Ví dụ:
+
+{
+"code": 200,
+"message": "Success",
+"data": {}
+}
+
+---
+
+## HTTP Method
+
+GET:
+Lấy dữ liệu
+
+POST:
+Tạo dữ liệu / thực hiện nghiệp vụ
+
+PUT:
+Cập nhật dữ liệu
+
+PATCH:
+Cập nhật một phần
+
+DELETE:
+Xóa dữ liệu
+
+---
+
+## Module API
+
+Mỗi module sử dụng prefix riêng.
+
+Ví dụ:
+
+/api/auth
+/api/sach
+/api/store
+/api/order
+/api/payment
+/api/shipping
+/api/admin
+
+Không tùy ý đặt endpoint khác convention của project.
+</file>
+
 <file path="src/main/java/com/nhom9/oldbook_marketplace/auth/config/SecurityConfig.java">
 package com.nhom9.oldbook_marketplace.auth.config;
 
@@ -5622,27 +5678,6 @@ public class SecurityConfig {
                 );
 
         return http.build();
-    }
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/constant/TrangThaiTaiKhoan.java">
-package com.nhom9.oldbook_marketplace.auth.constant;
-
-public enum TrangThaiTaiKhoan {
-
-    CHO_XAC_THUC("Chờ xác thực"),
-    HOAT_DONG("Hoạt động"),
-    BI_KHOA("Bị khóa");
-
-    private final String tenHienThi;
-
-    TrangThaiTaiKhoan(String tenHienThi) {
-        this.tenHienThi = tenHienThi;
-    }
-
-    public String getTenHienThi() {
-        return tenHienThi;
     }
 }
 </file>
@@ -5838,39 +5873,6 @@ public class AuthController {
                 ApiResponse.success("Đã gửi lại mã OTP")
         );
     }
-}
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/RegisterRequest.java">
-package com.nhom9.oldbook_marketplace.auth.dto;
-
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class RegisterRequest {
-
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không hợp lệ")
-    private String email;
-
-    @NotBlank(message = "Mật khẩu không được để trống")
-    @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự")
-    @Pattern(
-            regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
-            message = "Mật khẩu phải gồm ít nhất chữ và số"
-    )
-    private String matKhau;
-
-    @NotBlank(message = "Họ tên không được để trống")
-    private String hoTen;
-
-    private String soDienThoai;
 }
 </file>
 
@@ -6589,81 +6591,6 @@ public class AuthService {
                 .build();
     }
 }
-</file>
-
-<file path="src/main/java/com/nhom9/oldbook_marketplace/OldbookMarketplaceApplication.java">
-package com.nhom9.oldbook_marketplace;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class OldbookMarketplaceApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(OldbookMarketplaceApplication.class, args);
-	}
-}
-</file>
-
-<file path="src/test/java/com/nhom9/oldbook_marketplace/OldbookMarketplaceApplicationTests.java">
-package com.nhom9.oldbook_marketplace;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-
-@SpringBootTest
-@ActiveProfiles("test")
-class OldbookMarketplaceApplicationTests {
-
-	@Test
-	void contextLoads() {
-	}
-}
-</file>
-
-<file path=".gitignore">
-HELP.md
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
-
-# graft's local graph cache — regenerable, not committed (run `graft build`).
-/graft/
 </file>
 
 <file path="src/main/resources/application.properties">
