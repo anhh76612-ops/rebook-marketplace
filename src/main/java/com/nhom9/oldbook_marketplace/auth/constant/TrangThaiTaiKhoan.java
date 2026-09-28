@@ -2,6 +2,7 @@ package com.nhom9.oldbook_marketplace.auth.constant;
 
 public enum TrangThaiTaiKhoan {
 
+    CHO_XAC_THUC("Chờ xác thực"),
     HOAT_DONG("Hoạt động"),
     BI_KHOA("Bị khóa");
 

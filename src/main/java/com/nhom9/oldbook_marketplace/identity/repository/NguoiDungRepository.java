@@ -15,4 +15,9 @@ public interface NguoiDungRepository extends JpaRepository<NguoiDung, Integer> {
 
     // Kiểm tra số điện thoại đã tồn tại chưa
     boolean existsBySoDienThoai(String soDienThoai);
+
+    boolean existsBySoDienThoaiAndMaNDNot(
+            String soDienThoai,
+            Integer maND
+    );
 }

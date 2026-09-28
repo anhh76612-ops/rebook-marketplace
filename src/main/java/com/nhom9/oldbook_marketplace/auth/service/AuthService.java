@@ -1,8 +1,6 @@
 package com.nhom9.oldbook_marketplace.auth.service;
 
-import com.nhom9.oldbook_marketplace.auth.dto.LoginRequest;
-import com.nhom9.oldbook_marketplace.auth.dto.LoginResponse;
-import com.nhom9.oldbook_marketplace.auth.dto.RegisterRequest;
+import com.nhom9.oldbook_marketplace.auth.dto.*;
 import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
 import com.nhom9.oldbook_marketplace.identity.entity.NguoiDung;
 import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
@@ -13,11 +11,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 import com.nhom9.oldbook_marketplace.auth.constant.TrangThaiTaiKhoan;
 import com.nhom9.oldbook_marketplace.auth.constant.VaiTro;
+
+import com.nhom9.oldbook_marketplace.auth.entity.MaXacThuc;
+import com.nhom9.oldbook_marketplace.auth.repository.MaXacThucRepository;
+import java.time.LocalDateTime;
+import java.util.concurrent.ThreadLocalRandom;
+import com.nhom9.oldbook_marketplace.auth.service.EmailService;
+import com.nhom9.oldbook_marketplace.auth.dto.ResendRegisterOtpRequest;
+import java.util.Optional;
+
+import com.nhom9.oldbook_marketplace.auth.dto.ForgotPasswordRequest;
+import com.nhom9.oldbook_marketplace.auth.dto.ResetPasswordRequest;
+import com.nhom9.oldbook_marketplace.auth.dto.ResendForgotPasswordOtpRequest;
+
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +38,11 @@ public class AuthService {
     private final TaiKhoanRepository taiKhoanRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final MaXacThucRepository maXacThucRepository;
+    private static final String LOAI_XAC_THUC_DANG_KY = "DANG_KY";
+    private final EmailService emailService;
+    private static final String LOAI_XAC_THUC_QUEN_MAT_KHAU = "QUEN_MAT_KHAU";
+    private final RevokedTokenService revokedTokenService;
 
     /**
      * Đăng ký người dùng mới.
@@ -45,9 +62,7 @@ public class AuthService {
 
         // 1. Kiểm tra email đã tồn tại
         if (nguoiDungRepository.existsByEmail(email)) {
-            throw new BusinessException(
-                    "Email đã được sử dụng"
-            );
+            throw new BusinessException("Email đã được sử dụng");
         }
 
         // 2. Kiểm tra số điện thoại nếu người dùng có nhập
@@ -60,9 +75,8 @@ public class AuthService {
         }
 
         // 3. Mã hóa mật khẩu bằng BCrypt
-        String matKhauMaHoa = passwordEncoder.encode(
-                request.getMatKhau()
-        );
+        String matKhauMaHoa =
+                passwordEncoder.encode(request.getMatKhau());
 
         // 4. Tạo NguoiDung
         NguoiDung nguoiDung = NguoiDung.builder()
@@ -74,16 +88,367 @@ public class AuthService {
 
         nguoiDungRepository.save(nguoiDung);
 
-        // 5. Tự động tạo tài khoản Khách hàng
+        // 5. Tạo TaiKhoan nhưng CHƯA cho hoạt động
         TaiKhoan taiKhoan = TaiKhoan.builder()
                 .nguoiDung(nguoiDung)
                 .vaiTro(VaiTro.KHACH_HANG.name())
-                .trangThai(TrangThaiTaiKhoan.HOAT_DONG.name())
+                .trangThai(TrangThaiTaiKhoan.CHO_XAC_THUC.name())
                 .build();
 
         taiKhoanRepository.save(taiKhoan);
+
+        // 6. Tạo OTP 6 chữ số
+        String maOtp = String.format(
+                "%06d",
+                ThreadLocalRandom.current().nextInt(1_000_000)
+        );
+
+        // 7. Tạo thời gian hết hạn = 5 phút
+        LocalDateTime thoiGianHetHan =
+                LocalDateTime.now().plusMinutes(5);
+
+        // 8. Lưu OTP
+        MaXacThuc maXacThuc = MaXacThuc.builder()
+                .nguoiDung(nguoiDung)
+                .maOtp(maOtp)
+                .loaiXacThuc(LOAI_XAC_THUC_DANG_KY)
+                .thoiGianHetHan(thoiGianHetHan)
+                .daSuDung(false)
+                .build();
+
+        maXacThucRepository.save(maXacThuc);
+        emailService.sendRegisterOtpEmail(email, maOtp);
     }
 
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+
+        String email = normalizeEmail(request.getEmail());
+
+        NguoiDung nguoiDung = nguoiDungRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new BusinessException("Email không tồn tại")
+                );
+
+        if (!request.getMatKhauMoi()
+                .equals(request.getXacNhanMatKhauMoi())) {
+
+            throw new BusinessException(
+                    "Xác nhận mật khẩu mới không khớp"
+            );
+        }
+
+        MaXacThuc maXacThuc = maXacThucRepository
+                .findTopByNguoiDung_MaNDAndLoaiXacThucAndDaSuDungFalseOrderByNgayTaoDesc(
+                        nguoiDung.getMaND(),
+                        LOAI_XAC_THUC_QUEN_MAT_KHAU
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Không tìm thấy mã OTP đặt lại mật khẩu"
+                        )
+                );
+
+        if (LocalDateTime.now()
+                .isAfter(maXacThuc.getThoiGianHetHan())) {
+
+            throw new BusinessException(
+                    "Mã OTP đã hết hạn"
+            );
+        }
+
+        if (!maXacThuc.getMaOtp()
+                .equals(request.getMaOtp())) {
+
+            throw new BusinessException(
+                    "Mã OTP không chính xác"
+            );
+        }
+
+        String matKhauMoiMaHoa =
+                passwordEncoder.encode(
+                        request.getMatKhauMoi()
+                );
+
+        nguoiDung.setMatKhau(matKhauMoiMaHoa);
+        maXacThuc.setDaSuDung(true);
+
+        nguoiDungRepository.save(nguoiDung);
+        maXacThucRepository.save(maXacThuc);
+    }
+
+    @Transactional
+    public void resendForgotPasswordOtp(
+            ResendForgotPasswordOtpRequest request
+    ) {
+
+        String email = normalizeEmail(request.getEmail());
+
+        NguoiDung nguoiDung = nguoiDungRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new BusinessException("Email không tồn tại")
+                );
+
+        Optional<MaXacThuc> otpHienTai =
+                maXacThucRepository
+                        .findTopByNguoiDung_MaNDAndLoaiXacThucAndDaSuDungFalseOrderByNgayTaoDesc(
+                                nguoiDung.getMaND(),
+                                LOAI_XAC_THUC_QUEN_MAT_KHAU
+                        );
+
+        if (otpHienTai.isPresent()) {
+
+            LocalDateTime now = LocalDateTime.now();
+
+            if (now.isBefore(
+                    otpHienTai.get().getThoiGianHetHan()
+            )) {
+                throw new BusinessException(
+                        "Mã OTP hiện tại vẫn còn hiệu lực, vui lòng chờ hết hạn"
+                );
+            }
+
+            otpHienTai.get().setDaSuDung(true);
+            maXacThucRepository.save(otpHienTai.get());
+        }
+
+        String maOtpMoi = String.format(
+                "%06d",
+                ThreadLocalRandom.current().nextInt(1_000_000)
+        );
+
+        LocalDateTime thoiGianHetHan =
+                LocalDateTime.now().plusMinutes(5);
+
+        MaXacThuc maXacThucMoi = MaXacThuc.builder()
+                .nguoiDung(nguoiDung)
+                .maOtp(maOtpMoi)
+                .loaiXacThuc(LOAI_XAC_THUC_QUEN_MAT_KHAU)
+                .thoiGianHetHan(thoiGianHetHan)
+                .daSuDung(false)
+                .build();
+
+        maXacThucRepository.save(maXacThucMoi);
+
+        emailService.sendForgotPasswordOtpEmail(
+                email,
+                maOtpMoi
+        );
+    }
+
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+
+        String email = normalizeEmail(request.getEmail());
+
+        NguoiDung nguoiDung = nguoiDungRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new BusinessException("Email không tồn tại")
+                );
+
+        String maOtp = String.format(
+                "%06d",
+                ThreadLocalRandom.current().nextInt(1_000_000)
+        );
+
+        LocalDateTime thoiGianHetHan =
+                LocalDateTime.now().plusMinutes(5);
+
+        MaXacThuc maXacThuc = MaXacThuc.builder()
+                .nguoiDung(nguoiDung)
+                .maOtp(maOtp)
+                .loaiXacThuc(LOAI_XAC_THUC_QUEN_MAT_KHAU)
+                .thoiGianHetHan(thoiGianHetHan)
+                .daSuDung(false)
+                .build();
+
+        maXacThucRepository.save(maXacThuc);
+
+        emailService.sendForgotPasswordOtpEmail(
+                email,
+                maOtp
+        );
+    }
+
+    @Transactional
+    public void resendRegisterOtp(ResendRegisterOtpRequest request) {
+
+        String email = normalizeEmail(request.getEmail());
+
+        // 1. Tìm người dùng
+        NguoiDung nguoiDung = nguoiDungRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new BusinessException("Email không tồn tại"));
+
+        // 2. Tìm tài khoản khách hàng
+        TaiKhoan taiKhoan = taiKhoanRepository
+                .findByNguoiDung_MaNDAndVaiTro(
+                        nguoiDung.getMaND(),
+                        VaiTro.KHACH_HANG.name()
+                )
+                .orElseThrow(() ->
+                        new BusinessException("Không tìm thấy tài khoản khách hàng"));
+
+        // 3. Tài khoản đã xác thực rồi thì không được resend
+        if (TrangThaiTaiKhoan.HOAT_DONG.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản đã được xác thực, không cần gửi lại OTP"
+            );
+        }
+
+        // 4. Chỉ tài khoản đang chờ xác thực mới được resend
+        if (!TrangThaiTaiKhoan.CHO_XAC_THUC.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản không ở trạng thái chờ xác thực"
+            );
+        }
+
+        // 5. Lấy OTP đăng ký gần nhất chưa sử dụng
+        Optional<MaXacThuc> otpHienTai =
+                maXacThucRepository
+                        .findTopByNguoiDung_MaNDAndLoaiXacThucAndDaSuDungFalseOrderByNgayTaoDesc(
+                                nguoiDung.getMaND(),
+                                LOAI_XAC_THUC_DANG_KY
+                        );
+
+        // 6. Nếu OTP hiện tại vẫn còn hạn thì không cho resend
+        if (otpHienTai.isPresent()) {
+
+            LocalDateTime now = LocalDateTime.now();
+
+            if (now.isBefore(otpHienTai.get().getThoiGianHetHan())) {
+
+                throw new BusinessException(
+                        "Mã OTP hiện tại vẫn còn hiệu lực, vui lòng chờ hết hạn"
+                );
+            }
+
+            // OTP cũ đã hết hạn → đánh dấu đã sử dụng
+            otpHienTai.get().setDaSuDung(true);
+            maXacThucRepository.save(otpHienTai.get());
+        }
+
+        // 7. Sinh OTP mới
+        String maOtpMoi = String.format(
+                "%06d",
+                ThreadLocalRandom.current().nextInt(1_000_000)
+        );
+
+        // 8. OTP mới có hiệu lực 5 phút
+        LocalDateTime thoiGianHetHan =
+                LocalDateTime.now().plusMinutes(5);
+
+        // 9. Lưu OTP mới
+        MaXacThuc maXacThucMoi = MaXacThuc.builder()
+                .nguoiDung(nguoiDung)
+                .maOtp(maOtpMoi)
+                .loaiXacThuc(LOAI_XAC_THUC_DANG_KY)
+                .thoiGianHetHan(thoiGianHetHan)
+                .daSuDung(false)
+                .build();
+
+        maXacThucRepository.save(maXacThucMoi);
+
+        // 10. Gửi OTP mới qua email
+        emailService.sendRegisterOtpEmail(
+                email,
+                maOtpMoi
+        );
+    }
+
+    @Transactional
+    public void verifyRegisterOtp(
+            VerifyRegisterOtpRequest request
+    ) {
+
+        String email = normalizeEmail(request.getEmail());
+
+        // 1. Tìm người dùng
+        NguoiDung nguoiDung = nguoiDungRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Email không tồn tại"
+                        )
+                );
+
+        // 2. Tìm tài khoản Khách hàng
+        TaiKhoan taiKhoan = taiKhoanRepository
+                .findByNguoiDung_MaNDAndVaiTro(
+                        nguoiDung.getMaND(),
+                        VaiTro.KHACH_HANG.name()
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Tài khoản không tồn tại"
+                        )
+                );
+
+        // 3. Kiểm tra trạng thái tài khoản
+        if (TrangThaiTaiKhoan.HOAT_DONG.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản đã được xác thực"
+            );
+        }
+
+        if (!TrangThaiTaiKhoan.CHO_XAC_THUC.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản không ở trạng thái chờ xác thực"
+            );
+        }
+
+        // 4. Lấy OTP mới nhất chưa sử dụng
+        MaXacThuc maXacThuc = maXacThucRepository
+                .findTopByNguoiDung_MaNDAndLoaiXacThucAndDaSuDungFalseOrderByNgayTaoDesc(
+                        nguoiDung.getMaND(),
+                        LOAI_XAC_THUC_DANG_KY
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Không tìm thấy mã OTP"
+                        )
+                );
+
+        // 5. Kiểm tra hết hạn
+        if (LocalDateTime.now()
+                .isAfter(maXacThuc.getThoiGianHetHan())) {
+
+            throw new BusinessException(
+                    "Mã OTP đã hết hạn"
+            );
+        }
+
+        // 6. Kiểm tra mã OTP
+        if (!maXacThuc.getMaOtp()
+                .equals(request.getMaOtp())) {
+
+            throw new BusinessException(
+                    "Mã OTP không chính xác"
+            );
+        }
+
+        // 7. Kích hoạt tài khoản
+        taiKhoan.setTrangThai(
+                TrangThaiTaiKhoan.HOAT_DONG.name()
+        );
+
+        // 8. Đánh dấu OTP đã sử dụng
+        maXacThuc.setDaSuDung(true);
+
+        taiKhoanRepository.save(taiKhoan);
+        maXacThucRepository.save(maXacThuc);
+    }
     /**
      * Đăng nhập.
      */
@@ -163,6 +528,80 @@ public class AuthService {
                 .canChonVaiTro(true)
                 .taiKhoans(toTaiKhoanResponse(taiKhoans))
                 .build();
+    }
+
+    /**
+     * Đăng xuất tài khoản hiện tại.
+     *
+     * JWT được đánh dấu là đã thu hồi.
+     */
+    @Transactional
+    public void logout(String token) {
+
+        if (!jwtService.isTokenValid(token)) {
+            throw new BusinessException(
+                    "Token không hợp lệ hoặc đã hết hạn"
+            );
+        }
+
+        String jti = jwtService.extractJti(token);
+
+        if (jti == null) {
+            throw new BusinessException(
+                    "JWT không có mã định danh"
+            );
+        }
+
+        Date expiration = jwtService.extractExpiration(token);
+
+        revokedTokenService.revokeToken(
+                jti,
+                expiration.toInstant()
+        );
+    }
+
+    @Transactional
+    public void changePassword(
+            Integer maND,
+            ChangePasswordRequest request
+    ) {
+
+        // 1. Tìm người dùng
+        NguoiDung nguoiDung = nguoiDungRepository.findById(maND)
+                .orElseThrow(() ->
+                        new BusinessException("Người dùng không tồn tại")
+                );
+
+        // 2. Kiểm tra mật khẩu hiện tại
+        boolean matKhauDung = passwordEncoder.matches(
+                request.getMatKhauHienTai(),
+                nguoiDung.getMatKhau()
+        );
+
+        if (!matKhauDung) {
+            throw new BusinessException(
+                    "Mật khẩu hiện tại không chính xác"
+            );
+        }
+
+        // 3. Kiểm tra xác nhận mật khẩu mới
+        if (!request.getMatKhauMoi()
+                .equals(request.getXacNhanMatKhauMoi())) {
+
+            throw new BusinessException(
+                    "Xác nhận mật khẩu mới không khớp"
+            );
+        }
+
+        // 4. Mã hóa mật khẩu mới bằng BCrypt
+        String matKhauMoiMaHoa = passwordEncoder.encode(
+                request.getMatKhauMoi()
+        );
+
+        // 5. Cập nhật mật khẩu
+        nguoiDung.setMatKhau(matKhauMoiMaHoa);
+
+        nguoiDungRepository.save(nguoiDung);
     }
 
     private List<LoginResponse.TaiKhoanResponse> toTaiKhoanResponse(

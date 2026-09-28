@@ -1,174 +1,78 @@
 # OldBook Marketplace - Development Rules
 
-## 1. Kiến trúc project
-
-Project được tổ chức theo module nghiệp vụ.
-
-Mỗi module có thể gồm:
-
-module/
-├── controller/
-├── dto/
-├── entity/
-├── repository/
-└── service/
-
-Không chia module theo Actor.
-
-Actor là quyền sử dụng hệ thống.
-Module phản ánh nghiệp vụ.
+Quy tắc phát triển và chuẩn hóa kiến trúc dự án **OldBook Marketplace**. Mọi thành viên trong đội ngũ kỹ thuật bắt buộc tuân thủ các nguyên tắc này để đảm bảo tính đồng bộ, bảo mật và khả năng mở rộng của hệ thống.
 
 ---
 
-## 2. Authentication
+## 🏛️ 1. Kiến trúc Dự án (Project Architecture)
 
-NguoiDung là người thật.
-
-NguoiDung lưu:
-- email
-- mật khẩu đã mã hóa
-- họ tên
-- số điện thoại
-- thông tin cá nhân
-
-TaiKhoan thuộc về NguoiDung.
-
-Một NguoiDung có thể có nhiều TaiKhoan.
-
-Mỗi TaiKhoan có đúng một VaiTro.
+* **Phân chia theo Module Nghiệp vụ (Business Module-based)**: Codebase được tổ chức theo từng miền nghiệp vụ (`auth`, `catalog`, `identity`, `store`, `order`, `payment`, `shipping`, `admin`), **không chia theo Actor** (quyền sử dụng).
+* **Cấu trúc chuẩn của một Module**:
+  ```text
+  com.nhom9.oldbook_marketplace.<module>/
+  ├── controller/       # Xử lý HTTP Request/Response, validation
+  ├── dto/              # Request/Response Data Transfer Objects
+  ├── entity/           # JPA Entities ánh xạ Database
+  ├── repository/       # Interface thao tác với cơ sở dữ liệu
+  └── service/          # Chứa 100% Business Logic nghiệp vụ
+  ```
+* **Quy tắc Package**: Code mới thuộc nghiệp vụ nào bắt buộc phải đặt đúng package/module đó. Tuyệt đối không thêm class mới vào package cũ chỉ vì thuận tiện.
 
 ---
 
-## 3. Vai trò
+## 👤 2. Định danh, Tài khoản & Phân quyền (Identity & Access)
 
-Các vai trò hợp lệ:
-
-- KHACH_HANG
-- CHU_CUA_HANG
-- DON_VI_VAN_CHUYEN
-- QUAN_LY
-- QUAN_TRI_VIEN
-
-Không tự tạo thêm role khác trong module riêng.
-
-Nếu cần thêm role phải thống nhất với nhóm và cập nhật VaiTro.java.
-
----
-
-## 4. Trạng thái tài khoản
-
-Các trạng thái hợp lệ:
-
-- HOAT_DONG
-- BI_KHOA
-
-Không tự tạo tên trạng thái khác.
+* **Thực thể Người dùng & Tài khoản**:
+  * `NguoiDung`: Đại diện cho người thật (lưu `email`, mật khẩu mã hóa, họ tên, số điện thoại, thông tin cá nhân).
+  * `TaiKhoan`: Thuộc về `NguoiDung`. Một `NguoiDung` có thể sở hữu nhiều `TaiKhoan` với các vai trò khác nhau. Mỗi `TaiKhoan` có đúng **1 Vai trò (`VaiTro`)**.
+* **Danh sách Vai trò Hợp lệ Enum (`VaiTro.java`)**:
+  * `KHACH_HANG`: Khách hàng mua sách.
+  * `CHU_CUA_HANG`: Chủ cửa hàng bán sách cũ.
+  * `DON_VI_VAN_CHUYEN`: Đối tác giao hàng.
+  * `QUAN_LY`: Quản lý nghiệp vụ sàn.
+  * `QUAN_TRI_VIEN`: Quản trị viên hệ thống.
+  *(Không tự ý thêm role mới trong các module riêng mà chưa thống nhất với nhóm).*
+* **Trạng thái Tài khoản Hợp lệ Enum**:
+  * `CHO_XAC_THUC`: Đang chờ xác minh OTP/Email.
+  * `HOAT_DONG`: Tài khoản đang hoạt động bình thường.
+  * `BI_KHOA`: Tài khoản đã bị khóa.
 
 ---
 
-## 5. JWT
+## 🔐 3. Bảo mật, Xác thực & Dữ liệu (Security & Data Rules)
 
-JWT chính thức chứa:
-
-- maND
-- maTK
-- vaiTro
-
-JWT là nguồn xác định người dùng hiện tại.
-
-Không dùng maND do client tự gửi để xác định người dùng.
-
----
-
-## 6. Password
-
-Không bao giờ lưu mật khẩu dạng nguyên văn.
-
-Mật khẩu phải được xử lý bằng BCrypt.
-
-Không log mật khẩu ra console.
+* **Xác thực JWT (JSON Web Token)**:
+  * JWT chính thức phải chứa 3 thông tin cốt lõi: `maND`, `maTK`, và `vaiTro`.
+  * **Chỉ tin tưởng JWT**: Bắt buộc trích xuất danh tính người dùng từ `SecurityContext` / JWT Token. Tuyệt đối **không dùng `maND` do Client gửi** trong Request Body hoặc Params để xác định người dùng đăng nhập.
+* **Mật khẩu & Nhật ký**:
+  * Mật khẩu phải luôn được mã hóa bằng **BCrypt** trước khi lưu vào Database.
+  * Không lưu trữ hoặc log mật khẩu nguyên văn (plaintext) ra console/file log.
+* **Phân biệt Rõ ràng**:
+  * **Authentication**: Xác định "Người dùng là ai".
+  * **Authorization**: Xác định "Người dùng được phép làm gì".
 
 ---
 
-## 7. Controller
+## ⚙️ 4. Quy tắc Phân tầng Code (Layering Responsibilities)
 
-Controller chịu trách nhiệm:
-
-- nhận HTTP request
-- validate request
-- gọi Service
-- trả HTTP response
-
-Không viết business logic lớn trong Controller.
+| Tầng Code | Trách nhiệm chính | Điều cấm |
+| :--- | :--- | :--- |
+| **Controller** | Nhận HTTP Request, validate dữ liệu DTO, gọi Service, trả `ApiResponse<T>`. | ❌ Không viết Business Logic trong Controller. |
+| **Service** | Xử lý toàn bộ kiểm tra nghiệp vụ, logic xử lý dữ liệu và giao dịch. | ❌ Không trả HTTP Status code trực tiếp. |
+| **Repository** | Thao tác CRUD và truy vấn Database qua JPA/JPQL. | ❌ Không đưa Business Logic vào Repository. |
+| **Common/DTO** | Chuẩn hóa định dạng phản hồi chung `ApiResponse<T>`. | ❌ Không tự tạo format Response riêng lẻ. |
 
 ---
 
-## 8. Service
+## 🗄️ 5. Cơ sở Dữ liệu & Git Workflow
 
-Service chứa business logic.
-
-Các kiểm tra nghiệp vụ phải đặt ở Service.
-
----
-
-## 9. Repository
-
-Repository chịu trách nhiệm truy cập database.
-
-Không đặt business logic trong Repository.
-
----
-
-## 10. API Response
-
-API sử dụng ApiResponse<T> thống nhất.
-
-Không tự tạo response format riêng cho từng module nếu không có lý do rõ ràng.
-
----
-
-## 11. Authentication và Authorization
-
-Authentication:
-- xác định người dùng là ai.
-
-Authorization:
-- xác định người dùng được phép làm gì.
-
-Không trộn hai khái niệm này.
-
----
-
-## 12. Package
-
-Code mới phải đặt đúng module.
-
-Không tạo class mới vào package cũ chỉ vì thuận tiện.
-
----
-
-## 13. Database
-
-Entity phải phản ánh đúng thiết kế database.
-
-Không tự ý đổi tên cột hoặc quan hệ ảnh hưởng module khác.
-
-Mọi thay đổi DB ảnh hưởng module khác phải báo cho nhóm.
-
----
-
-## 14. Quy tắc Git
-
-Mỗi thành viên làm trên branch riêng.
-
-Không sửa trực tiếp branch chính nếu chưa thống nhất.
-
-Commit phải mô tả rõ nội dung thay đổi.
-
-Ví dụ:
-
-feat(auth): thêm đăng nhập JWT
-
-feat(store): thêm tạo cửa hàng
-
-fix(order): sửa tính tổng đơn hàng
+* **Cơ sở Dữ liệu (Database)**:
+  * JPA Entity phải ánh xạ chính xác với Schema Database.
+  * Tuyệt đối không tự ý đổi tên cột, khóa chính/ngoại gây ảnh hưởng đến module khác. Mọi thay đổi DB phải được thông báo và đồng bộ với toàn nhóm.
+* **Quy trình làm việc Git**:
+  * Mỗi thành viên làm việc trên một **Feature Branch** riêng (ví dụ: `feat/auth-jwt`, `feat/store-setup`, `fix/order-calc`).
+  * Tuyệt đối **không push/commit trực tiếp lên nhánh `main` / `master`**.
+  * Commit Message phải tuân thủ chuẩn **Conventional Commits**:
+    * `feat(auth): thêm đăng nhập JWT`
+    * `feat(store): thêm chức năng tạo cửa hàng`
+    * `fix(order): sửa lỗi tính tổng tiền đơn hàng`

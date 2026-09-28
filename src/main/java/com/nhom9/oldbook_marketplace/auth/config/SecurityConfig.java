@@ -33,26 +33,25 @@ public class SecurityConfig {
                 // Phân quyền endpoint
                 .authorizeHttpRequests(authorize -> authorize
 
-                        // =========================
-                        // API xác thực - công khai
-                        // =========================
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
-                                "/api/auth/select-role"
+                                "/api/auth/select-role",
+                                "/api/auth/verify-register-otp",
+                                "/api/auth/resend-register-otp",
+                                "/api/auth/forgot-password",
+                                "/api/auth/resend-forgot-password-otp",
+                                "/api/auth/reset-password"
                         ).permitAll()
 
-                        // =========================
-                        // Khách vãng lai (Guest) có thể xem sách
-                        // =========================
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/sach/**"
                         ).permitAll()
 
-                        // =========================
-                        // Các API còn lại yêu cầu JWT
-                        // =========================
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("QUAN_TRI_VIEN")
+
                         .anyRequest().authenticated()
                 )
 

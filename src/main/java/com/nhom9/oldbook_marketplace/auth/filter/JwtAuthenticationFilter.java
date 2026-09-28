@@ -1,6 +1,12 @@
 package com.nhom9.oldbook_marketplace.auth.filter;
 
+import com.nhom9.oldbook_marketplace.auth.constant.TrangThaiTaiKhoan;
+import com.nhom9.oldbook_marketplace.auth.constant.VaiTro;
 import com.nhom9.oldbook_marketplace.auth.service.JwtService;
+import com.nhom9.oldbook_marketplace.auth.service.RevokedTokenService;
+import com.nhom9.oldbook_marketplace.auth.service.TaiKhoanTokenService;
+import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
+import com.nhom9.oldbook_marketplace.identity.repository.TaiKhoanRepository;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,15 +20,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
-
-import com.nhom9.oldbook_marketplace.auth.constant.VaiTro;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final RevokedTokenService revokedTokenService;
+    private final TaiKhoanTokenService taiKhoanTokenService;
+    private final TaiKhoanRepository taiKhoanRepository;
 
     @Override
     protected void doFilterInternal(
@@ -31,12 +39,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // 1. Lấy Authorization header
         String authorizationHeader =
                 request.getHeader("Authorization");
 
-        // Không có token → cho request đi tiếp
-        // SecurityConfig sẽ quyết định API đó public hay cần đăng nhập
         if (authorizationHeader == null
                 || !authorizationHeader.startsWith("Bearer ")) {
 
@@ -44,38 +49,103 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 2. Lấy JWT sau "Bearer "
         String token = authorizationHeader.substring(7);
 
         try {
 
-            // 3. Kiểm tra token
+            // 1. JWT còn hợp lệ về chữ ký + thời hạn
             if (!jwtService.isTokenValid(token)) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            // 4. Lấy thông tin từ JWT
             Claims claims = jwtService.extractClaims(token);
 
             Integer maND = claims.get("maND", Integer.class);
             Integer maTK = claims.get("maTK", Integer.class);
-            String vaiTro = claims.get("vaiTro", String.class);
 
-            // JWT chính thức phải có các thông tin này
-            if (maND == null || maTK == null || vaiTro == null) {
+            if (maND == null || maTK == null) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            VaiTro role = VaiTro.valueOf(vaiTro);
+            // 2. Token có bị logout hay chưa?
+            String jti = claims.getId();
+
+            if (jti == null
+                    || revokedTokenService.isRevoked(jti)) {
+
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 3. Lấy thời điểm tạo token
+            if (claims.getIssuedAt() == null) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            Instant issuedAt =
+                    claims.getIssuedAt().toInstant();
+
+            // 4. Token có bị vô hiệu do khóa tài khoản không?
+            if (taiKhoanTokenService.isTokenInvalid(
+                    maTK,
+                    issuedAt
+            )) {
+
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 5. Tìm tài khoản hiện tại trong DB
+            TaiKhoan taiKhoan =
+                    taiKhoanRepository.findById(maTK)
+                            .orElse(null);
+
+            if (taiKhoan == null) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 6. Đảm bảo tài khoản thuộc đúng người dùng
+            if (taiKhoan.getNguoiDung() == null
+                    || !maND.equals(
+                    taiKhoan.getNguoiDung().getMaND()
+            )) {
+
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 7. Tài khoản phải đang hoạt động
+            if (!TrangThaiTaiKhoan.HOAT_DONG.name()
+                    .equals(taiKhoan.getTrangThai())) {
+
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 8. QUAN TRỌNG:
+            // Không lấy vai trò từ JWT làm nguồn chính.
+            // Lấy vai trò hiện tại từ database.
+            String vaiTroHienTai =
+                    taiKhoan.getVaiTro();
+
+            VaiTro role =
+                    VaiTro.valueOf(vaiTroHienTai);
 
             SimpleGrantedAuthority authority =
                     new SimpleGrantedAuthority(
                             role.getAuthority()
                     );
 
-            // 6. Tạo Authentication
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             maND,
@@ -83,27 +153,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             List.of(authority)
                     );
 
-            // 7. Lưu thêm maTK và vaiTro để các tầng sau có thể lấy
             authentication.setDetails(
                     new AuthenticatedUserDetails(
                             maND,
                             maTK,
-                            vaiTro
+                            vaiTroHienTai
                     )
             );
 
-            // 8. Đưa Authentication vào SecurityContext
             SecurityContextHolder
                     .getContext()
                     .setAuthentication(authentication);
 
         } catch (Exception e) {
 
-            // Token lỗi → không xác thực người dùng
             SecurityContextHolder.clearContext();
         }
 
-        // 9. Cho request đi tiếp
         filterChain.doFilter(request, response);
     }
 
