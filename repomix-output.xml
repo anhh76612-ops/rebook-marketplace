@@ -51,6 +51,7 @@ The content is organized as follows:
 docs/
   API_RULES.md
   DEVELOPMENT_RULES.md
+  START_CODING_GUIDE.md
 gradle/
   wrapper/
     gradle-wrapper.jar
@@ -71,14 +72,22 @@ src/
               controller/
                 AuthController.java
               dto/
+                ChangePasswordRequest.java
                 LoginRequest.java
                 LoginResponse.java
                 RegisterRequest.java
+                ResendRegisterOtpRequest.java
                 SelectRoleRequest.java
+                VerifyRegisterOtpRequest.java
+              entity/
+                MaXacThuc.java
               filter/
                 JwtAuthenticationFilter.java
+              repository/
+                MaXacThucRepository.java
               service/
                 AuthService.java
+                EmailService.java
                 JwtService.java
             catalog/
               controller/
@@ -134,6 +143,7 @@ src/
                 NhatKyHeThong.java
             OldbookMarketplaceApplication.java
     resources/
+      application-test.properties
       application.properties
   test/
     java/
@@ -151,6 +161,212 @@ settings.gradle.kts
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ChangePasswordRequest.java">
+package com.nhom9.oldbook_marketplace.auth.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class ChangePasswordRequest {
+
+    @NotBlank(message = "Mật khẩu hiện tại không được để trống")
+    private String matKhauHienTai;
+
+    @NotBlank(message = "Mật khẩu mới không được để trống")
+    @Size(min = 6, message = "Mật khẩu mới phải có ít nhất 6 ký tự")
+    private String matKhauMoi;
+
+    @NotBlank(message = "Xác nhận mật khẩu mới không được để trống")
+    private String xacNhanMatKhauMoi;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ResendRegisterOtpRequest.java">
+package com.nhom9.oldbook_marketplace.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class ResendRegisterOtpRequest {
+
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    private String email;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/dto/VerifyRegisterOtpRequest.java">
+package com.nhom9.oldbook_marketplace.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class VerifyRegisterOtpRequest {
+
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    private String email;
+
+    @NotBlank(message = "Mã OTP không được để trống")
+    @Pattern(
+            regexp = "^\\d{6}$",
+            message = "Mã OTP phải gồm đúng 6 chữ số"
+    )
+    private String maOtp;
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/entity/MaXacThuc.java">
+package com.nhom9.oldbook_marketplace.auth.entity;
+
+import com.nhom9.oldbook_marketplace.identity.entity.NguoiDung;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "ma_xac_thuc")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MaXacThuc {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ma_xac_thuc")
+    private Integer maXacThuc;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "ma_nd",
+            referencedColumnName = "ma_nd",
+            nullable = false
+    )
+    private NguoiDung nguoiDung;
+
+    @Column(name = "ma_otp", nullable = false, length = 6)
+    private String maOtp;
+
+    @Column(name = "loai_xac_thuc", nullable = false, length = 30)
+    private String loaiXacThuc;
+
+    @Column(name = "thoi_gian_het_han", nullable = false)
+    private LocalDateTime thoiGianHetHan;
+
+    @Column(name = "da_su_dung", nullable = false)
+    private Boolean daSuDung;
+
+    @Column(name = "ngay_tao", updatable = false)
+    private LocalDateTime ngayTao;
+
+    @PrePersist
+    protected void onCreate() {
+        this.ngayTao = LocalDateTime.now();
+    }
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/repository/MaXacThucRepository.java">
+package com.nhom9.oldbook_marketplace.auth.repository;
+
+import com.nhom9.oldbook_marketplace.auth.entity.MaXacThuc;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface MaXacThucRepository
+        extends JpaRepository<MaXacThuc, Integer> {
+
+    Optional<MaXacThuc> findTopByNguoiDung_MaNDAndLoaiXacThucAndDaSuDungFalseOrderByNgayTaoDesc(
+            Integer maND,
+            String loaiXacThuc
+    );
+}
+</file>
+
+<file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/EmailService.java">
+package com.nhom9.oldbook_marketplace.auth.service;
+
+import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class EmailService {
+
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String emailNguoiGui;
+
+    /**
+     * Gửi OTP xác thực đăng ký tài khoản.
+     */
+    public void sendRegisterOtpEmail(
+            String emailNguoiNhan,
+            String maOtp
+    ) {
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setFrom(emailNguoiGui);
+        message.setTo(emailNguoiNhan);
+        message.setSubject("Mã OTP xác thực tài khoản - OldBook Marketplace");
+
+        message.setText(
+                "Xin chào,\n\n"
+                        + "Bạn vừa thực hiện đăng ký tài khoản tại OldBook Marketplace.\n\n"
+                        + "Mã OTP của bạn là: " + maOtp + "\n\n"
+                        + "Mã OTP có hiệu lực trong 5 phút.\n"
+                        + "Không chia sẻ mã OTP này với người khác.\n\n"
+                        + "Trân trọng,\n"
+                        + "OldBook Marketplace"
+        );
+
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            e.printStackTrace();
+            throw new BusinessException("Không thể gửi email OTP: " + e.getMessage());
+        }
+    }
+}
+</file>
+
+<file path="src/main/resources/application-test.properties">
+# ===============================
+# TEST EMAIL
+# ===============================
+
+spring.mail.host=localhost
+spring.mail.port=2525
+spring.mail.username=test@example.com
+spring.mail.password=test
+
+spring.mail.properties.mail.smtp.auth=false
+spring.mail.properties.mail.smtp.starttls.enable=false
+</file>
 
 <file path=".claude/helpers/graft-hooks.cjs">
 #!/usr/bin/env node
@@ -554,6 +770,12 @@ Authorization: Bearer <JWT>
 POST /api/auth/register
 POST /api/auth/login
 POST /api/auth/select-role
+POST /api/auth/verify-register-otp
+POST /api/auth/resend-register-otp
+
+API xem sách:
+GET /api/sach/**
+→ Cho phép Guest, không yêu cầu JWT.
 
 Các API khác mặc định yêu cầu JWT nếu SecurityConfig không khai báo public.
 
@@ -806,6 +1028,8 @@ Mỗi thành viên làm trên branch riêng.
 
 Không sửa trực tiếp branch chính nếu chưa thống nhất.
 
+Tạo feature branch cho nhóm chức năng.
+
 Commit phải mô tả rõ nội dung thay đổi.
 
 Ví dụ:
@@ -815,6 +1039,575 @@ feat(auth): thêm đăng nhập JWT
 feat(store): thêm tạo cửa hàng
 
 fix(order): sửa tính tổng đơn hàng
+</file>
+
+<file path="docs/START_CODING_GUIDE.md">
+# OldBook Marketplace - Start Coding Guide
+
+## 1. Mục đích
+
+File này là hướng dẫn chung cho thành viên trước khi bắt đầu code một chức năng/module mới.
+
+Mục tiêu:
+- Không tự ý tạo kiến trúc riêng cho từng module.
+- Không lặp lại Authentication, JWT, Response hoặc xử lý lỗi đã có.
+- Mỗi thành viên có thể phát triển module của mình độc lập nhưng vẫn tích hợp được với phần còn lại.
+
+---
+
+## 2. Việc bắt buộc trước khi code
+
+### Bước 1 - Cập nhật code mới nhất
+
+```bash
+git checkout main
+git pull
+```
+
+Sau đó tạo branch riêng:
+
+```bash
+git checkout -b feat/<ten-module>
+```
+
+Ví dụ:
+
+```bash
+git checkout -b feat/store
+```
+
+Không code trực tiếp trên `main`.
+
+### Bước 2 - Đọc tài liệu chung
+
+Đọc theo thứ tự:
+
+1. `docs/DEVELOPMENT_RULES.md`
+2. `docs/API_RULES.md`
+3. File yêu cầu/use case của chức năng mình phụ trách
+4. File repomix-output.xml
+
+Đặc biệt phải kiểm tra:
+- Vai trò trong `auth/constant/VaiTro.java`
+- Trạng thái trong `auth/constant/TrangThaiTaiKhoan.java`
+- JWT/Security trong `auth/config/` và `auth/filter/`
+- `ApiResponse` trong `common/dto/`
+- Exception chung trong `common/exception/`
+
+### Bước 3 - Chạy project trước khi sửa
+
+```bash
+.\gradlew.bat clean build
+.\gradlew.bat bootRun
+```
+
+Kiểm tra ứng dụng khởi động bình thường.
+
+Kiểm tra tối thiểu:
+- API public hoạt động.
+- API yêu cầu đăng nhập vẫn yêu cầu JWT.
+- Không có lỗi compile trước khi bắt đầu code.
+
+---
+
+## 3. Trước khi tạo class: đọc yêu cầu trước
+
+Mỗi chức năng phải bắt đầu từ yêu cầu/use case, không bắt đầu từ việc tạo Entity.
+
+Xác định trước:
+
+1. Actor nào sử dụng?
+2. Điều kiện trước khi thực hiện?
+3. Input là gì?
+4. Luồng chính là gì?
+5. Luồng ngoại lệ là gì?
+6. Output là gì?
+7. Có quyền đăng nhập hay role nào cần thiết?
+8. Dữ liệu nào cần đọc/ghi trong database?
+
+Ví dụ:
+
+```text
+Use Case: Tạo cửa hàng
+Actor: Người dùng đã đăng nhập
+Role: CHU_CUA_HANG / theo quy tắc nghiệp vụ đã thống nhất
+Input: thông tin cửa hàng
+Output: cửa hàng mới
+Database: cua_hang
+Authentication: JWT
+```
+
+Nếu yêu cầu chưa rõ, hỏi nhóm trước khi thay đổi DB hoặc API.
+
+---
+
+## 4. Quy trình triển khai một chức năng
+
+Thực hiện theo thứ tự:
+
+```text
+Yêu cầu / Use Case
+        ↓
+Thiết kế dữ liệu
+        ↓
+Entity
+        ↓
+Request / Response DTO
+        ↓
+Repository
+        ↓
+Service
+        ↓
+Controller
+        ↓
+Validation + Exception
+        ↓
+Test API
+        ↓
+Review + Commit
+```
+
+Không bỏ qua bước phân tích nghiệp vụ chỉ vì chức năng nhỏ.
+
+---
+
+## 5. Cấu trúc module
+
+Module mới đặt dưới:
+
+```text
+src/main/java/com/nhom9/oldbook_marketplace/<module>/
+```
+
+Cấu trúc chuẩn:
+
+```text
+<module>/
+├── controller/
+├── dto/
+├── entity/
+├── repository/
+└── service/
+```
+
+Không bắt buộc module nào cũng phải có đủ 5 package ngay từ đầu. Chỉ tạo những tầng thực sự cần.
+
+Module phản ánh nghiệp vụ, không phản ánh Actor.
+
+Ví dụ đúng:
+
+```text
+store/
+order/
+catalog/
+payment/
+shipping/
+```
+
+Không tạo:
+
+```text
+customer/
+seller/
+manager/
+admin/
+```
+
+chỉ vì đó là Actor.
+
+---
+
+## 6. Entity
+
+Chỉ tạo/sửa Entity sau khi đã kiểm tra thiết kế dữ liệu.
+
+Quy tắc:
+- Không tự ý đổi tên bảng/cột đang được module khác sử dụng.
+- Không tự ý thay đổi quan hệ giữa Entity.
+- Nếu thay đổi DB ảnh hưởng module khác, phải báo nhóm trước.
+- Không đặt business logic lớn trong Entity.
+
+Nếu một bảng đã tồn tại trong project, đọc Entity hiện tại trước khi tạo mới.
+
+---
+
+## 7. DTO
+
+Không dùng Entity làm request body nếu chức năng cần dữ liệu riêng.
+
+Ví dụ:
+
+```text
+CreateStoreRequest
+UpdateStoreRequest
+StoreResponse
+```
+
+DTO chịu trách nhiệm mô tả dữ liệu API.
+
+Validation đặt ở DTO khi phù hợp:
+
+```java
+@NotBlank
+@Email
+@Size
+@NotNull
+```
+
+---
+
+## 8. Repository
+
+Repository chỉ phụ trách truy cập database.
+
+Ví dụ:
+
+```java
+public interface SachRepository extends JpaRepository<Sach, Integer> {
+}
+```
+
+Không đặt business logic vào Repository.
+
+---
+
+## 9. Service
+
+Service là nơi xử lý business logic.
+
+Ví dụ:
+
+```text
+Controller
+   ↓
+Service
+   ├── kiểm tra quyền/nghiệp vụ
+   ├── kiểm tra điều kiện
+   ├── tính toán
+   └── gọi Repository
+```
+
+Các lỗi nghiệp vụ dùng:
+
+```java
+throw new BusinessException("Nội dung lỗi");
+```
+
+Không tự tạo một hệ thống exception riêng cho module nếu chưa thống nhất với nhóm.
+
+---
+
+## 10. Controller
+
+Controller chỉ nên:
+- Nhận HTTP request.
+- Validate input.
+- Gọi Service.
+- Trả response.
+
+Không viết business logic lớn trong Controller.
+
+Response ưu tiên dùng:
+
+```java
+ApiResponse<T>
+```
+
+Không tự tạo response format khác nếu không có lý do rõ ràng.
+
+---
+
+## 11. Exception dùng chung
+
+Project đã có:
+
+```text
+common/exception/
+├── BusinessException.java
+└── GlobalExceptionHandler.java
+```
+
+Sử dụng `BusinessException` cho lỗi nghiệp vụ.
+
+Ví dụ:
+
+```java
+if (store == null) {
+    throw new BusinessException("Cửa hàng không tồn tại");
+}
+```
+
+`GlobalExceptionHandler` chịu trách nhiệm chuyển exception thành `ApiResponse`.
+
+Không cần viết `try/catch` lặp lại ở từng Controller cho lỗi nghiệp vụ đã được handler chung xử lý.
+
+---
+
+## 12. Authentication và JWT
+
+Không tự tạo cơ chế đăng nhập riêng cho module.
+
+Authentication hiện tại dùng:
+
+```text
+Email + mật khẩu
+       ↓
+BCrypt
+       ↓
+JWT
+       ↓
+JwtAuthenticationFilter
+       ↓
+SecurityContext
+```
+
+JWT chính thức chứa:
+
+```text
+maND
+maTK
+vaiTro
+```
+
+Không xác định người dùng bằng `maND` do client tự gửi trong request nghiệp vụ.
+
+Khi cần biết người đang đăng nhập, lấy thông tin từ JWT/SecurityContext.
+
+---
+
+## 13. Role
+
+Role hợp lệ phải dùng `VaiTro.java`:
+
+```text
+KHACH_HANG
+CHU_CUA_HANG
+DON_VI_VAN_CHUYEN
+QUAN_LY
+QUAN_TRI_VIEN
+```
+
+Không tự tạo tên mới như:
+
+```text
+SELLER
+OWNER
+SHOP
+USER
+ADMINISTRATOR
+```
+
+Nếu cần thêm role, phải thống nhất với nhóm và sửa `VaiTro.java` trước.
+
+---
+
+## 14. Public API và API cần đăng nhập
+
+Khách vãng lai được phép xem dữ liệu sách công khai.
+
+Hiện tại SecurityConfig cho phép:
+
+```text
+GET /api/sach/**
+```
+
+mà không cần JWT.
+
+Các API nghiệp vụ khác mặc định yêu cầu JWT nếu chưa được khai báo `permitAll()`.
+
+Ví dụ:
+
+```text
+GET  /api/sach/**          → Public
+POST /api/order            → cần JWT
+GET  /api/profile          → cần JWT
+POST /api/store            → cần JWT
+```
+
+Quyền theo role chỉ thêm khi nghiệp vụ/API đã được xác định rõ.
+
+---
+
+## 15. Đặt API
+
+Base URL:
+
+```text
+/api
+```
+
+Module dùng prefix riêng:
+
+```text
+/api/auth
+/api/sach
+/api/store
+/api/order
+/api/payment
+/api/shipping
+/api/admin
+```
+
+HTTP method:
+
+```text
+GET     → lấy dữ liệu
+POST    → tạo dữ liệu / thực hiện nghiệp vụ
+PUT     → cập nhật toàn bộ
+PATCH   → cập nhật một phần
+DELETE  → xóa
+```
+
+Không đặt endpoint tùy ý khác convention của project.
+
+---
+
+## 16. Test sau khi code
+
+Mỗi chức năng tối thiểu phải test:
+
+### Happy path
+
+Luồng thành công bình thường.
+
+### Validation
+
+Dữ liệu thiếu/sai định dạng.
+
+### Business exception
+
+Vi phạm quy tắc nghiệp vụ.
+
+### Authentication
+
+Không có JWT khi API yêu cầu đăng nhập.
+
+### Authorization
+
+Đúng JWT nhưng sai role.
+
+### Database
+
+Kiểm tra dữ liệu thật được tạo/cập nhật/xóa đúng.
+
+Có thể sử dụng Postman và pgAdmin để test.
+
+---
+
+## 17. Thymeleaf
+
+Project có thể dùng Thymeleaf cho giao diện theo yêu cầu hệ thống.
+
+Backend module nên hoàn thiện nghiệp vụ/API trước.
+
+Chỉ tạo:
+
+```text
+resources/templates/
+```
+
+khi phần giao diện của chức năng được phân công.
+
+Không đưa business logic vào HTML/Thymeleaf.
+
+---
+
+## 18. Git trước khi tạo Pull Request
+
+Kiểm tra:
+
+```bash
+git status
+git diff
+gradlew.bat clean build
+```
+
+Sau đó commit:
+
+```bash
+git add .
+git commit -m "feat(<module>): <mo ta>"
+git push origin feat/<module>
+```
+
+Ví dụ:
+
+```text
+feat(store): them dang ky cua hang
+feat(order): them tao don hang
+feat(catalog): them tim kiem sach
+fix(auth): sua xu ly token het han
+```
+
+---
+
+## 19. Trước khi Merge
+
+Thành viên phải tự kiểm tra:
+
+- [ ] Đọc `DEVELOPMENT_RULES.md`.
+- [ ] Đọc `API_RULES.md`.
+- [ ] Không tự tạo Authentication/JWT riêng.
+- [ ] Không tự tạo role mới.
+- [ ] Không lấy `maND` từ request body để xác định người dùng.
+- [ ] Dùng `ApiResponse<T>`.
+- [ ] Dùng `BusinessException` cho lỗi nghiệp vụ.
+- [ ] Controller không chứa business logic lớn.
+- [ ] Repository không chứa business logic.
+- [ ] Test API bằng Postman.
+- [ ] Kiểm tra database bằng pgAdmin khi có thay đổi dữ liệu.
+- [ ] `gradlew.bat clean build` thành công.
+- [ ] Không có thay đổi ngoài phạm vi module nếu chưa thống nhất.
+
+---
+
+## 20. Khi cần sửa code dùng chung
+
+Các file sau được xem là code dùng chung:
+
+```text
+auth/config/*
+auth/constant/*
+auth/filter/*
+auth/service/JwtService.java
+common/dto/ApiResponse.java
+common/exception/*
+```
+
+Nếu cần sửa các file này:
+
+1. Báo nhóm trước.
+2. Nêu rõ lý do.
+3. Kiểm tra ảnh hưởng tới các module khác.
+4. Build/test toàn project trước khi merge.
+
+---
+
+## 21. Quy tắc cuối cùng
+
+Trước khi code, luôn trả lời được 5 câu:
+
+```text
+1. Tôi đang làm Use Case nào?
+2. Actor nào được phép thực hiện?
+3. Dữ liệu nào được đọc/ghi?
+4. API nào được tạo/sửa?
+5. Quy tắc nào của project tôi phải tuân theo?
+```
+
+Nếu chưa trả lời được 5 câu này thì chưa nên bắt đầu tạo code.
+</file>
+
+<file path="gradle/wrapper/gradle-wrapper.properties">
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.7.1-bin.zip
+networkTimeout=10000
+retries=0
+retryBackOffMs=500
+validateDistributionUrl=true
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
 </file>
 
 <file path="src/main/java/com/nhom9/oldbook_marketplace/auth/config/PasswordConfig.java">
@@ -877,7 +1670,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
-                                "/api/auth/select-role"
+                                "/api/auth/select-role",
+                                "/api/auth/verify-register-otp",
+                                "/api/auth/resend-register-otp"
                         ).permitAll()
 
                         // =========================
@@ -916,6 +1711,7 @@ package com.nhom9.oldbook_marketplace.auth.constant;
 
 public enum TrangThaiTaiKhoan {
 
+    CHO_XAC_THUC("Chờ xác thực"),
     HOAT_DONG("Hoạt động"),
     BI_KHOA("Bị khóa");
 
@@ -961,10 +1757,7 @@ public enum VaiTro {
 <file path="src/main/java/com/nhom9/oldbook_marketplace/auth/controller/AuthController.java">
 package com.nhom9.oldbook_marketplace.auth.controller;
 
-import com.nhom9.oldbook_marketplace.auth.dto.LoginRequest;
-import com.nhom9.oldbook_marketplace.auth.dto.LoginResponse;
-import com.nhom9.oldbook_marketplace.auth.dto.RegisterRequest;
-import com.nhom9.oldbook_marketplace.auth.dto.SelectRoleRequest;
+import com.nhom9.oldbook_marketplace.auth.dto.*;
 import com.nhom9.oldbook_marketplace.auth.service.AuthService;
 import com.nhom9.oldbook_marketplace.common.dto.ApiResponse;
 import jakarta.validation.Valid;
@@ -973,6 +1766,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.nhom9.oldbook_marketplace.auth.dto.ResendRegisterOtpRequest;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -1026,6 +1822,47 @@ public class AuthController {
         LoginResponse response = authService.selectRole(token, request.getMaTK());
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        Integer maND = (Integer) authentication.getPrincipal();
+
+        authService.changePassword(maND, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Đổi mật khẩu thành công")
+        );
+    }
+
+    @PostMapping("/verify-register-otp")
+    public ResponseEntity<ApiResponse<Void>> verifyRegisterOtp(
+            @Valid @RequestBody VerifyRegisterOtpRequest request
+    ) {
+
+        authService.verifyRegisterOtp(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Xác thực OTP thành công, tài khoản đã được kích hoạt"
+                )
+        );
+    }
+    @PostMapping("/resend-register-otp")
+    public ResponseEntity<ApiResponse<Void>> resendRegisterOtp(
+            @Valid @RequestBody ResendRegisterOtpRequest request) {
+
+        authService.resendRegisterOtp(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Đã gửi lại mã OTP")
+        );
     }
 }
 </file>
@@ -1100,6 +1937,7 @@ package com.nhom9.oldbook_marketplace.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -1113,7 +1951,11 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Mật khẩu không được để trống")
-    @Size(min = 6, message = "Mật khẩu phải có ít nhất 6 ký tự")
+    @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự")
+    @Pattern(
+            regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+            message = "Mật khẩu phải gồm ít nhất chữ và số"
+    )
     private String matKhau;
 
     @NotBlank(message = "Họ tên không được để trống")
@@ -1261,9 +2103,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 <file path="src/main/java/com/nhom9/oldbook_marketplace/auth/service/AuthService.java">
 package com.nhom9.oldbook_marketplace.auth.service;
 
-import com.nhom9.oldbook_marketplace.auth.dto.LoginRequest;
-import com.nhom9.oldbook_marketplace.auth.dto.LoginResponse;
-import com.nhom9.oldbook_marketplace.auth.dto.RegisterRequest;
+import com.nhom9.oldbook_marketplace.auth.dto.*;
+import com.nhom9.oldbook_marketplace.common.exception.BusinessException;
 import com.nhom9.oldbook_marketplace.identity.entity.NguoiDung;
 import com.nhom9.oldbook_marketplace.identity.entity.TaiKhoan;
 import com.nhom9.oldbook_marketplace.identity.repository.NguoiDungRepository;
@@ -1279,6 +2120,16 @@ import java.util.Locale;
 import com.nhom9.oldbook_marketplace.auth.constant.TrangThaiTaiKhoan;
 import com.nhom9.oldbook_marketplace.auth.constant.VaiTro;
 
+import com.nhom9.oldbook_marketplace.auth.entity.MaXacThuc;
+import com.nhom9.oldbook_marketplace.auth.repository.MaXacThucRepository;
+import java.time.LocalDateTime;
+import java.util.concurrent.ThreadLocalRandom;
+import com.nhom9.oldbook_marketplace.auth.service.EmailService;
+import com.nhom9.oldbook_marketplace.auth.dto.ResendRegisterOtpRequest;
+import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.concurrent.ThreadLocalRandom;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -1286,6 +2137,9 @@ public class AuthService {
     private final TaiKhoanRepository taiKhoanRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final MaXacThucRepository maXacThucRepository;
+    private static final String LOAI_XAC_THUC_DANG_KY = "DANG_KY";
+    private final EmailService emailService;
 
     /**
      * Đăng ký người dùng mới.
@@ -1305,24 +2159,21 @@ public class AuthService {
 
         // 1. Kiểm tra email đã tồn tại
         if (nguoiDungRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException(
-                    "Email đã được sử dụng"
-            );
+            throw new BusinessException("Email đã được sử dụng");
         }
 
         // 2. Kiểm tra số điện thoại nếu người dùng có nhập
         if (soDienThoai != null
                 && nguoiDungRepository.existsBySoDienThoai(soDienThoai)) {
 
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Số điện thoại đã được sử dụng"
             );
         }
 
         // 3. Mã hóa mật khẩu bằng BCrypt
-        String matKhauMaHoa = passwordEncoder.encode(
-                request.getMatKhau()
-        );
+        String matKhauMaHoa =
+                passwordEncoder.encode(request.getMatKhau());
 
         // 4. Tạo NguoiDung
         NguoiDung nguoiDung = NguoiDung.builder()
@@ -1334,16 +2185,214 @@ public class AuthService {
 
         nguoiDungRepository.save(nguoiDung);
 
-        // 5. Tự động tạo tài khoản Khách hàng
+        // 5. Tạo TaiKhoan nhưng CHƯA cho hoạt động
         TaiKhoan taiKhoan = TaiKhoan.builder()
                 .nguoiDung(nguoiDung)
                 .vaiTro(VaiTro.KHACH_HANG.name())
-                .trangThai(TrangThaiTaiKhoan.HOAT_DONG.name())
+                .trangThai(TrangThaiTaiKhoan.CHO_XAC_THUC.name())
                 .build();
 
         taiKhoanRepository.save(taiKhoan);
+
+        // 6. Tạo OTP 6 chữ số
+        String maOtp = String.format(
+                "%06d",
+                ThreadLocalRandom.current().nextInt(1_000_000)
+        );
+
+        // 7. Tạo thời gian hết hạn = 5 phút
+        LocalDateTime thoiGianHetHan =
+                LocalDateTime.now().plusMinutes(5);
+
+        // 8. Lưu OTP
+        MaXacThuc maXacThuc = MaXacThuc.builder()
+                .nguoiDung(nguoiDung)
+                .maOtp(maOtp)
+                .loaiXacThuc(LOAI_XAC_THUC_DANG_KY)
+                .thoiGianHetHan(thoiGianHetHan)
+                .daSuDung(false)
+                .build();
+
+        maXacThucRepository.save(maXacThuc);
+        emailService.sendRegisterOtpEmail(email, maOtp);
     }
 
+    @Transactional
+    public void resendRegisterOtp(ResendRegisterOtpRequest request) {
+
+        String email = normalizeEmail(request.getEmail());
+
+        // 1. Tìm người dùng
+        NguoiDung nguoiDung = nguoiDungRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new BusinessException("Email không tồn tại"));
+
+        // 2. Tìm tài khoản khách hàng
+        TaiKhoan taiKhoan = taiKhoanRepository
+                .findByNguoiDung_MaNDAndVaiTro(
+                        nguoiDung.getMaND(),
+                        VaiTro.KHACH_HANG.name()
+                )
+                .orElseThrow(() ->
+                        new BusinessException("Không tìm thấy tài khoản khách hàng"));
+
+        // 3. Tài khoản đã xác thực rồi thì không được resend
+        if (TrangThaiTaiKhoan.HOAT_DONG.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản đã được xác thực, không cần gửi lại OTP"
+            );
+        }
+
+        // 4. Chỉ tài khoản đang chờ xác thực mới được resend
+        if (!TrangThaiTaiKhoan.CHO_XAC_THUC.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản không ở trạng thái chờ xác thực"
+            );
+        }
+
+        // 5. Lấy OTP đăng ký gần nhất chưa sử dụng
+        Optional<MaXacThuc> otpHienTai =
+                maXacThucRepository
+                        .findTopByNguoiDung_MaNDAndLoaiXacThucAndDaSuDungFalseOrderByNgayTaoDesc(
+                                nguoiDung.getMaND(),
+                                LOAI_XAC_THUC_DANG_KY
+                        );
+
+        // 6. Nếu OTP hiện tại vẫn còn hạn thì không cho resend
+        if (otpHienTai.isPresent()) {
+
+            LocalDateTime now = LocalDateTime.now();
+
+            if (now.isBefore(otpHienTai.get().getThoiGianHetHan())) {
+
+                throw new BusinessException(
+                        "Mã OTP hiện tại vẫn còn hiệu lực, vui lòng chờ hết hạn"
+                );
+            }
+
+            // OTP cũ đã hết hạn → đánh dấu đã sử dụng
+            otpHienTai.get().setDaSuDung(true);
+            maXacThucRepository.save(otpHienTai.get());
+        }
+
+        // 7. Sinh OTP mới
+        String maOtpMoi = String.format(
+                "%06d",
+                ThreadLocalRandom.current().nextInt(1_000_000)
+        );
+
+        // 8. OTP mới có hiệu lực 5 phút
+        LocalDateTime thoiGianHetHan =
+                LocalDateTime.now().plusMinutes(5);
+
+        // 9. Lưu OTP mới
+        MaXacThuc maXacThucMoi = MaXacThuc.builder()
+                .nguoiDung(nguoiDung)
+                .maOtp(maOtpMoi)
+                .loaiXacThuc(LOAI_XAC_THUC_DANG_KY)
+                .thoiGianHetHan(thoiGianHetHan)
+                .daSuDung(false)
+                .build();
+
+        maXacThucRepository.save(maXacThucMoi);
+
+        // 10. Gửi OTP mới qua email
+        emailService.sendRegisterOtpEmail(
+                email,
+                maOtpMoi
+        );
+    }
+
+    @Transactional
+    public void verifyRegisterOtp(
+            VerifyRegisterOtpRequest request
+    ) {
+
+        String email = normalizeEmail(request.getEmail());
+
+        // 1. Tìm người dùng
+        NguoiDung nguoiDung = nguoiDungRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Email không tồn tại"
+                        )
+                );
+
+        // 2. Tìm tài khoản Khách hàng
+        TaiKhoan taiKhoan = taiKhoanRepository
+                .findByNguoiDung_MaNDAndVaiTro(
+                        nguoiDung.getMaND(),
+                        VaiTro.KHACH_HANG.name()
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Tài khoản không tồn tại"
+                        )
+                );
+
+        // 3. Kiểm tra trạng thái tài khoản
+        if (TrangThaiTaiKhoan.HOAT_DONG.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản đã được xác thực"
+            );
+        }
+
+        if (!TrangThaiTaiKhoan.CHO_XAC_THUC.name()
+                .equals(taiKhoan.getTrangThai())) {
+
+            throw new BusinessException(
+                    "Tài khoản không ở trạng thái chờ xác thực"
+            );
+        }
+
+        // 4. Lấy OTP mới nhất chưa sử dụng
+        MaXacThuc maXacThuc = maXacThucRepository
+                .findTopByNguoiDung_MaNDAndLoaiXacThucAndDaSuDungFalseOrderByNgayTaoDesc(
+                        nguoiDung.getMaND(),
+                        LOAI_XAC_THUC_DANG_KY
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "Không tìm thấy mã OTP"
+                        )
+                );
+
+        // 5. Kiểm tra hết hạn
+        if (LocalDateTime.now()
+                .isAfter(maXacThuc.getThoiGianHetHan())) {
+
+            throw new BusinessException(
+                    "Mã OTP đã hết hạn"
+            );
+        }
+
+        // 6. Kiểm tra mã OTP
+        if (!maXacThuc.getMaOtp()
+                .equals(request.getMaOtp())) {
+
+            throw new BusinessException(
+                    "Mã OTP không chính xác"
+            );
+        }
+
+        // 7. Kích hoạt tài khoản
+        taiKhoan.setTrangThai(
+                TrangThaiTaiKhoan.HOAT_DONG.name()
+        );
+
+        // 8. Đánh dấu OTP đã sử dụng
+        maXacThuc.setDaSuDung(true);
+
+        taiKhoanRepository.save(taiKhoan);
+        maXacThucRepository.save(maXacThuc);
+    }
     /**
      * Đăng nhập.
      */
@@ -1355,7 +2404,7 @@ public class AuthService {
         // 1. Tìm NguoiDung theo email
         NguoiDung nguoiDung = nguoiDungRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new BusinessException(
                                 "Email hoặc mật khẩu không chính xác"
                         )
                 );
@@ -1367,7 +2416,7 @@ public class AuthService {
         );
 
         if (!matKhauDung) {
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Email hoặc mật khẩu không chính xác"
             );
         }
@@ -1381,7 +2430,7 @@ public class AuthService {
                         );
 
         if (taiKhoans.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Người dùng không có tài khoản đang hoạt động"
             );
         }
@@ -1425,6 +2474,50 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
+    public void changePassword(
+            Integer maND,
+            ChangePasswordRequest request
+    ) {
+
+        // 1. Tìm người dùng
+        NguoiDung nguoiDung = nguoiDungRepository.findById(maND)
+                .orElseThrow(() ->
+                        new BusinessException("Người dùng không tồn tại")
+                );
+
+        // 2. Kiểm tra mật khẩu hiện tại
+        boolean matKhauDung = passwordEncoder.matches(
+                request.getMatKhauHienTai(),
+                nguoiDung.getMatKhau()
+        );
+
+        if (!matKhauDung) {
+            throw new BusinessException(
+                    "Mật khẩu hiện tại không chính xác"
+            );
+        }
+
+        // 3. Kiểm tra xác nhận mật khẩu mới
+        if (!request.getMatKhauMoi()
+                .equals(request.getXacNhanMatKhauMoi())) {
+
+            throw new BusinessException(
+                    "Xác nhận mật khẩu mới không khớp"
+            );
+        }
+
+        // 4. Mã hóa mật khẩu mới bằng BCrypt
+        String matKhauMoiMaHoa = passwordEncoder.encode(
+                request.getMatKhauMoi()
+        );
+
+        // 5. Cập nhật mật khẩu
+        nguoiDung.setMatKhau(matKhauMoiMaHoa);
+
+        nguoiDungRepository.save(nguoiDung);
+    }
+
     private List<LoginResponse.TaiKhoanResponse> toTaiKhoanResponse(
             List<TaiKhoan> taiKhoans
     ) {
@@ -1466,14 +2559,14 @@ public class AuthService {
 
         // 1. Kiểm tra JWT tạm
         if (!jwtService.isTokenValid(roleSelectionToken)) {
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Phiên chọn vai trò đã hết hạn"
             );
         }
 
         // 2. Token phải là token dùng cho chọn vai trò
         if (!jwtService.isRoleSelectionToken(roleSelectionToken)) {
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Token không hợp lệ"
             );
         }
@@ -1486,7 +2579,7 @@ public class AuthService {
         // 4. Tìm TaiKhoan
         TaiKhoan taiKhoan = taiKhoanRepository.findById(maTK)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new BusinessException(
                                 "Tài khoản không tồn tại"
                         )
                 );
@@ -1496,7 +2589,7 @@ public class AuthService {
                 .getMaND()
                 .equals(maND)) {
 
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Tài khoản không thuộc người dùng này"
             );
         }
@@ -1506,7 +2599,7 @@ public class AuthService {
                 taiKhoan.getTrangThai()
         )) {
 
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Tài khoản đang bị khóa hoặc không hoạt động"
             );
         }
@@ -2071,14 +3164,6 @@ public class GlobalExceptionHandler {
     // Bắt lỗi nghiệp vụ (BusinessException)
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
-        return ResponseEntity
-                .badRequest()
-                .body(ApiResponse.error(400, e.getMessage()));
-    }
-
-    // Tạm thời bắt luôn IllegalArgumentException vì AuthService của bạn đang ném lỗi này
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException e) {
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.error(400, e.getMessage()));
@@ -3162,69 +4247,21 @@ public class NhatKyHeThong {
 }
 </file>
 
-<file path="gradle/wrapper/gradle-wrapper.properties">
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.7.1-bin.zip
-networkTimeout=10000
-retries=0
-retryBackOffMs=500
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-</file>
-
 <file path="src/main/java/com/nhom9/oldbook_marketplace/OldbookMarketplaceApplication.java">
 package com.nhom9.oldbook_marketplace;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootApplication
-public class OldbookMarketplaceApplication {
+@SpringBootTest
+@ActiveProfiles("test")
+class OldbookMarketplaceApplicationTests {
 
-	public static void main(String[] args) {
-		SpringApplication.run(OldbookMarketplaceApplication.class, args);
+	@Test
+	void contextLoads() {
 	}
-
 }
-</file>
-
-<file path="src/main/resources/application.properties">
-# ===============================
-# C?U HÌNH K?T N?I POSTGRESQL
-# ===============================
-spring.datasource.url=jdbc:postgresql://localhost:5432/oldbook_db
-spring.datasource.username=postgres
-spring.datasource.password=060806
-spring.datasource.driver-class-name=org.postgresql.Driver
-
-# ===============================
-# C?U HÌNH JPA / HIBERNATE
-# ===============================
-# Cho phép Hibernate t? ??ng t?o/c?p nh?t b?ng d?a trên Entity Java
-spring.jpa.hibernate.ddl-auto=update
-
-# In ra console các câu l?nh SQL mà Hibernate t? ??ng sinh ra (R?t t?t ?? debug)
-spring.jpa.show-sql=true
-
-# Format l?i câu l?nh SQL trên console cho d? ??c
-spring.jpa.properties.hibernate.format_sql=true
-
-# Xác ??nh Dialect ?? Hibernate sinh code SQL chu?n xác nh?t cho PostgreSQL
-spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
-
-# ===============================
-# C?U HÌNH KHÁC
-# ===============================
-# Ch?y ?ng d?ng ? port 8080
-server.port=8080
-
-# ===============================
-# JWT
-# ===============================
-jwt.secret=bXlfb2xkYm9va19tYXJrZXRwbGFjZV9qd3Rfc2VjcmV0X2tleV8yMDI2
-jwt.expiration=86400000
 </file>
 
 <file path="src/test/java/com/nhom9/oldbook_marketplace/OldbookMarketplaceApplicationTests.java">
@@ -3247,62 +4284,6 @@ class OldbookMarketplaceApplicationTests {
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
-</file>
-
-<file path="build.gradle.kts">
-plugins {
-	java
-	id("org.springframework.boot") version "4.1.1"
-	id("io.spring.dependency-management") version "1.1.7"
-}
-
-group = "com.nhom9"
-version = "0.0.1-SNAPSHOT"
-
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
-}
-
-repositories {
-	mavenCentral()
-}
-
-dependencies {
-	// Spring
-	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter-validation")
-	implementation("org.springframework.boot:spring-boot-starter-webmvc")
-
-	// BCrypt - mã hóa và kiểm tra mật khẩu
-	implementation("org.springframework.security:spring-security-crypto")
-	implementation("org.springframework.boot:spring-boot-starter-security")
-
-	// JWT
-	implementation("io.jsonwebtoken:jjwt-api:0.13.0")
-	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
-	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
-
-	// Lombok
-	compileOnly("org.projectlombok:lombok")
-	annotationProcessor("org.projectlombok:lombok")
-
-	// PostgreSQL
-	runtimeOnly("org.postgresql:postgresql")
-
-	// Test
-	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-	testCompileOnly("org.projectlombok:lombok")
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	testAnnotationProcessor("org.projectlombok:lombok")
-}
-
-tasks.withType<Test> {
-	useJUnitPlatform()
-}
 </file>
 
 <file path="gradlew">
@@ -3645,6 +4626,60 @@ endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.grad
 rootProject.name = "oldbook-marketplace"
 </file>
 
+<file path="src/main/resources/application.properties">
+# ===============================
+# C?U HÌNH K?T N?I POSTGRESQL
+# ===============================
+spring.datasource.url=jdbc:postgresql://localhost:5432/oldbook_db
+spring.datasource.username=postgres
+spring.datasource.password=060806
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# ===============================
+# C?U HÌNH JPA / HIBERNATE
+# ===============================
+# Cho phép Hibernate t? ??ng t?o/c?p nh?t b?ng d?a trên Entity Java
+spring.jpa.hibernate.ddl-auto=update
+
+# In ra console các câu l?nh SQL mà Hibernate t? ??ng sinh ra (R?t t?t ?? debug)
+spring.jpa.show-sql=true
+
+# Format l?i câu l?nh SQL trên console cho d? ??c
+spring.jpa.properties.hibernate.format_sql=true
+
+# Xác ??nh Dialect ?? Hibernate sinh code SQL chu?n xác nh?t cho PostgreSQL
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+# ===============================
+# C?U HÌNH KHÁC
+# ===============================
+# Ch?y ?ng d?ng ? port 8080
+server.port=8080
+
+# ===============================
+# JWT
+# ===============================
+jwt.secret=bXlfb2xkYm9va19tYXJrZXRwbGFjZV9qd3Rfc2VjcmV0X2tleV8yMDI2
+jwt.expiration=86400000
+
+# ===============================
+# EMAIL / SMTP
+# ===============================
+
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=${MAIL_USERNAME}
+spring.mail.password=${MAIL_PASSWORD}
+
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# Timeout ?? tránh treo request khi SMTP không ph?n h?i
+spring.mail.properties.mail.smtp.connectiontimeout=5000
+spring.mail.properties.mail.smtp.timeout=5000
+spring.mail.properties.mail.smtp.writetimeout=5000
+</file>
+
 <file path=".gitignore">
 HELP.md
 .gradle
@@ -3686,6 +4721,66 @@ out/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+</file>
+
+<file path="build.gradle.kts">
+plugins {
+	java
+	id("org.springframework.boot") version "4.1.1"
+	id("io.spring.dependency-management") version "1.1.7"
+}
+
+group = "com.nhom9"
+version = "0.0.1-SNAPSHOT"
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Spring
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+
+	// BCrypt - mã hóa và kiểm tra mật khẩu
+	implementation("org.springframework.security:spring-security-crypto")
+	implementation("org.springframework.boot:spring-boot-starter-security")
+
+	// Email
+	implementation("org.springframework.boot:spring-boot-starter-mail")
+
+	// JWT
+	implementation("io.jsonwebtoken:jjwt-api:0.13.0")
+	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
+	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
+
+	// Lombok
+	compileOnly("org.projectlombok:lombok")
+	annotationProcessor("org.projectlombok:lombok")
+
+	// PostgreSQL
+	runtimeOnly("org.postgresql:postgresql")
+
+	// Test
+	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testCompileOnly("org.projectlombok:lombok")
+	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	testAnnotationProcessor("org.projectlombok:lombok")
+}
+
+tasks.withType<Test> {
+	useJUnitPlatform()
+}
 </file>
 
 </files>

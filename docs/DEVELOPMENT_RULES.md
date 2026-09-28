@@ -58,7 +58,7 @@ Nếu cần thêm role phải thống nhất với nhóm và cập nhật VaiTro
 ## 4. Trạng thái tài khoản
 
 Các trạng thái hợp lệ:
-
+- CHO_XAC_THUC
 - HOAT_DONG
 - BI_KHOA
 
@@ -162,6 +162,8 @@ Mọi thay đổi DB ảnh hưởng module khác phải báo cho nhóm.
 Mỗi thành viên làm trên branch riêng.
 
 Không sửa trực tiếp branch chính nếu chưa thống nhất.
+
+Tạo feature branch cho nhóm chức năng.
 
 Commit phải mô tả rõ nội dung thay đổi.
 

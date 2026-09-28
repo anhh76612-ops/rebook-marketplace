@@ -19,6 +19,12 @@ Authorization: Bearer <JWT>
 POST /api/auth/register
 POST /api/auth/login
 POST /api/auth/select-role
+POST /api/auth/verify-register-otp
+POST /api/auth/resend-register-otp
+
+API xem sách:
+GET /api/sach/**
+→ Cho phép Guest, không yêu cầu JWT.
 
 Các API khác mặc định yêu cầu JWT nếu SecurityConfig không khai báo public.
 

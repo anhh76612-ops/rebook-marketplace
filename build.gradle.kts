@@ -27,6 +27,9 @@ dependencies {
 	implementation("org.springframework.security:spring-security-crypto")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 
+	// Email
+	implementation("org.springframework.boot:spring-boot-starter-mail")
+
 	// JWT
 	implementation("io.jsonwebtoken:jjwt-api:0.13.0")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
@@ -40,6 +43,7 @@ dependencies {
 	runtimeOnly("org.postgresql:postgresql")
 
 	// Test
+	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
