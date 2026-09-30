@@ -33,6 +33,17 @@ public class SecurityConfig {
                 // Phân quyền endpoint
                 .authorizeHttpRequests(authorize -> authorize
 
+                        // MỞ KHÓA CHO GIAO DIỆN WEB (THÊM KHỐI NÀY)
+                        .requestMatchers(
+                                "/",
+                                "/books/**",
+                                "/login",
+                                "/register",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**"
+                        ).permitAll()
+
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
