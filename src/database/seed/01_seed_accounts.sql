@@ -1,6 +1,6 @@
 -- =========================================================
 -- OLD BOOK MARKETPLACE
--- Seed tài khoản phát triển
+-- Seed tài khoản phát triển (Dành cho SQL Server)
 --
 -- Admin:
 --   email: admin@oldbook.local
@@ -13,13 +13,15 @@
 -- CHỈ DÙNG CHO MÔI TRƯỜNG PHÁT TRIỂN / TEST
 -- =========================================================
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-
 -- =========================================================
 -- 1. TẠO NGƯỜI DÙNG ADMIN
 -- =========================================================
-
+IF NOT EXISTS (
+    SELECT 1
+    FROM nguoi_dung
+    WHERE email = N'admin@oldbook.local'
+)
+BEGIN
 INSERT INTO nguoi_dung (
     email,
     mat_khau,
@@ -28,19 +30,19 @@ INSERT INTO nguoi_dung (
     ngay_tao
 )
 VALUES (
-           'admin@oldbook.local',
-           crypt('Admin@12345', gen_salt('bf', 10)),
-           'Quản trị viên hệ thống',
-           '0900000001',
-           CURRENT_TIMESTAMP
-       )
-    ON CONFLICT (email) DO NOTHING;
-
+           N'admin@oldbook.local',
+           -- Mật khẩu gốc: Admin@12345
+           N'$2a$10$ThayBangMaHashBcryptTuJavaCuaBan', -- Vui lòng thay bằng mã sinh ra từ Java!
+           N'Quản trị viên hệ thống',
+           N'0900000001',
+           SYSDATETIME()
+       );
+END
+GO
 
 -- =========================================================
 -- 2. TẠO TÀI KHOẢN ADMIN
 -- =========================================================
-
 INSERT INTO tai_khoan (
     ma_nd,
     vai_tro,
@@ -51,16 +53,25 @@ SELECT
     nd.ma_nd,
     'QUAN_TRI_VIEN',
     'HOAT_DONG',
-    CURRENT_TIMESTAMP
+    SYSDATETIME()
 FROM nguoi_dung nd
-WHERE nd.email = 'admin@oldbook.local'
-    ON CONFLICT (ma_nd, vai_tro) DO NOTHING;
-
+WHERE nd.email = N'admin@oldbook.local'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM tai_khoan tk
+    WHERE tk.ma_nd = nd.ma_nd AND tk.vai_tro = 'QUAN_TRI_VIEN'
+);
+GO
 
 -- =========================================================
 -- 3. TẠO NGƯỜI DÙNG MANAGER
 -- =========================================================
-
+IF NOT EXISTS (
+    SELECT 1
+    FROM nguoi_dung
+    WHERE email = N'manager@oldbook.local'
+)
+BEGIN
 INSERT INTO nguoi_dung (
     email,
     mat_khau,
@@ -69,19 +80,19 @@ INSERT INTO nguoi_dung (
     ngay_tao
 )
 VALUES (
-           'manager@oldbook.local',
-           crypt('Manager@12345', gen_salt('bf', 10)),
-           'Quản lý cửa hàng',
-           '0900000002',
-           CURRENT_TIMESTAMP
-       )
-    ON CONFLICT (email) DO NOTHING;
-
+           N'manager@oldbook.local',
+           -- Mật khẩu gốc: Manager@12345
+           N'$2a$10$ThayBangMaHashBcryptTuJavaCuaBan', -- Vui lòng thay bằng mã sinh ra từ Java!
+           N'Quản lý cửa hàng',
+           N'0900000002',
+           SYSDATETIME()
+       );
+END
+GO
 
 -- =========================================================
 -- 4. TẠO TÀI KHOẢN MANAGER
 -- =========================================================
-
 INSERT INTO tai_khoan (
     ma_nd,
     vai_tro,
@@ -92,16 +103,19 @@ SELECT
     nd.ma_nd,
     'QUAN_LY',
     'HOAT_DONG',
-    CURRENT_TIMESTAMP
+    SYSDATETIME()
 FROM nguoi_dung nd
-WHERE nd.email = 'manager@oldbook.local'
-    ON CONFLICT (ma_nd, vai_tro) DO NOTHING;
-
+WHERE nd.email = N'manager@oldbook.local'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM tai_khoan tk
+    WHERE tk.ma_nd = nd.ma_nd AND tk.vai_tro = 'QUAN_LY'
+);
+GO
 
 -- =========================================================
--- 5. KIỂM TRA
+-- 5. KIỂM TRA DỮ LIỆU SEED
 -- =========================================================
-
 SELECT
     nd.ma_nd,
     nd.email,
@@ -113,7 +127,8 @@ FROM nguoi_dung nd
          JOIN tai_khoan tk
               ON tk.ma_nd = nd.ma_nd
 WHERE nd.email IN (
-                   'admin@oldbook.local',
-                   'manager@oldbook.local'
+                   N'admin@oldbook.local',
+                   N'manager@oldbook.local'
     )
 ORDER BY tk.ma_tk;
+GO
