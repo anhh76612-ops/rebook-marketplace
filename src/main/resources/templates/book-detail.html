@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Chi tiết sách')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a th:href="@{/}">Trang chủ</a></li>
+      <li class="breadcrumb-item"><a th:href="@{/sach(category=${book.category})}" th:text="${book.category}">Danh mục</a></li>
+      <li class="breadcrumb-item active" th:text="${book.title}">Sách</li>
+    </ol>
+  </nav>
+
+  <div class="panel">
+    <div class="row g-4">
+      <div class="col-md-4 col-lg-3">
+        <div class="big-cover cover" th:classappend="'c' + ${book.id % 6}">
+          <span class="cover-title fs-4" th:text="${book.title}">Tên sách</span>
+        </div>
+      </div>
+      <div class="col-md-8 col-lg-9">
+        <h1 class="h3 fw-bold" th:text="${book.title}">Tên sách</h1>
+        <p class="text-muted mb-1">Tác giả: <strong th:text="${book.author}">Tác giả</strong></p>
+        <p class="text-muted mb-1">Danh mục: <a th:href="@{/sach(category=${book.category})}" th:text="${book.category}">Danh mục</a></p>
+        <p class="shop-line mb-1"><i class="bi bi-shop"></i> Cửa hàng:
+          <a th:href="@{/sach}" th:text="${ {'Hiệu sách Minh Thư','Nhà sách Ngọc Tuyên','Hiệu sách Châu Dưỡng','Nhà sách Hoàng Anh'}[book.id % 4] }">Cửa hàng</a></p>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="condition-badge" th:text="${'✓ Tình trạng ' + (95 - (book.id % 5) * 5) + '% mới'}">Tình trạng</span>
+          <span class="rating-stars small"><i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1,4)}"></i><i class="bi bi-star"></i> (12 đánh giá)</span>
+        </div>
+        <hr>
+        <p class="mb-1" th:if="${book.coverPrice != null}">Giá bìa:
+          <s class="text-muted" th:text="${#numbers.formatInteger(book.coverPrice, 1, 'COMMA')} + ' VNĐ'">0</s></p>
+        <p class="mb-1">Giá bán:
+          <strong class="price fs-4" th:text="${#numbers.formatInteger(book.ebookPrice, 1, 'COMMA')} + ' VNĐ'">0</strong></p>
+        <p class="mb-1" th:if="${book.setPrice != null}">Giá khi mua cả bộ:
+          <strong class="price" th:text="${#numbers.formatInteger(book.setPrice, 1, 'COMMA')} + ' VNĐ'">0</strong></p>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <a th:href="@{/gio-hang}" class="btn btn-accent btn-lg"><i class="bi bi-cart-plus me-1"></i>Thêm vào giỏ</a>
+          <a th:href="@{/thanh-toan}" class="btn btn-outline-navy btn-lg">Mua ngay</a>
+          <button type="button" class="btn wishlist-btn btn-lg" onclick="this.classList.toggle('active')"><i class="bi bi-heart me-1"></i>Yêu thích</button>
+        </div>
+        <h2 class="h5 mt-4">Giới thiệu sách</h2>
+        <p th:text="${book.description}">Mô tả</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Đánh giá sản phẩm -->
+  <div class="section-title"><h2>Đánh giá từ khách hàng</h2></div>
+  <div class="panel">
+    <div class="review-card">
+      <div class="d-flex justify-content-between">
+        <strong>Nguyễn Ngọc M.</strong>
+        <span class="rating-stars"><i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1,5)}"></i></span>
+      </div>
+      <p class="mb-0 mt-1 text-muted">Sách còn rất mới, đóng gói cẩn thận, giao nhanh. Rất đáng mua!</p>
+    </div>
+    <div class="review-card mb-0">
+      <div class="d-flex justify-content-between">
+        <strong>Trần Ngọc T.</strong>
+        <span class="rating-stars"><i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1,4)}"></i><i class="bi bi-star"></i></span>
+      </div>
+      <p class="mb-0 mt-1 text-muted">Nội dung tốt, tình trạng đúng như mô tả của cửa hàng.</p>
+    </div>
+  </div>
+
+  <div class="section-title" th:if="${!related.isEmpty()}"><h2>Sách cùng danh mục</h2></div>
+  <div class="row g-3">
+    <div class="col-6 col-md-3" th:each="b : ${related}">
+      <div th:replace="~{fragments/layout :: card(${b})}"></div>
+    </div>
+  </div>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

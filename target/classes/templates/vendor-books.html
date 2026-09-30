@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Quản lý sách cũ')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container py-4">
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+      <h1 class="h4 fw-bold mb-1">Quản lý sách cũ</h1>
+      <p class="text-muted mb-0">Cửa hàng: Hiệu sách Minh Thư</p>
+    </div>
+    <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#bookModal" onclick="openAddModal()">
+      <i class="bi bi-plus-lg me-1"></i>Thêm sách mới
+    </button>
+  </div>
+
+  <div class="panel">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr class="text-muted small text-uppercase">
+            <th>Sách</th>
+            <th>Giá bán</th>
+            <th>Số lượng</th>
+            <th>Độ mới</th>
+            <th>Duyệt</th>
+            <th>Trạng thái bán</th>
+            <th class="text-end">Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dòng mẫu 1 -->
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="mini-cover c1"></div>
+                <div>
+                  <div class="fw-semibold">Nhà Giả Kim</div>
+                  <div class="text-muted small">Paulo Coelho</div>
+                </div>
+              </div>
+            </td>
+            <td>65.000 VNĐ</td>
+            <td>3</td>
+            <td>90% mới</td>
+            <td><span class="badge text-bg-success">Đã duyệt</span></td>
+            <td>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" checked>
+              </div>
+            </td>
+            <td class="text-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#bookModal" onclick="openEditModal('Nhà Giả Kim')"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+          <!-- Dòng mẫu 2 -->
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="mini-cover c2"></div>
+                <div>
+                  <div class="fw-semibold">Đắc Nhân Tâm</div>
+                  <div class="text-muted small">Dale Carnegie</div>
+                </div>
+              </div>
+            </td>
+            <td>50.000 VNĐ</td>
+            <td>1</td>
+            <td>80% mới</td>
+            <td><span class="badge text-bg-warning">Chờ duyệt</span></td>
+            <td>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch">
+              </div>
+            </td>
+            <td class="text-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#bookModal" onclick="openEditModal('Đắc Nhân Tâm')"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+          <!-- Dòng mẫu 3 -->
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="mini-cover c3"></div>
+                <div>
+                  <div class="fw-semibold">Tuổi Trẻ Đáng Giá Bao Nhiêu</div>
+                  <div class="text-muted small">Rosie Nguyễn</div>
+                </div>
+              </div>
+            </td>
+            <td>45.000 VNĐ</td>
+            <td>2</td>
+            <td>95% mới</td>
+            <td><span class="badge text-bg-success">Đã duyệt</span></td>
+            <td>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" checked>
+              </div>
+            </td>
+            <td class="text-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#bookModal" onclick="openEditModal('Tuổi Trẻ Đáng Giá Bao Nhiêu')"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- Modal Thêm / Sửa sách -->
+<div class="modal fade" id="bookModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bookModalTitle">Thêm sách mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">Tên sách</label>
+              <input type="text" class="form-control" id="fieldTitle" placeholder="Nhập tên sách">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Tác giả</label>
+              <input type="text" class="form-control" placeholder="Nhập tên tác giả">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Nhà xuất bản</label>
+              <input type="text" class="form-control" placeholder="Nhập nhà xuất bản">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Năm xuất bản</label>
+              <input type="number" class="form-control" placeholder="VD: 2020">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Thể loại</label>
+              <select class="form-select">
+                <option>Kinh tế</option>
+                <option>Văn học</option>
+                <option>Lịch sử</option>
+                <option>Kỹ năng</option>
+                <option>Thiếu nhi</option>
+                <option>Bộ sách</option>
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Số lượng</label>
+              <input type="number" class="form-control" placeholder="VD: 1">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Giá bìa</label>
+              <input type="number" class="form-control" placeholder="VNĐ">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Giá bán</label>
+              <input type="number" class="form-control" placeholder="VNĐ">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">% độ mới</label>
+              <input type="number" class="form-control" min="0" max="100" placeholder="VD: 90">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Tình trạng thực tế</label>
+              <input type="text" class="form-control" placeholder="VD: Có vài vết gấp bìa">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Mô tả</label>
+              <textarea class="form-control" rows="3" placeholder="Mô tả chi tiết về sách"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Hình ảnh sản phẩm</label>
+              <input type="file" class="form-control" multiple>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-accent" data-bs-dismiss="modal">Lưu sách</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Xóa sách</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Bạn có chắc chắn muốn xóa cuốn sách này khỏi cửa hàng không?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Xóa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script>
+  function openAddModal() {
+    document.getElementById('bookModalTitle').textContent = 'Thêm sách mới';
+  }
+  function openEditModal(title) {
+    document.getElementById('bookModalTitle').textContent = 'Sửa: ' + title;
+    document.getElementById('fieldTitle').value = title;
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Trang chủ')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main>
+  <!-- Banner -->
+  <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner">
+      <div class="carousel-item active hero-slide hero-1">
+        <div class="container">
+          <h2>Sách hay, sách điện tử từ các nhà xuất bản</h2>
+          <p>Ebook chỉ từ 5,000 VNĐ. Mua một lần, đọc trên mọi thiết bị.</p>
+          <a th:href="@{/sach}" class="btn btn-accent btn-lg">Xem sách mới</a>
+        </div>
+      </div>
+      <div class="carousel-item hero-slide hero-2">
+        <div class="container">
+          <h2>Mua trọn bộ, giá ebook rẻ hơn mua lẻ</h2>
+          <p>Các bộ sách kinh tế, lịch sử, văn học được giảm 10% khi mua cả bộ.</p>
+          <a th:href="@{/sach(category='Bộ sách')}" class="btn btn-accent btn-lg">Xem bộ sách</a>
+        </div>
+      </div>
+      <div class="carousel-item hero-slide hero-3">
+        <div class="container">
+          <h2>12345</h2>
+          <p>abcde.</p>
+        </div>
+      </div>
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
+    <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+  </div>
+
+  <div class="container">
+    <!-- Ebook giá rẻ -->
+    <div class="section-title">
+      <h2>Ebook giá rẻ</h2>
+      <a th:href="@{/sach(category='Thiếu nhi')}">Xem tất cả</a>
+    </div>
+    <div class="row g-3">
+      <div class="col-6 col-md-3" th:each="b : ${cheapBooks}">
+        <div th:replace="~{fragments/layout :: card(${b})}"></div>
+      </div>
+    </div>
+
+
+    <div id="phan-mem" class="promo promo-app mt-5 d-md-flex justify-content-between align-items-center">
+      <div>
+        <h3 class="fw-bold mb-1">123</h3>
+        <p class="mb-3 mb-md-0">456</p>
+      </div>
+    </div>
+
+    <!-- Sách mới -->
+    <div class="section-title">
+      <h2>Sách mới</h2>
+      <a th:href="@{/sach}">Xem tất cả</a>
+    </div>
+    <div class="row g-3">
+      <div class="col-6 col-md-4 col-lg-3" th:each="b : ${newBooks}">
+        <div th:replace="~{fragments/layout :: card(${b})}"></div>
+      </div>
+    </div>
+    <div class="text-center mt-4">
+      <a th:href="@{/sach}" class="btn btn-outline-navy px-4">Xem thêm sách</a>
+    </div>
+
+    <!-- Bộ sách -->
+    <div class="section-title">
+      <h2>Bộ sách</h2>
+      <a th:href="@{/sach(category='Bộ sách')}">Xem tất cả</a>
+    </div>
+    <div class="row g-3">
+      <div class="col-6 col-md-4 col-lg-2" th:each="b : ${bookSets}">
+        <div th:replace="~{fragments/layout :: card(${b})}"></div>
+      </div>
+    </div>
+
+    <!-- Đăng ký nhận tin -->
+    <div class="promo promo-news mt-5">
+      <div class="row align-items-center g-3">
+        <div class="col-md-6">
+          <h3 class="fw-bold text-dark mb-1">Đăng ký nhận tin</h3>
+          <p class="text-muted mb-0">Nhận thông báo sách mới và ưu đãi qua email.</p>
+        </div>
+        <div class="col-md-6">
+          <form class="d-flex gap-2" th:action="@{/dang-ky}" method="get">
+            <input type="email" class="form-control" placeholder="Nhập email của bạn">
+            <button type="submit" class="btn btn-accent text-nowrap">Đăng ký</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  
+  </div>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

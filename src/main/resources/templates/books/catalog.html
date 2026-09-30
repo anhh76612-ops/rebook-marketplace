@@ -1,38 +1,108 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trang Chủ - OldBook</title>
-    <!-- Nhúng CSS của Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/style.css}" rel="stylesheet">
 </head>
-<body class="bg-light">
+<body>
 
 <!-- Chèn Header từ file header.html -->
 <div th:replace="~{fragments/header :: header}"></div>
 
-<div class="container mt-4 min-vh-100">
-    <h2 class="mb-4">Sách nổi bật</h2>
+<main>
+    <!-- Banner -->
+    <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-inner">
+            <div class="carousel-item active hero-slide hero-1">
+                <div class="container">
+                    <h2>Sách cũ chất lượng, giá tốt từ nhiều cửa hàng</h2>
+                    <p>Hàng nghìn đầu sách đã qua sử dụng, còn mới đến 95%, giao tận nhà.</p>
+                    <a th:href="@{/books}" class="btn btn-accent btn-lg">Xem sách mới</a>
+                </div>
+            </div>
+            <div class="carousel-item hero-slide hero-2">
+                <div class="container">
+                    <h2>Mua trọn bộ, tiết kiệm hơn mua lẻ</h2>
+                    <p>Các bộ sách kinh tế, lịch sử, văn học được giảm giá khi mua cả bộ.</p>
+                    <a th:href="@{/books(category='Bộ sách')}" class="btn btn-accent btn-lg">Xem bộ sách</a>
+                </div>
+            </div>
+            <div class="carousel-item hero-slide hero-3">
+                <div class="container">
+                    <h2>Bán sách cũ của bạn cùng OldBook</h2>
+                    <p>Mở cửa hàng miễn phí, đăng bán sách chỉ trong vài phút.</p>
+                    <a th:href="@{/register}" class="btn btn-accent btn-lg">Đăng ký ngay</a>
+                </div>
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+        </button>
+    </div>
 
-    <div class="row g-4">
-        <!-- Khung card hiển thị sách mẫu (Chưa có data thực) -->
-        <div class="col-md-3">
-            <div class="card h-100 shadow-sm">
-                <img src="https://via.placeholder.com/150x200" class="card-img-top" alt="Ảnh sách">
-                <div class="card-body">
-                    <h6 class="card-title">Tên sách mẫu 1</h6>
-                    <p class="card-text text-danger fw-bold">50.000 đ</p>
-                    <a href="#" class="btn btn-outline-primary btn-sm w-100">Xem chi tiết</a>
+    <div class="container">
+        <!-- Sách nổi bật -->
+        <div class="section-title">
+            <h2>Sách nổi bật</h2>
+            <a th:href="@{/books}">Xem tất cả</a>
+        </div>
+
+        <div class="row g-3">
+            <!-- Thẻ sách mẫu (Chưa có data thực) - khi có dữ liệu, thay #numbers.sequence bằng danh sách sách từ controller -->
+            <div class="col-6 col-md-4 col-lg-3" th:each="i : ${#numbers.sequence(1, 8)}">
+                <div class="book-card">
+                    <a th:href="@{/books}" class="cover" th:classappend="'c' + ${i % 6}">
+                        <button type="button" class="wishlist-mini" title="Thêm vào yêu thích" onclick="event.preventDefault()">
+                            <i class="bi bi-heart"></i>
+                        </button>
+                        <span class="cover-title" th:text="'Tên sách mẫu ' + ${i}">Tên sách mẫu</span>
+                    </a>
+                    <div class="book-info">
+                        <span class="condition-badge mb-1" th:text="${'✓ ' + (95 - (i % 5) * 5) + '% mới'}">✓ 90% mới</span>
+                        <h3 class="book-title"><a th:href="@{/books}" th:text="'Tên sách mẫu ' + ${i}">Tên sách mẫu</a></h3>
+                        <p class="book-author">Tác giả: Đang cập nhật</p>
+                        <p class="shop-line mb-1"><i class="bi bi-shop"></i> <a th:href="@{/books}">Cửa hàng mẫu</a></p>
+                        <p class="price-line">Giá bìa:
+                            <span th:text="${#numbers.formatInteger(80000 + i * 10000, 1, 'COMMA')} + ' VNĐ'">100,000 VNĐ</span></p>
+                        <p class="price-line">Giá bán:
+                            <strong class="price" th:text="${#numbers.formatInteger(30000 + i * 5000, 1, 'COMMA')} + ' VNĐ'">50,000 VNĐ</strong></p>
+                        <a th:href="@{/cart}" class="btn btn-accent btn-sm w-100 mt-2"><i class="bi bi-cart-plus me-1"></i>Thêm vào giỏ</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a th:href="@{/books}" class="btn btn-outline-navy px-4">Xem thêm sách</a>
+        </div>
+
+        <!-- Đăng ký nhận tin -->
+        <div class="promo promo-news mt-5">
+            <div class="row align-items-center g-3">
+                <div class="col-md-6">
+                    <h3 class="fw-bold text-dark mb-1">Đăng ký nhận tin</h3>
+                    <p class="text-muted mb-0">Nhận thông báo sách mới và ưu đãi qua email.</p>
+                </div>
+                <div class="col-md-6">
+                    <form class="d-flex gap-2" th:action="@{/register}" method="get">
+                        <input type="email" class="form-control" placeholder="Nhập email của bạn">
+                        <button type="submit" class="btn btn-accent text-nowrap">Đăng ký</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</main>
 
-<!-- Chèn Footer từ file footer.html -->
+<!-- Chèn Footer từ file footer.html (đã gồm Bootstrap 5 JS) -->
 <div th:replace="~{fragments/footer :: footer}"></div>
-
-<!-- Nhúng JS của Bootstrap 5 -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
