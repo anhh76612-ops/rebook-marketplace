@@ -18,21 +18,34 @@
         <h1 class="h4 fw-bold text-center mb-1">Đăng nhập</h1>
         <p class="text-center text-muted mb-4">Đăng nhập để mua bán sách và theo dõi đơn hàng.</p>
 
-        <!-- Form đăng nhập (Chưa gắn API) -->
-        <form>
+        <div id="loginNotice" class="alert alert-info py-2 d-none" role="alert">
+            Vui lòng đăng nhập để tiếp tục.
+        </div>
+
+        <form id="loginForm" novalidate>
             <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" placeholder="Nhập email">
+                <label for="loginEmail" class="form-label">Email</label>
+                <input id="loginEmail" type="email" class="form-control" placeholder="Nhập email"
+                       autocomplete="username" required>
             </div>
             <div class="mb-3">
-                <label class="form-label">Mật khẩu</label>
-                <input type="password" class="form-control" placeholder="Nhập mật khẩu">
+                <label for="loginPassword" class="form-label">Mật khẩu</label>
+                <input id="loginPassword" type="password" class="form-control" placeholder="Nhập mật khẩu"
+                       autocomplete="current-password" required>
             </div>
+            <div id="loginError" class="alert alert-danger py-2 d-none" role="alert"></div>
             <div class="text-end mb-3">
                 <a href="#">Quên mật khẩu?</a>
             </div>
-            <button type="button" class="btn btn-accent w-100 btn-lg">Đăng Nhập</button>
+            <button type="submit" id="loginBtn" class="btn btn-accent w-100 btn-lg">Đăng Nhập</button>
         </form>
+
+        <div id="rolePicker" class="d-none">
+            <p class="text-muted">Tài khoản của bạn có nhiều vai trò. Chọn vai trò để tiếp tục:</p>
+            <div id="roleList" class="d-grid gap-2"></div>
+            <div id="roleError" class="alert alert-danger py-2 mt-3 d-none" role="alert"></div>
+            <button type="button" id="roleBack" class="btn btn-link w-100 mt-2">Quay lại</button>
+        </div>
 
         <p class="text-center mt-4 mb-0">Chưa có tài khoản?
             <a th:href="@{/register}" class="fw-semibold">Đăng ký ngay</a>
@@ -41,5 +54,99 @@
 </main>
 
 <div th:replace="~{fragments/footer :: footer}"></div>
+
+<script th:inline="none">
+(function () {
+    var OB = window.OldBook;
+    var Auth = OB.auth;
+
+    var params = new URLSearchParams(window.location.search);
+    var hasRedirect = params.has('redirect');
+    var target = Auth.safeRedirect(params.get('redirect'), '/');
+    if (Auth.isLoggedIn()) {
+        window.location.replace(target);
+        return;
+    }
+
+    if (hasRedirect) {
+        document.getElementById('loginNotice').classList.remove('d-none');
+    }
+
+    var form = document.getElementById('loginForm');
+    var btn = document.getElementById('loginBtn');
+    var errBox = document.getElementById('loginError');
+    var picker = document.getElementById('rolePicker');
+    var roleList = document.getElementById('roleList');
+    var roleError = document.getElementById('roleError');
+
+    function showError(box, msg) { box.textContent = msg; box.classList.remove('d-none'); }
+    function hideError(box) { box.classList.add('d-none'); }
+
+    function setBusy(busy) {
+        btn.disabled = busy;
+        btn.textContent = busy ? 'Đang đăng nhập...' : 'Đăng Nhập';
+    }
+    function finish(data) {
+        Auth.saveSession(data);
+        return Auth.loadProfileName().then(function () {
+            window.location.replace(target);
+        });
+    }
+
+    function showRolePicker(data) {
+        form.classList.add('d-none');
+        picker.classList.remove('d-none');
+        hideError(roleError);
+        roleList.innerHTML = '';
+
+        (data.taiKhoans || []).forEach(function (tk) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn btn-outline-brown';
+            b.textContent = OB.roleLabels[tk.vaiTro] || tk.vaiTro;
+            b.addEventListener('click', function () {
+                hideError(roleError);
+                b.disabled = true;
+                Auth.selectRole(data.roleSelectionToken, tk.maTK).then(finish).catch(function (err) {
+                    b.disabled = false;
+                    showError(roleError, err.message);
+                });
+            });
+            roleList.appendChild(b);
+        });
+    }
+
+    document.getElementById('roleBack').addEventListener('click', function () {
+        picker.classList.add('d-none');
+        form.classList.remove('d-none');
+    });
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideError(errBox);
+
+        var email = document.getElementById('loginEmail').value.trim();
+        var matKhau = document.getElementById('loginPassword').value;
+
+        if (!email || !matKhau) {
+            showError(errBox, 'Vui lòng nhập email và mật khẩu');
+            return;
+        }
+
+        setBusy(true);
+        Auth.login(email, matKhau).then(function (data) {
+            if (data.canChonVaiTro) {
+                showRolePicker(data);
+                return null;
+            }
+            return finish(data);
+        }).catch(function (err) {
+            showError(errBox, err.message);
+        }).then(function () {
+            setBusy(false);
+        });
+    });
+})();
+</script>
 </body>
 </html>

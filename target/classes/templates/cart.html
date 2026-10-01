@@ -1,97 +1,239 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Giỏ hàng')}"></head>
-<body>
-<header th:replace="~{fragments/layout :: header}"></header>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Giỏ hàng - OldBook</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+</head>
+<body data-page-requires-login>
+
+<div th:replace="~{fragments/header :: header}"></div>
+
 <main class="container">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a th:href="@{/}">Trang chủ</a></li>
-      <li class="breadcrumb-item active">Giỏ hàng</li>
-    </ol>
-  </nav>
-  <h1 class="h4 fw-bold mb-3">Giỏ hàng của bạn</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/}">Trang chủ</a></li>
+            <li class="breadcrumb-item active">Giỏ hàng</li>
+        </ol>
+    </nav>
+    <h1 class="h4 fw-bold mb-3">Giỏ hàng của bạn</h1>
 
-  <div class="row g-4">
-    <div class="col-lg-8">
-      <div class="panel p-0">
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead class="table-light">
-              <tr><th>Sách</th><th class="text-end">Đơn giá</th><th class="text-center">Số lượng</th><th class="text-end">Thành tiền</th><th></th></tr>
-            </thead>
-            <tbody>
-              <tr th:each="b : ${items}">
-                <td>
-                  <div class="d-flex align-items-center gap-3">
-                    <div class="mini-cover" th:classappend="'c' + ${b.id % 6}"></div>
-                    <div>
-                      <a th:href="@{/sach/{id}(id=${b.id})}" class="fw-semibold text-dark" th:text="${b.title}">Tên sách</a>
-                      <div class="small text-muted" th:text="${b.author}">Tác giả</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="text-end" th:text="${#numbers.formatInteger(b.ebookPrice, 1, 'COMMA')} + ' đ'">0 đ</td>
-                <td class="text-center">
-                  <div class="input-group input-group-sm qty mx-auto" th:attr="data-price=${b.ebookPrice}">
-                    <button type="button" class="btn btn-outline-secondary btn-minus">−</button>
-                    <input type="text" class="form-control text-center qty-input" value="1" readonly>
-                    <button type="button" class="btn btn-outline-secondary btn-plus">+</button>
-                  </div>
-                </td>
-                <td class="text-end fw-semibold line-total" th:text="${#numbers.formatInteger(b.ebookPrice, 1, 'COMMA')} + ' đ'">0 đ</td>
-                <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger btn-remove" title="Xóa"><i class="bi bi-trash"></i></button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <a th:href="@{/sach}" class="btn btn-outline-brown mt-3"><i class="bi bi-arrow-left me-1"></i>Tiếp tục mua sách</a>
+    <div id="cartAlert" class="alert alert-danger d-none" role="alert"></div>
+
+    <div id="cartLoading" class="text-center text-muted py-5">
+        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải giỏ hàng...
     </div>
 
-    <div class="col-lg-4">
-      <div class="panel">
-        <h2 class="h5 fw-bold mb-3">Tóm tắt đơn hàng</h2>
-        <div class="input-group mb-3">
-          <input type="text" class="form-control" placeholder="Mã giảm giá">
-          <button type="button" class="btn btn-outline-brown">Áp dụng</button>
-        </div>
-        <div class="d-flex justify-content-between mb-2"><span>Tạm tính</span><span id="subtotal" th:text="${#numbers.formatInteger(total, 1, 'COMMA')} + ' đ'">0 đ</span></div>
-        <div class="d-flex justify-content-between mb-2"><span>Giảm giá</span><span>0 đ</span></div>
-        <hr>
-        <div class="d-flex justify-content-between fs-5 fw-bold mb-3"><span>Tổng cộng</span><span class="price" id="grand" th:text="${#numbers.formatInteger(total, 1, 'COMMA')} + ' đ'">0 đ</span></div>
-        <a th:href="@{/thanh-toan}" class="btn btn-accent btn-lg w-100">Thanh toán</a>
-      </div>
+    <div id="cartWrongRole" class="panel text-center py-5 d-none">
+        <i class="bi bi-person-lock fs-1 text-muted"></i>
+        <p class="mt-3 mb-3">Giỏ hàng chỉ dành cho tài khoản khách hàng.<br>
+            Vui lòng đăng xuất và đăng nhập bằng tài khoản khách hàng.</p>
+        <a href="#" class="btn btn-outline-brown" data-action="logout">Đăng xuất</a>
     </div>
-  </div>
+
+    <div id="cartEmpty" class="panel text-center py-5 d-none">
+        <i class="bi bi-cart-x fs-1 text-muted"></i>
+        <p class="mt-3 mb-3">Giỏ hàng của bạn đang trống.</p>
+        <a th:href="@{/books}" class="btn btn-accent">Tiếp tục mua sách</a>
+    </div>
+
+    <div id="cartContent" class="row g-4 d-none">
+        <div class="col-lg-8">
+            <div class="panel p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>Sách</th>
+                            <th class="text-end">Đơn giá</th>
+                            <th class="text-center">Số lượng</th>
+                            <th class="text-end">Thành tiền</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="cartItems"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between mt-3">
+                <a th:href="@{/books}" class="btn btn-outline-brown"><i class="bi bi-arrow-left me-1"></i>Tiếp tục mua sách</a>
+                <button type="button" id="btnClearCart" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Xóa toàn bộ giỏ</button>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="panel">
+                <h2 class="h5 fw-bold mb-3">Tóm tắt đơn hàng</h2>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" placeholder="Mã giảm giá (sắp có)" disabled>
+                    <button type="button" class="btn btn-outline-brown" disabled>Áp dụng</button>
+                </div>
+                <div id="cartNote" class="small text-danger mb-2 d-none">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Sản phẩm có cảnh báo không mua được nên không được tính vào tổng tiền.
+                </div>
+                <div class="d-flex justify-content-between mb-2"><span>Số lượng sách</span><span id="totalQty">0</span></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tạm tính</span><span id="subtotal">0 đ</span></div>
+                <div class="d-flex justify-content-between mb-2"><span>Giảm giá</span><span>0 đ</span></div>
+                <hr>
+                <div class="d-flex justify-content-between fs-5 fw-bold mb-3"><span>Tổng cộng</span><span class="price" id="grand">0 đ</span></div>
+                <button type="button" class="btn btn-accent btn-lg w-100" disabled title="Chức năng thanh toán sẽ có sau">Thanh toán</button>
+            </div>
+        </div>
+    </div>
 </main>
 
-<script>
-  // Chỉ để minh họa giao diện: cập nhật số lượng / thành tiền / tổng tiền phía trình duyệt
-  const fmt = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' đ';
-  function recalc() {
-    let sum = 0;
-    document.querySelectorAll('tbody tr').forEach(tr => {
-      const box = tr.querySelector('.qty');
-      const q = parseInt(tr.querySelector('.qty-input').value);
-      const line = q * parseInt(box.dataset.price);
-      tr.querySelector('.line-total').textContent = fmt(line);
-      sum += line;
-    });
-    document.getElementById('subtotal').textContent = fmt(sum);
-    document.getElementById('grand').textContent = fmt(sum);
-    document.querySelector('.cart-count').textContent = document.querySelectorAll('tbody tr').length;
-  }
-  document.addEventListener('click', e => {
-    const plus = e.target.closest('.btn-plus'), minus = e.target.closest('.btn-minus'), rm = e.target.closest('.btn-remove');
-    if (plus || minus) {
-      const input = (plus || minus).parentElement.querySelector('.qty-input');
-      input.value = Math.max(1, parseInt(input.value) + (plus ? 1 : -1));
-      recalc();
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script th:inline="none">
+(function () {
+    var OB = window.OldBook;
+    var Auth = OB.auth;
+    var Cart = OB.cart;
+    var ROLE = OB.ROLE_CUSTOMER;
+    if (!Auth.isLoggedIn()) { return; }
+
+    var $ = function (id) { return document.getElementById(id); };
+    var busy = false;
+    var lastCart = null;
+
+    function show(id) { $(id).classList.remove('d-none'); }
+    function hide(id) { $(id).classList.add('d-none'); }
+
+    function showAlert(msg) {
+        $('cartAlert').textContent = msg;
+        show('cartAlert');
     }
-    if (rm) { rm.closest('tr').remove(); recalc(); }
-  });
+    function safeImg(url) {
+        if (!url) { return null; }
+        if (/^https?:\/\//i.test(url)) { return url; }
+        if (url.charAt(0) === '/' && url.charAt(1) !== '/') { return url; }
+        return null;
+    }
+
+    function rowHtml(it) {
+        var img = safeImg(it.hinhAnhUrl);
+        var cover = img
+            ? '<img src="' + OB.escapeHtml(img) + '" alt="" class="mini-cover" style="object-fit:cover">'
+            : '<div class="mini-cover c' + (it.maSach % 6) + '"></div>';
+
+        var max = Math.min(it.soLuongTon || 0, 999);
+        var warn = it.canhBao
+            ? '<div class="small text-danger"><i class="bi bi-exclamation-triangle me-1"></i>' + OB.escapeHtml(it.canhBao) + '</div>'
+            : '';
+
+        return '' +
+        '<tr data-id="' + it.maCTGioHang + '" data-qty="' + it.soLuong + '">' +
+          '<td>' +
+            '<div class="d-flex align-items-center gap-3">' + cover +
+              '<div>' +
+                '<div class="fw-semibold text-dark">' + OB.escapeHtml(it.tenSach) + '</div>' +
+                '<div class="small text-muted">' + OB.escapeHtml(it.tacGia || 'Đang cập nhật') + '</div>' +
+                '<div class="small text-muted"><i class="bi bi-shop me-1"></i>' + OB.escapeHtml(it.tenCuaHang) + '</div>' +
+                warn +
+              '</div>' +
+            '</div>' +
+          '</td>' +
+          '<td class="text-end">' + OB.formatMoney(it.donGia) + '</td>' +
+          '<td class="text-center">' +
+            '<div class="input-group input-group-sm qty mx-auto">' +
+              '<button type="button" class="btn btn-outline-secondary btn-minus"' + (it.soLuong <= 1 ? ' disabled' : '') + '>−</button>' +
+              '<input type="text" class="form-control text-center" value="' + it.soLuong + '" readonly>' +
+              '<button type="button" class="btn btn-outline-secondary btn-plus"' + (!it.coTheMua || it.soLuong >= max ? ' disabled' : '') + '>+</button>' +
+            '</div>' +
+          '</td>' +
+          '<td class="text-end fw-semibold">' + OB.formatMoney(it.thanhTien) + '</td>' +
+          '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger btn-remove" title="Xóa"><i class="bi bi-trash"></i></button></td>' +
+        '</tr>';
+    }
+
+    function render(cart) {
+        lastCart = cart;
+        $('btnClearCart').disabled = false;
+        hide('cartLoading');
+        hide('cartWrongRole');
+        Cart.setBadge(cart.soMuc);
+
+        if (!cart.items || cart.items.length === 0) {
+            hide('cartContent');
+            show('cartEmpty');
+            return;
+        }
+
+        hide('cartEmpty');
+        $('cartItems').innerHTML = cart.items.map(rowHtml).join('');
+        var coDongKhongMua = cart.items.some(function (it) { return !it.coTheMua; });
+        $('cartNote').classList.toggle('d-none', !coDongKhongMua);
+        $('totalQty').textContent = cart.tongSoLuong;
+        $('subtotal').textContent = OB.formatMoney(cart.tongTien);
+        $('grand').textContent = OB.formatMoney(cart.tongTien);
+        show('cartContent');
+    }
+
+    function setBusy(value) {
+        busy = value;
+        var buttons = document.querySelectorAll('#cartContent button');
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].disabled = value ? true : buttons[i].disabled;
+        }
+    }
+
+    function load() {
+        return Cart.get().then(render).catch(function (err) {
+            if (Auth.handleAuthError(err, ROLE)) { return; }
+            hide('cartLoading');
+            if (err.status === 403) { show('cartWrongRole'); return; }
+            showAlert(err.message);
+        });
+    }
+    function run(action) {
+        if (busy) { return; }
+        hide('cartAlert');
+        setBusy(true);
+
+        action().then(function (cart) {
+            busy = false;
+            render(cart);
+        }).catch(function (err) {
+            busy = false;
+            if (Auth.handleAuthError(err, ROLE)) { return; }
+            if (lastCart) { render(lastCart); }
+            showAlert(err.message);
+            load();
+        });
+    }
+
+    $('cartItems').addEventListener('click', function (e) {
+        var tr = e.target.closest('tr');
+        if (!tr) { return; }
+
+        var id = tr.getAttribute('data-id');
+        var qty = parseInt(tr.getAttribute('data-qty'), 10);
+
+        if (e.target.closest('.btn-plus')) {
+            run(function () { return Cart.update(id, qty + 1); });
+        } else if (e.target.closest('.btn-minus')) {
+            if (qty > 1) { run(function () { return Cart.update(id, qty - 1); }); }
+        } else if (e.target.closest('.btn-remove')) {
+            run(function () { return Cart.remove(id); });
+        }
+    });
+
+    $('btnClearCart').addEventListener('click', function () {
+        if (window.confirm('Xóa toàn bộ sản phẩm trong giỏ hàng?')) {
+            run(function () { return Cart.clear(); });
+        }
+    });
+    if (!Auth.hasRole(ROLE)) {
+        hide('cartLoading');
+        show('cartWrongRole');
+        return;
+    }
+    load();
+})();
 </script>
-<footer th:replace="~{fragments/layout :: footer}"></footer>
 </body>
 </html>

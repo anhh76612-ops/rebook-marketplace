@@ -1,0 +1,16 @@
+package com.oldbook.repository.order;
+
+import com.oldbook.entity.order.GioHang;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface GioHangRepository extends JpaRepository<GioHang, Integer> {
+
+    @Query("select g from GioHang g where g.nguoiDung.maND = :maND")
+    Optional<GioHang> findByMaND(@Param("maND") Integer maND);
+}

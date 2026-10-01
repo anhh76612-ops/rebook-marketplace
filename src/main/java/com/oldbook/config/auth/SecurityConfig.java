@@ -1,21 +1,27 @@
 package com.oldbook.config.auth;
 
+import com.oldbook.filter.auth.JwtAuthenticationFilter;
+import com.oldbook.dto.common.ApiResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import tools.jackson.databind.ObjectMapper;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.oldbook.filter.auth.JwtAuthenticationFilter;
-
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -23,18 +29,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                // REST API dùng JWT nên không sử dụng CSRF của form/session
+
                 .csrf(csrf -> csrf.disable())
 
-                // Không dùng session để lưu đăng nhập
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                // Phân quyền endpoint
                 .authorizeHttpRequests(authorize -> authorize
 
-                        // MỞ KHÓA CHO GIAO DIỆN WEB
                         .requestMatchers(
                                 "/",
                                 "/books/**",
@@ -70,18 +73,48 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // Không sử dụng form login mặc định
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) ->
+                                writeError(
+                                        response,
+                                        HttpServletResponse.SC_UNAUTHORIZED,
+                                        "Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại."
+                                )
+                        )
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            String message = accessDeniedException.getMessage();
+
+                            if (message == null || message.isBlank()
+                                    || "Access Denied".equalsIgnoreCase(message)) {
+                                message = "Bạn không có quyền thực hiện thao tác này.";
+                            }
+
+                            writeError(response, HttpServletResponse.SC_FORBIDDEN, message);
+                        })
+                )
+
                 .formLogin(form -> form.disable())
 
-                // Không sử dụng HTTP Basic
                 .httpBasic(basic -> basic.disable())
 
-                // Đặt JWT filter trước UsernamePasswordAuthenticationFilter
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
 
         return http.build();
+    }
+
+    private static void writeError(HttpServletResponse response, int status, String message)
+            throws java.io.IOException {
+
+        response.setStatus(status);
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+        OBJECT_MAPPER.writeValue(
+                response.getWriter(),
+                ApiResponse.<Void>error(status, message)
+        );
     }
 }

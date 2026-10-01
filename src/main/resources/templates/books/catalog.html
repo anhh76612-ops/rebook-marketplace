@@ -11,11 +11,9 @@
 </head>
 <body>
 
-<!-- Chèn Header từ file header.html -->
 <div th:replace="~{fragments/header :: header}"></div>
 
 <main>
-    <!-- Banner -->
     <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
         <div class="carousel-inner">
             <div class="carousel-item active hero-slide hero-1">
@@ -49,60 +47,29 @@
     </div>
 
     <div class="container">
-        <!-- Sách nổi bật -->
         <div class="section-title">
-            <h2>Sách nổi bật</h2>
-            <a th:href="@{/books}">Xem tất cả</a>
+            <h2 id="catalogTitle">Sách nổi bật</h2>
+            <a th:href="@{/books}" id="catalogSeeAll">Xem tất cả</a>
         </div>
 
-        <div class="row g-3">
-            <!-- Thẻ sách mẫu (Chưa có data thực) - khi có dữ liệu, thay #numbers.sequence bằng danh sách sách từ controller -->
-            <div class="col-6 col-md-4 col-lg-3" th:each="i : ${#numbers.sequence(1, 8)}">
-                <div class="book-card">
-                    <a th:href="@{/books}" class="cover" th:classappend="'c' + ${i % 6}">
-                        <button type="button" class="wishlist-mini" title="Thêm vào yêu thích" onclick="event.preventDefault()">
-                            <i class="bi bi-heart"></i>
-                        </button>
-                        <span class="cover-title" th:text="'Tên sách mẫu ' + ${i}">Tên sách mẫu</span>
-                    </a>
-                    <div class="book-info">
-                        <span class="condition-badge mb-1" th:text="${'✓ ' + (95 - (i % 5) * 5) + '% mới'}">✓ 90% mới</span>
-                        <h3 class="book-title"><a th:href="@{/books}" th:text="'Tên sách mẫu ' + ${i}">Tên sách mẫu</a></h3>
-                        <p class="book-author">Tác giả: Đang cập nhật</p>
-                        <p class="shop-line mb-1"><i class="bi bi-shop"></i> <a th:href="@{/books}">Cửa hàng mẫu</a></p>
-                        <p class="price-line">Giá bìa:
-                            <span th:text="${#numbers.formatInteger(80000 + i * 10000, 1, 'COMMA')} + ' VNĐ'">100,000 VNĐ</span></p>
-                        <p class="price-line">Giá bán:
-                            <strong class="price" th:text="${#numbers.formatInteger(30000 + i * 5000, 1, 'COMMA')} + ' VNĐ'">50,000 VNĐ</strong></p>
-                        <a th:href="@{/cart}" class="btn btn-accent btn-sm w-100 mt-2"><i class="bi bi-cart-plus me-1"></i>Thêm vào giỏ</a>
-                    </div>
-                </div>
-            </div>
+        <div id="catalogAlert" class="alert alert-danger d-none" role="alert"></div>
+
+        <div id="catalogLoading" class="text-center text-muted py-5">
+            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải danh sách sách...
         </div>
 
-        <div class="text-center mt-4">
-            <a th:href="@{/books}" class="btn btn-outline-brown px-4">Xem thêm sách</a>
+        <div id="catalogEmpty" class="panel text-center py-5 d-none">
+            <i class="bi bi-search fs-1 text-muted"></i>
+            <p class="mt-3 mb-3" id="catalogEmptyText">Chưa có sách nào.</p>
+            <a th:href="@{/books}" class="btn btn-outline-brown">Xem tất cả sách</a>
         </div>
 
-        <!-- Đăng ký nhận tin -->
-        <div class="promo promo-news mt-5">
-            <div class="row align-items-center g-3">
-                <div class="col-md-6">
-                    <h3 class="fw-bold text-dark mb-1">Đăng ký nhận tin</h3>
-                    <p class="text-muted mb-0">Nhận thông báo sách mới và ưu đãi qua email.</p>
-                </div>
-                <div class="col-md-6">
-                    <form class="d-flex gap-2" th:action="@{/register}" method="get">
-                        <input type="email" class="form-control" placeholder="Nhập email của bạn">
-                        <button type="submit" class="btn btn-accent text-nowrap">Đăng ký</button>
-                    </form>
-                </div>
-            </div>
-        </div>
+        <div class="row g-3" id="bookGrid"></div>
     </div>
 </main>
 
-<!-- Chèn Footer từ file footer.html (đã gồm Bootstrap 5 JS) -->
 <div th:replace="~{fragments/footer :: footer}"></div>
+
+<script th:src="@{/js/catalog.js}"></script>
 </body>
 </html>

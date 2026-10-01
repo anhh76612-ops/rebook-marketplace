@@ -4,7 +4,6 @@
 
 <header th:fragment="header">
 
-  <!-- Thanh trên cùng -->
   <div class="topbar d-none d-md-block">
     <div class="container d-flex justify-content-between py-1">
       <span>
@@ -13,26 +12,33 @@
       </span>
 
       <span class="user-func">
-        <a th:href="@{/wishlist}">
+        <a th:href="@{/wishlist}" data-requires-login>
           <i class="bi bi-heart me-1"></i>Yêu thích
         </a>
 
-        <a th:href="@{/orders}" class="ms-3">
+        <a th:href="@{/orders}" class="ms-3" data-requires-login>
           <i class="bi bi-truck me-1"></i>Đơn hàng của tôi
         </a>
 
-        <a th:href="@{/login}" class="ms-3">
+        <a th:href="@{/login}" class="ms-3" data-auth="guest">
           <i class="bi bi-person me-1"></i>Đăng nhập
         </a>
 
-        <a th:href="@{/register}" class="ms-3">
+        <a th:href="@{/register}" class="ms-3" data-auth="guest">
           <i class="bi bi-person-plus me-1"></i>Đăng ký
+        </a>
+
+        <span class="ms-3 d-none" data-auth="user">
+          <i class="bi bi-person-check me-1"></i><span data-user-name>Tài khoản</span>
+        </span>
+
+        <a href="#" class="ms-3 d-none" data-auth="user" data-action="logout">
+          <i class="bi bi-box-arrow-right me-1"></i>Đăng xuất
         </a>
       </span>
     </div>
   </div>
 
-  <!-- Logo + tìm kiếm + giỏ hàng -->
   <div class="mainbar">
     <div class="container d-flex align-items-center gap-3 py-3">
 
@@ -57,12 +63,14 @@
 
       <a class="cart-link d-none d-sm-inline-flex"
          th:href="@{/wishlist}"
+         data-requires-login
          title="Sản phẩm yêu thích">
         <i class="bi bi-heart"></i>
       </a>
 
       <a class="cart-link"
-         th:href="@{/cart}">
+         th:href="@{/cart}"
+         data-requires-login>
         <i class="bi bi-cart3"></i>
         <span class="cart-count">0</span>
         <span class="d-none d-lg-inline ms-1">Giỏ hàng</span>
@@ -71,7 +79,6 @@
     </div>
   </div>
 
-  <!-- Menu danh mục -->
   <nav class="menu navbar navbar-expand-lg navbar-dark">
     <div class="container">
 
@@ -145,7 +152,8 @@
 
           <li class="nav-item">
             <a class="nav-link"
-               th:href="@{/orders}">
+               th:href="@{/orders}"
+               data-requires-login>
               <i class="bi bi-truck me-1"></i>
               Theo dõi đơn hàng
             </a>
