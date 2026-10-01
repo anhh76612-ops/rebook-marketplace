@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Đăng ký')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+  <div class="auth-card">
+    <h1 class="h4 fw-bold text-center mb-1">Tạo tài khoản</h1>
+    <p class="text-center text-muted mb-4">Miễn phí và chỉ mất một phút.</p>
+    <form th:action="@{/dang-nhap}" method="get">
+      <div class="mb-3">
+        <label class="form-label d-block">Bạn muốn đăng ký với vai trò</label>
+        <div class="btn-group w-100" role="group" aria-label="Loại tài khoản">
+          <input type="radio" class="btn-check" name="loaiTaiKhoan" id="roleKhachHang" value="khach_hang" checked>
+          <label class="btn btn-outline-secondary w-50" for="roleKhachHang">Khách hàng</label>
+
+          <input type="radio" class="btn-check" name="loaiTaiKhoan" id="roleChuCuaHang" value="chu_cua_hang">
+          <label class="btn btn-outline-secondary w-50" for="roleChuCuaHang">Chủ cửa hàng</label>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Họ và tên</label>
+        <input type="text" class="form-control" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-sm-6">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" placeholder="nhap@email.com">
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label">Số điện thoại</label>
+          <input type="tel" class="form-control" placeholder="09xx xxx xxx">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Mật khẩu</label>
+        <input type="password" class="form-control" placeholder="Ít nhất 6 ký tự">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Nhập lại mật khẩu</label>
+        <input type="password" class="form-control" placeholder="Nhập lại mật khẩu">
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="agree">
+        <label class="form-check-label" for="agree">Tôi đồng ý với <a href="#">điều khoản sử dụng</a></label>
+      </div>
+      <button type="submit" class="btn btn-accent w-100 btn-lg">Đăng ký</button>
+    </form>
+    <p class="text-center mt-4 mb-0">Đã có tài khoản? <a th:href="@{/dang-nhap}" class="fw-semibold">Đăng nhập</a></p>
+  </div>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

@@ -11,9 +11,9 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.nhom9</groupId>
+    <groupId>com.oldbook</groupId>
     <artifactId>oldbook-marketplace</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0</version>
     <name>oldbook-marketplace</name>
     <description>Old Book Marketplace</description>
 
@@ -122,6 +122,13 @@
             <artifactId>junit-platform-launcher</artifactId>
             <scope>test</scope>
         </dependency>
+        
+        <dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-devtools</artifactId>
+		    <scope>runtime</scope>
+		    <optional>true</optional>
+		</dependency>
     </dependencies>
 
     <build>

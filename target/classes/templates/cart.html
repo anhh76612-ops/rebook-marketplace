@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Giỏ hàng')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a th:href="@{/}">Trang chủ</a></li>
+      <li class="breadcrumb-item active">Giỏ hàng</li>
+    </ol>
+  </nav>
+  <h1 class="h4 fw-bold mb-3">Giỏ hàng của bạn</h1>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="panel p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light">
+              <tr><th>Sách</th><th class="text-end">Đơn giá</th><th class="text-center">Số lượng</th><th class="text-end">Thành tiền</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr th:each="b : ${items}">
+                <td>
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="mini-cover" th:classappend="'c' + ${b.id % 6}"></div>
+                    <div>
+                      <a th:href="@{/sach/{id}(id=${b.id})}" class="fw-semibold text-dark" th:text="${b.title}">Tên sách</a>
+                      <div class="small text-muted" th:text="${b.author}">Tác giả</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-end" th:text="${#numbers.formatInteger(b.ebookPrice, 1, 'COMMA')} + ' đ'">0 đ</td>
+                <td class="text-center">
+                  <div class="input-group input-group-sm qty mx-auto" th:attr="data-price=${b.ebookPrice}">
+                    <button type="button" class="btn btn-outline-secondary btn-minus">−</button>
+                    <input type="text" class="form-control text-center qty-input" value="1" readonly>
+                    <button type="button" class="btn btn-outline-secondary btn-plus">+</button>
+                  </div>
+                </td>
+                <td class="text-end fw-semibold line-total" th:text="${#numbers.formatInteger(b.ebookPrice, 1, 'COMMA')} + ' đ'">0 đ</td>
+                <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger btn-remove" title="Xóa"><i class="bi bi-trash"></i></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <a th:href="@{/sach}" class="btn btn-outline-brown mt-3"><i class="bi bi-arrow-left me-1"></i>Tiếp tục mua sách</a>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="panel">
+        <h2 class="h5 fw-bold mb-3">Tóm tắt đơn hàng</h2>
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" placeholder="Mã giảm giá">
+          <button type="button" class="btn btn-outline-brown">Áp dụng</button>
+        </div>
+        <div class="d-flex justify-content-between mb-2"><span>Tạm tính</span><span id="subtotal" th:text="${#numbers.formatInteger(total, 1, 'COMMA')} + ' đ'">0 đ</span></div>
+        <div class="d-flex justify-content-between mb-2"><span>Giảm giá</span><span>0 đ</span></div>
+        <hr>
+        <div class="d-flex justify-content-between fs-5 fw-bold mb-3"><span>Tổng cộng</span><span class="price" id="grand" th:text="${#numbers.formatInteger(total, 1, 'COMMA')} + ' đ'">0 đ</span></div>
+        <a th:href="@{/thanh-toan}" class="btn btn-accent btn-lg w-100">Thanh toán</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // Chỉ để minh họa giao diện: cập nhật số lượng / thành tiền / tổng tiền phía trình duyệt
+  const fmt = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' đ';
+  function recalc() {
+    let sum = 0;
+    document.querySelectorAll('tbody tr').forEach(tr => {
+      const box = tr.querySelector('.qty');
+      const q = parseInt(tr.querySelector('.qty-input').value);
+      const line = q * parseInt(box.dataset.price);
+      tr.querySelector('.line-total').textContent = fmt(line);
+      sum += line;
+    });
+    document.getElementById('subtotal').textContent = fmt(sum);
+    document.getElementById('grand').textContent = fmt(sum);
+    document.querySelector('.cart-count').textContent = document.querySelectorAll('tbody tr').length;
+  }
+  document.addEventListener('click', e => {
+    const plus = e.target.closest('.btn-plus'), minus = e.target.closest('.btn-minus'), rm = e.target.closest('.btn-remove');
+    if (plus || minus) {
+      const input = (plus || minus).parentElement.querySelector('.qty-input');
+      input.value = Math.max(1, parseInt(input.value) + (plus ? 1 : -1));
+      recalc();
+    }
+    if (rm) { rm.closest('tr').remove(); recalc(); }
+  });
+</script>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

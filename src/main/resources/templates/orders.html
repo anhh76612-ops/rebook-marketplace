@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Đơn hàng của tôi')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a th:href="@{/}">Trang chủ</a></li>
+      <li class="breadcrumb-item active">Đơn hàng của tôi</li>
+    </ol>
+  </nav>
+  <h1 class="h4 fw-bold mb-3">Đơn hàng của tôi</h1>
+
+  <ul class="nav nav-pills mb-3">
+    <li class="nav-item"><a class="nav-link active" href="#" style="background:var(--accent)">Tất cả</a></li>
+    <li class="nav-item"><a class="nav-link" href="#">Chờ xác nhận</a></li>
+    <li class="nav-item"><a class="nav-link" href="#">Đang giao</a></li>
+    <li class="nav-item"><a class="nav-link" href="#">Hoàn thành</a></li>
+    <li class="nav-item"><a class="nav-link" href="#">Đã hủy</a></li>
+  </ul>
+
+  <div class="panel mb-3" th:each="o : ${orders}">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+      <div>
+        <strong th:text="'Đơn hàng #' + ${o.code}">Đơn hàng #DH001</strong>
+        <span class="text-muted small ms-2" th:text="${o.shop}">Cửa hàng</span>
+      </div>
+      <span class="condition-badge" th:text="${o.status}">Đang giao</span>
+    </div>
+
+    <div class="order-steps">
+      <div class="step done"><i class="bi bi-check-circle-fill"></i>Chờ xác nhận</div>
+      <div class="step done"><i class="bi bi-check-circle-fill"></i>Đã xác nhận</div>
+      <div th:class="${o.stepDone} ? 'step done' : 'step'"><i class="bi bi-truck"></i>Đang giao</div>
+      <div class="step"><i class="bi bi-box-seam"></i>Đã giao</div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3 mb-2" th:each="b : ${o.books}">
+      <div class="mini-cover" th:classappend="'c' + ${b.id % 6}"></div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold" th:text="${b.title}">Tên sách</div>
+        <div class="small text-muted" th:text="${#numbers.formatInteger(b.ebookPrice, 1, 'COMMA')} + ' đ'">0 đ</div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-2">
+      <span class="fw-bold" th:text="'Tổng: ' + ${#numbers.formatInteger(o.total, 1, 'COMMA')} + ' đ'">Tổng: 0 đ</span>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#cancelModal">Gửi yêu cầu hủy</button>
+        <a th:href="@{/sach}" class="btn btn-accent btn-sm">Mua lại</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal gửi yêu cầu hủy đơn -->
+  <div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Gửi yêu cầu hủy đơn</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Lý do hủy đơn</label>
+          <textarea class="form-control" rows="3" placeholder="Nhập lý do..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="button" class="btn btn-accent" data-bs-dismiss="modal">Gửi yêu cầu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
