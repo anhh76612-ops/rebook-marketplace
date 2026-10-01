@@ -1,43 +1,28 @@
 package com.oldbook.dto.catalog;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-@Getter
-@Builder
-@AllArgsConstructor
-public class SachResponse {
-
-    private Integer maSach;
-
-    private String tenSach;
-
-    private String tacGia;
-
-    private String nhaXuatBan;
-
-    private Integer namXuatBan;
-
-    private BigDecimal giaBia;
-
-    private BigDecimal giaBanCu;
-
-    private BigDecimal doMoiPercent;
-
-    private String tinhTrangVatLy;
-
-    private Integer soLuongTon;
-
-    private String hinhAnhUrl;
-
-    private Integer maCH;
-
-    private String tenCuaHang;
-
-    private Integer maDM;
-
-    private String tenDanhMuc;
+public record SachResponse(
+        Integer maSach,
+        Integer maCH,
+        String tenCuaHang,
+        Integer maDM,
+        String tenDanhMuc,
+        String tenSach,
+        String tacGia,
+        String nhaXuatBan,
+        Integer namXuatBan,
+        BigDecimal giaBia,
+        BigDecimal giaBanCu,
+        BigDecimal doMoiPercent,
+        String tinhTrangVatLy,
+        String moTaChiTiet,
+        Integer soLuongTon,
+        String hinhAnhUrl,
+        String trangThaiDuyet,
+        String trangThaiBan,
+        String lyDoTuChoi,
+        LocalDateTime ngayTao
+) {
 }
