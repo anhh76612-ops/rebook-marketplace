@@ -23,20 +23,6 @@ public class AdminTaiKhoanController {
 
     private final AdminTaiKhoanService adminTaiKhoanService;
 
-    /**
-     * =========================================================
-     * 1. XEM DANH SÁCH / TÌM KIẾM / LỌC TÀI KHOẢN
-     * =========================================================
-     *
-     * GET /api/admin/tai-khoan
-     *
-     * Ví dụ:
-     * GET /api/admin/tai-khoan
-     * GET /api/admin/tai-khoan?tuKhoa=abc
-     * GET /api/admin/tai-khoan?vaiTro=KHACH_HANG
-     * GET /api/admin/tai-khoan?trangThai=HOAT_DONG
-     * GET /api/admin/tai-khoan?tuKhoa=abc&vaiTro=KHACH_HANG&trangThai=HOAT_DONG
-     */
     @GetMapping
     public ApiResponse<List<AdminTaiKhoanResponse>> getAll(
             @RequestParam(required = false) String tuKhoa,
@@ -52,13 +38,6 @@ public class AdminTaiKhoanController {
         );
     }
 
-    /**
-     * =========================================================
-     * 2. TẠO TÀI KHOẢN
-     * =========================================================
-     *
-     * POST /api/admin/tai-khoan
-     */
     @PostMapping
     public ApiResponse<AdminTaiKhoanResponse> create(
             @RequestBody CreateTaiKhoanRequest request
@@ -76,13 +55,6 @@ public class AdminTaiKhoanController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * =========================================================
-     * 3. KHÓA TÀI KHOẢN
-     * =========================================================
-     *
-     * PUT /api/admin/tai-khoan/{maTK}/khoa
-     */
     @PutMapping("/{maTK}/khoa")
     public ApiResponse<Void> lock(
             @PathVariable Integer maTK,
@@ -103,13 +75,6 @@ public class AdminTaiKhoanController {
         );
     }
 
-    /**
-     * =========================================================
-     * 4. MỞ KHÓA TÀI KHOẢN
-     * =========================================================
-     *
-     * PUT /api/admin/tai-khoan/{maTK}/mo-khoa
-     */
     @PutMapping("/{maTK}/mo-khoa")
     public ApiResponse<Void> unlock(
             @PathVariable Integer maTK
@@ -128,13 +93,6 @@ public class AdminTaiKhoanController {
         );
     }
 
-    /**
-     * =========================================================
-     * 5. ĐỔI VAI TRÒ
-     * =========================================================
-     *
-     * PUT /api/admin/tai-khoan/{maTK}/vai-tro
-     */
     @PutMapping("/{maTK}/vai-tro")
     public ApiResponse<AdminTaiKhoanResponse> changeRole(
             @PathVariable Integer maTK,
@@ -154,11 +112,6 @@ public class AdminTaiKhoanController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * =========================================================
-     * HÀM LẤY USER HIỆN TẠI TỪ JWT
-     * =========================================================
-     */
     private AuthenticatedUserDetails getCurrentUser() {
 
         Authentication authentication =
@@ -184,11 +137,6 @@ public class AdminTaiKhoanController {
         return userDetails;
     }
 
-    /**
-     * =========================================================
-     * LẤY IP CLIENT
-     * =========================================================
-     */
     private String getClientIp() {
 
         HttpServletRequest request =
@@ -217,11 +165,6 @@ public class AdminTaiKhoanController {
         return request.getRemoteAddr();
     }
 
-    /**
-     * =========================================================
-     * LẤY HTTP REQUEST HIỆN TẠI
-     * =========================================================
-     */
     private HttpServletRequest getCurrentHttpRequest() {
 
         return ((org.springframework.web.context.request.ServletRequestAttributes)

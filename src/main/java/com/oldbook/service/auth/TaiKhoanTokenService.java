@@ -16,16 +16,10 @@ public class TaiKhoanTokenService {
     private final Map<Integer, Instant> invalidBefore =
             new ConcurrentHashMap<>();
 
-    /**
-     * Vô hiệu toàn bộ token hiện tại của tài khoản.
-     */
     public void invalidateAllTokens(Integer maTK) {
         invalidBefore.put(maTK, Instant.now());
     }
 
-    /**
-     * Kiểm tra token có được tạo trước thời điểm vô hiệu hóa hay không.
-     */
     public boolean isTokenInvalid(
             Integer maTK,
             Instant issuedAt

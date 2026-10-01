@@ -1,7 +1,5 @@
 HELP.md
-.gradle
 build/
-!gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 
@@ -36,7 +34,5 @@ out/
 ### VS Code ###
 .vscode/
 
-# graft's local graph cache — regenerable, not committed (run `graft build`).
-/graft/
-
 .env
+target/

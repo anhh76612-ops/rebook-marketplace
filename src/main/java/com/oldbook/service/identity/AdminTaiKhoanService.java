@@ -38,12 +38,6 @@ public class AdminTaiKhoanService {
 
     private final EmailService emailService;
 
-    /*
-     * =========================================================
-     * 1. XEM DANH SÁCH / TÌM KIẾM
-     * =========================================================
-     */
-
     @Transactional(readOnly = true)
     public List<AdminTaiKhoanResponse> getAll(
             String tuKhoa,
@@ -120,12 +114,6 @@ public class AdminTaiKhoanService {
                 Locale.ROOT
         ).contains(keyword);
     }
-
-    /*
-     * =========================================================
-     * 2. TẠO TÀI KHOẢN
-     * =========================================================
-     */
 
     @Transactional
     public AdminTaiKhoanResponse create(
@@ -218,12 +206,6 @@ public class AdminTaiKhoanService {
         return toResponse(taiKhoan);
     }
 
-    /*
-     * =========================================================
-     * 3. KHÓA
-     * =========================================================
-     */
-
     @Transactional
     public void lock(
             Integer maTKTarget,
@@ -276,12 +258,6 @@ public class AdminTaiKhoanService {
         );
     }
 
-    /*
-     * =========================================================
-     * 4. MỞ KHÓA
-     * =========================================================
-     */
-
     @Transactional
     public void unlock(
             Integer maTKTarget,
@@ -319,12 +295,6 @@ public class AdminTaiKhoanService {
                 taiKhoan.getNguoiDung().getEmail()
         );
     }
-
-    /*
-     * =========================================================
-     * 5. ĐỔI VAI TRÒ
-     * =========================================================
-     */
 
     @Transactional
     public AdminTaiKhoanResponse changeRole(
@@ -384,12 +354,6 @@ public class AdminTaiKhoanService {
 
         return toResponse(taiKhoan);
     }
-
-    /*
-     * =========================================================
-     * 6. HÀM HỖ TRỢ
-     * =========================================================
-     */
 
     private TaiKhoan getTaiKhoan(
             Integer maTK

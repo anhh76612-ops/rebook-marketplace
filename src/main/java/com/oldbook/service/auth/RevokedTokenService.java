@@ -16,27 +16,18 @@ public class RevokedTokenService {
     private final Map<String, Instant> revokedTokens =
             new ConcurrentHashMap<>();
 
-    /**
-     * Đánh dấu token đã bị thu hồi.
-     */
     public void revokeToken(String jti, Instant expiration) {
         cleanupExpiredTokens();
 
         revokedTokens.put(jti, expiration);
     }
 
-    /**
-     * Kiểm tra token có bị thu hồi hay chưa.
-     */
     public boolean isRevoked(String jti) {
         cleanupExpiredTokens();
 
         return revokedTokens.containsKey(jti);
     }
 
-    /**
-     * Xóa các token đã hết hạn khỏi bộ nhớ.
-     */
     private void cleanupExpiredTokens() {
 
         Instant now = Instant.now();

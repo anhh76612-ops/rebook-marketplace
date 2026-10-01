@@ -1,4 +1,3 @@
-// File: src/main/java/com/nhom9/oldbook_marketplace/common/exception/GlobalExceptionHandler.java
 package com.oldbook.exception.common;
 
 import org.springframework.http.ResponseEntity;

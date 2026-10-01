@@ -21,9 +21,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    /**
-     * Đăng ký tài khoản mới.
-     */
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Void>> register(
             @Valid @RequestBody RegisterRequest request
@@ -35,9 +32,6 @@ public class AuthController {
                 .body(ApiResponse.success("Đăng ký tài khoản thành công"));
     }
 
-    /**
-     * Đăng nhập.
-     */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request
@@ -47,9 +41,6 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    /**
-     * Đăng xuất.
-     */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestHeader(
@@ -82,9 +73,6 @@ public class AuthController {
         );
     }
 
-    /**
-     * Chọn vai trò để lấy JWT chính thức.
-     */
     @PostMapping("/select-role")
     public ResponseEntity<ApiResponse<LoginResponse>> selectRole(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,

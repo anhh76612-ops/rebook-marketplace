@@ -38,7 +38,7 @@
           <strong class="price" th:text="${#numbers.formatInteger(book.setPrice, 1, 'COMMA')} + ' VNĐ'">0</strong></p>
         <div class="d-flex flex-wrap gap-2 mt-3">
           <a th:href="@{/gio-hang}" class="btn btn-accent btn-lg"><i class="bi bi-cart-plus me-1"></i>Thêm vào giỏ</a>
-          <a th:href="@{/thanh-toan}" class="btn btn-outline-navy btn-lg">Mua ngay</a>
+          <a th:href="@{/thanh-toan}" class="btn btn-outline-brown btn-lg">Mua ngay</a>
           <button type="button" class="btn wishlist-btn btn-lg" onclick="this.classList.toggle('active')"><i class="bi bi-heart me-1"></i>Yêu thích</button>
         </div>
         <h2 class="h5 mt-4">Giới thiệu sách</h2>

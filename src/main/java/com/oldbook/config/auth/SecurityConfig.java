@@ -34,7 +34,7 @@ public class SecurityConfig {
                 // Phân quyền endpoint
                 .authorizeHttpRequests(authorize -> authorize
 
-                        // MỞ KHÓA CHO GIAO DIỆN WEB (THÊM KHỐI NÀY)
+                        // MỞ KHÓA CHO GIAO DIỆN WEB
                         .requestMatchers(
                                 "/",
                                 "/books/**",

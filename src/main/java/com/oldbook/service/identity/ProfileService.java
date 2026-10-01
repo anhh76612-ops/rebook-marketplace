@@ -1,5 +1,3 @@
-// src/main/java/com/nhom9/oldbook_marketplace/identity/service/ProfileService.java
-
 package com.oldbook.service.identity;
 
 import lombok.RequiredArgsConstructor;

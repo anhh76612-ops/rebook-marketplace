@@ -1,5 +1,3 @@
-// src/main/java/com/nhom9/oldbook_marketplace/identity/controller/ProfileController.java
-
 package com.oldbook.controller.identity;
 
 import jakarta.validation.Valid;

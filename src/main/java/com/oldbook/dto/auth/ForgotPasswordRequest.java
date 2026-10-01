@@ -1,5 +1,3 @@
-// src/main/java/com/nhom9/oldbook_marketplace/auth/dto/ForgotPasswordRequest.java
-
 package com.oldbook.dto.auth;
 
 import jakarta.validation.constraints.Email;

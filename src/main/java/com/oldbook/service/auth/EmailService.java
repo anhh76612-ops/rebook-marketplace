@@ -20,11 +20,6 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String emailNguoiGui;
 
-    /**
-     * =========================================================
-     * 1. EMAIL OTP ĐĂNG KÝ
-     * =========================================================
-     */
     public void sendRegisterOtpEmail(
             String emailNguoiNhan,
             String maOtp
@@ -37,11 +32,6 @@ public class EmailService {
         );
     }
 
-    /**
-     * =========================================================
-     * 2. EMAIL OTP QUÊN MẬT KHẨU
-     * =========================================================
-     */
     public void sendForgotPasswordOtpEmail(
             String emailNguoiNhan,
             String maOtp
@@ -54,11 +44,6 @@ public class EmailService {
         );
     }
 
-    /**
-     * =========================================================
-     * 3. DÙNG CHUNG CHO EMAIL OTP
-     * =========================================================
-     */
     private void sendOtpEmail(
             String emailNguoiNhan,
             String maOtp,
@@ -96,11 +81,6 @@ public class EmailService {
         }
     }
 
-    /**
-     * =========================================================
-     * 4. EMAIL THÔNG BÁO KHÓA TÀI KHOẢN
-     * =========================================================
-     */
     public void sendAccountLockedEmail(
             String emailNguoiNhan,
             String lyDo
@@ -113,11 +93,6 @@ public class EmailService {
         );
     }
 
-    /**
-     * =========================================================
-     * 5. EMAIL THÔNG BÁO MỞ KHÓA TÀI KHOẢN
-     * =========================================================
-     */
     public void sendAccountUnlockedEmail(
             String emailNguoiNhan
     ) {
@@ -128,11 +103,6 @@ public class EmailService {
         );
     }
 
-    /**
-     * =========================================================
-     * 6. DÙNG CHUNG CHO EMAIL KHÓA / MỞ KHÓA
-     * =========================================================
-     */
     private void sendAccountNotificationEmail(
             String emailNguoiNhan,
             String tieuDe,
@@ -166,11 +136,6 @@ public class EmailService {
         }
     }
 
-    /**
-     * =========================================================
-     * 7. EMAIL THÔNG BÁO TẠO TÀI KHOẢN BỞI ADMIN
-     * =========================================================
-     */
     public void sendAdminAccountCreatedEmail(
             String email,
             String hoTen,
@@ -189,11 +154,6 @@ public class EmailService {
         );
     }
 
-    /**
-     * =========================================================
-     * 8. HÀM GỬI EMAIL THÔNG THƯỜNG
-     * =========================================================
-     */
     private void sendNormalEmail(
             String emailNguoiNhan,
             String tieuDe,

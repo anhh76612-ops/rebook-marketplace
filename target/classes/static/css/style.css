@@ -1,45 +1,39 @@
 :root {
-  /* ===== Bảng màu mới: Forest Earth (Pine Bark / Soft Leather / Dull Chestnut / Windy Dunes / Olive Grove / Deep Mahogany + Spring Leaf) ===== */
   --pine-bark: #352E1F;
   --soft-leather: #5E3D20;
   --dull-chestnut: #94724A;
   --windy-dunes: #CCB693;
   --olive-grove: #787350;
   --deep-mahogany: #481911;
-  --spring-leaf: #94A65D;   /* Màu xanh khi chọn / hover / active các nút */
+  --spring-leaf: #94A65D;
 
-  /* Nâu đậm - header, footer, tiêu đề chính (tên biến cũ giữ để tương thích) */
-  --forest-950: #352E1F;   /* Pine Bark */
-  --forest-900: #5E3D20;   /* Soft Leather */
-  --forest-800: #352E1F;   /* Pine Bark */
-  --forest-700: #5E3D20;   /* Soft Leather */
-  --forest-600: #787350;   /* Olive Grove (màu liên kết) */
-  --forest-500: #94724A;   /* Dull Chestnut */
+  --brown-950: #352E1F;
+  --brown-900: #5E3D20;
+  --brown-800: #352E1F;
+  --brown-700: #5E3D20;
+  --brown-600: #787350;
+  --brown-500: #94724A;
 
-  /* Olive / nâu vừa - nhấn, viền, chữ phụ đậm */
-  --olive-700: #5E3D20;    /* Soft Leather (thanh menu) */
-  --olive-600: #787350;    /* Olive Grove */
-  --olive-500: #787350;    /* Olive Grove */
-  --sage-500: #787350;     /* Olive Grove */
-  --sage-400: #94724A;     /* Dull Chestnut */
+  --olive-700: #5E3D20;
+  --olive-600: #787350;
+  --olive-500: #787350;
+  --sage-500: #787350;
+  --sage-400: #94724A;
 
-  /* Đỏ nâu - giá, badge, điểm nhấn */
-  --amber-800: #481911;    /* Deep Mahogany */
-  --amber-600: #5E3D20;    /* Soft Leather */
-  --gold-500: #94A65D;     /* Spring Leaf */
-  --gold-300: #CCB693;     /* Windy Dunes */
+  --amber-800: #481911;
+  --amber-600: #5E3D20;
+  --bright-500: #94A65D;
+  --bright-300: #CCB693;
 
-  /* Tông nhạt - nền, mảng, hover nhẹ */
-  --lime-300: #CCB693;     /* Windy Dunes */
-  --lime-200: #E3D6BF;     /* Windy Dunes nhạt */
-  --lime-100: #F5EFE3;     /* kem rất nhạt, nền mảng/badge */
+  --lime-300: #CCB693;
+  --lime-200: #E3D6BF;
+  --lime-100: #F5EFE3;
 
-  /* Bí danh dùng chung trong toàn bộ CSS bên dưới */
-  --navy: var(--forest-800);
-  --blue: var(--forest-600);
-  --accent: var(--spring-leaf);      /* tab/pill đang chọn cũng thành xanh */
+  --brown: var(--brown-800);
+  --bright_olive: var(--brown-600);
+  --accent: var(--spring-leaf);
   --accent-dark: var(--olive-grove);
-  --bg: #F1F5E9	;         /* nền kem ấm, tôn màu nâu/xanh */
+  --bg: #F1F5E9;
   --text: #2B261A;
   --muted: #766D5C;
   --line: #E6DCC8;
@@ -50,29 +44,27 @@
 
 
 body { font-family: 'Be Vietnam Pro', system-ui, sans-serif; color: var(--text); background: var(--bg); }
-a { color: var(--blue); text-decoration: none; }
-a:hover { color: var(--gold-500); }
+a { color: var(--bright_olive); text-decoration: none; }
+a:hover { color: var(--bright-500); }
 main { min-height: 60vh; }
 
-/* ===== Tiện ích màu chữ theo palette (dùng khi cần nhấn mạnh) ===== */
-.text-forest { color: var(--forest-900) !important; }
+.text-brown { color: var(--brown-900) !important; }
 .text-olive { color: var(--olive-700) !important; }
 .text-sage { color: var(--sage-500) !important; }
-.text-gold { color: var(--gold-500) !important; }
-.text-cream { color: var(--gold-300) !important; }
+.text-bright { color: var(--bright-500) !important; }
+.text-cream { color: var(--bright-300) !important; }
 .text-amber { color: var(--amber-800) !important; }
 .text-lime { color: var(--lime-300) !important; }
 
-/* Header */
-.topbar { background: var(--gold-500); color: var(--amber-600); font-size: .85rem; }
+.topbar { background: var(--bright-500); color: var(--amber-600); font-size: .85rem; }
 .topbar a { color: #fff; }
 .mainbar { background: #F1F5E9; border-bottom: 1px solid var(--line); }
-.brand { font-size: 1.5rem; font-weight: 700; color: var(--forest-900); white-space: nowrap; }
-.brand i { color: var(--gold-500); }
+.brand { font-size: 1.5rem; font-weight: 700; color: var(--brown-900); white-space: nowrap; }
+.brand i { color: var(--bright-500); }
 .search { display: flex; max-width: 640px; }
 .search .form-control { border-radius: 8px 0 0 8px; }
 .search .btn { border-radius: 0 8px 8px 0; white-space: nowrap; }
-.cart-link { position: relative; color: var(--forest-900); font-weight: 600; white-space: nowrap; font-size: 1.05rem; }
+.cart-link { position: relative; color: var(--brown-900); font-weight: 600; white-space: nowrap; font-size: 1.05rem; }
 .cart-link i { font-size: 1.5rem; vertical-align: middle; }
 .cart-count { position: absolute; top: -8px; left: 16px; background: var(--amber-800); color: #fff;
   border-radius: 999px; font-size: .7rem; padding: 1px 6px; }
@@ -80,20 +72,18 @@ main { min-height: 60vh; }
 .menu .nav-link { color: #fff !important; padding: .8rem 1rem; font-weight: 500; }
 .menu .nav-link:hover, .menu .nav-link:active, .menu .nav-link.active { background: var(--spring-leaf); color: var(--pine-bark) !important; }
 
-/* Buttons - mặc định tông nâu, khi hover / bấm / chọn / focus => xanh Spring Leaf */
 .btn-accent { background: var(--dull-chestnut); border-color: var(--dull-chestnut); color: #fff; font-weight: 600; }
-.btn-outline-navy { border: 2px solid var(--forest-900); color: var(--forest-900); font-weight: 600; background: transparent; }
+.btn-outline-brown { border: 2px solid var(--brown-900); color: var(--brown-900); font-weight: 600; background: transparent; }
 .btn-outline-secondary { --bs-btn-color: var(--soft-leather); --bs-btn-border-color: var(--dull-chestnut);
   color: var(--soft-leather); border-color: var(--dull-chestnut); background: transparent; }
 .btn-outline-danger { color: var(--deep-mahogany); border-color: var(--deep-mahogany); background: transparent; }
 .btn-outline-danger:hover, .btn-outline-danger:active, .btn-outline-danger:focus-visible,
 .btn-outline-danger.active { background: var(--deep-mahogany) !important; border-color: var(--deep-mahogany) !important; color: #fff !important; }
 
-/* Trạng thái chọn: hover, đang bấm, focus, active, được check => màu xanh */
 .btn-accent:hover, .btn-accent:active, .btn-accent:focus, .btn-accent:focus-visible, .btn-accent.active,
 .btn-check:checked + .btn-accent, .btn-accent:first-child:active,
-.btn-outline-navy:hover, .btn-outline-navy:active, .btn-outline-navy:focus, .btn-outline-navy:focus-visible,
-.btn-outline-navy.active, .btn-check:checked + .btn-outline-navy,
+.btn-outline-brown:hover, .btn-outline-brown:active, .btn-outline-brown:focus, .btn-outline-brown:focus-visible,
+.btn-outline-brown.active, .btn-check:checked + .btn-outline-brown,
 .btn-outline-secondary:hover, .btn-outline-secondary:active, .btn-outline-secondary:focus,
 .btn-outline-secondary:focus-visible, .btn-outline-secondary.active, .btn-check:checked + .btn-outline-secondary,
 .btn-outline-secondary:first-child:active,
@@ -105,15 +95,11 @@ main { min-height: 60vh; }
 .nav-pills .nav-link { color: var(--soft-leather); }
 .nav-pills .nav-link:hover { color: var(--pine-bark); background: rgba(148,166,93,.2); }
 
-/* Hero */
 .hero-slide { min-height: 320px; align-items: center; color: #fff; padding: 2rem 0; }
-/* Chỉ slide đang hiển thị (và slide đang trượt vào/ra) mới dùng flex - tránh ghi đè display:none của Bootstrap làm 3 slide chồng lên nhau */
 .carousel-item.hero-slide { display: none; }
 .carousel-item.hero-slide.active,
 .carousel-item.hero-slide.carousel-item-next,
 .carousel-item.hero-slide.carousel-item-prev { display: flex; }
-/* Hero: nền gradient nâu -> xanh, ảnh sách phủ lên với độ mờ để hòa vào màu.
-   Chỉnh độ hiện của ảnh: đổi --hero-img-opacity (0 = chỉ thấy màu, 1 = chỉ thấy ảnh) */
 .hero-slide { --hero-img-opacity: .30; position: relative; overflow: hidden; }
 .hero-slide::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background: url('../images/hero-books.jpg') center / cover no-repeat; opacity: var(--hero-img-opacity); }
@@ -122,16 +108,14 @@ main { min-height: 60vh; }
 .hero-2 { background: linear-gradient(120deg, var(--deep-mahogany), var(--dull-chestnut) 45%, var(--olive-grove) 85%, var(--spring-leaf)); }
 .hero-3 { background: linear-gradient(120deg, var(--pine-bark), var(--olive-grove) 60%, var(--spring-leaf)); }
 .hero-slide h2 { font-size: clamp(1.7rem, 4vw, 2.8rem); font-weight: 700; max-width: 560px; }
-.hero-slide h2 .accent-word { color: var(--gold-300); }
+.hero-slide h2 .accent-word { color: var(--bright-300); }
 .hero-slide p { font-size: 1.1rem; max-width: 520px; opacity: .95; }
-.hero-slide h2, .hero-slide p { text-shadow: 0 2px 10px rgba(0,0,0,.55); }  /* giúp chữ nổi trên ảnh sáng */
+.hero-slide h2, .hero-slide p { text-shadow: 0 2px 10px rgba(0,0,0,.55); }
 
-/* Section */
 .section-title { display: flex; justify-content: space-between; align-items: center;
-  border-bottom: 3px solid var(--gold-500); margin: 2.2rem 0 1.2rem; padding-bottom: .5rem; }
-.section-title h2 { font-size: 1.3rem; font-weight: 700; margin: 0; color: var(--forest-900); text-transform: uppercase; }
+  border-bottom: 3px solid var(--bright-500); margin: 2.2rem 0 1.2rem; padding-bottom: .5rem; }
+.section-title h2 { font-size: 1.3rem; font-weight: 700; margin: 0; color: var(--brown-900); text-transform: uppercase; }
 
-/* Book card */
 .book-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; height: 100%;
   display: flex; flex-direction: column; }
 .book-card:hover { box-shadow: 0 6px 18px rgba(53,46,31,.18); }
@@ -141,7 +125,6 @@ main { min-height: 60vh; }
   border: none; background: rgba(255,255,255,.85); color: var(--amber-800); display: flex; align-items: center; justify-content: center; }
 .wishlist-mini:hover, .wishlist-mini:active { background: var(--spring-leaf); color: var(--pine-bark); }
 .cover-title { font-weight: 700; font-size: 1.05rem; line-height: 1.3; }
-/* Bìa sách - giữ tông xám trung tính (sản phẩm không theo bảng màu chủ đạo) */
 .c0 { background: linear-gradient(160deg, #9e9e9e, #333333); }
 .c1 { background: linear-gradient(160deg, #bdbdbd, #4f4f4f); }
 .c2 { background: linear-gradient(160deg, #8a8a8a, #1a1a1a); }
@@ -158,14 +141,12 @@ main { min-height: 60vh; }
 .book-info .btn { margin-top: auto !important; }
 .book-info .price-line:last-of-type { margin-bottom: .2rem; }
 
-/* Promo blocks */
 .promo { border-radius: 14px; padding: 2rem; color: #fff; }
-.promo-app { background: linear-gradient(120deg, var(--forest-950), var(--olive-700), var(--gold-500)); }
+.promo-app { background: linear-gradient(120deg, var(--brown-950), var(--olive-700), var(--bright-500)); }
 .promo-news { background: #fff; border: 1px solid var(--line); }
 .device { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 1.5rem 1rem; text-align: center; height: 100%; }
 .device i { color: var(--sage-500); font-size: 2.5rem; }
 
-/* Forms */
 .auth-card { max-width: 460px; margin: 2.5rem auto; background: #fff; border: 1px solid var(--line);
   border-radius: 14px; padding: 2rem; }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 1.25rem; }
@@ -174,54 +155,45 @@ main { min-height: 60vh; }
 .qty { width: 110px; }
 .breadcrumb { margin: 1rem 0; font-size: .9rem; }
 
-/* Footer - nhiều bậc xanh rừng - vàng đất cho chiều sâu */
-.site-footer { background: linear-gradient(180deg, var(--forest-600), var(--forest-700)); color: var(--lime-100); margin-top: 3rem; }
-.site-footer .brand { color: var(--gold-300); }
-.site-footer h5 { color: var(--gold-300); font-size: 1rem; margin-bottom: 1rem; }
+.site-footer { background: linear-gradient(180deg, var(--brown-600), var(--brown-700)); color: var(--lime-100); margin-top: 3rem; }
+.site-footer .brand { color: var(--bright-300); }
+.site-footer h5 { color: var(--bright-300); font-size: 1rem; margin-bottom: 1rem; }
 .site-footer a { color: var(--lime-100); display: inline-block; margin-bottom: .4rem; }
-.site-footer a:hover { color: var(--gold-500); }
-.social i { font-size: 1.4rem; margin-right: .8rem; color: var(--gold-300); }
-.copyright { background: var(--forest-700); color: #fff; font-size: .85rem; }
+.site-footer a:hover { color: var(--bright-500); }
+.social i { font-size: 1.4rem; margin-right: .8rem; color: var(--bright-300); }
+.copyright { background: var(--brown-700); color: #fff; font-size: .85rem; }
 
 @media (max-width: 575px) {
   .brand { font-size: 1.15rem; }
 }
 
-/* ===== Chức năng bổ sung theo tài liệu thiết kế ===== */
-
-/* Bộ lọc sách (tình trạng, giá, đánh giá...) */
 .filter-panel { background: #fff; border: 1px solid var(--lime-200); border-radius: 12px; padding: 1.1rem; }
-.filter-panel h3 { font-size: .95rem; font-weight: 700; color: var(--forest-900); text-transform: uppercase;
-  border-bottom: 2px solid var(--gold-500); padding-bottom: .5rem; margin-bottom: .8rem; }
+.filter-panel h3 { font-size: .95rem; font-weight: 700; color: var(--brown-900); text-transform: uppercase;
+  border-bottom: 2px solid var(--bright-500); padding-bottom: .5rem; margin-bottom: .8rem; }
 .filter-panel .form-check { margin-bottom: .45rem; }
 .form-check-input:checked { background-color: var(--spring-leaf); border-color: var(--spring-leaf); }
 .filter-panel .btn-reset { color: var(--amber-800); font-size: .85rem; text-decoration: underline; }
 
-/* Badge tình trạng sách cũ */
-.condition-badge { display: inline-block; background: var(--gold-300); color: var(--forest-900);
+.condition-badge { display: inline-block; background: var(--bright-300); color: var(--brown-900);
   font-size: .78rem; font-weight: 600; padding: .15rem .55rem; border-radius: 999px; }
 .condition-badge i { color: var(--amber-800); }
 
-/* Liên kết chức năng người dùng (yêu thích, đơn hàng) */
 .user-func a { color: #fff; }
-.user-func a:hover { color: var(--gold-300); }
+.user-func a:hover { color: var(--bright-300); }
 .wishlist-btn { border: 2px solid var(--dull-chestnut); color: var(--soft-leather); background: #fff; font-weight: 600; }
 
-/* Cửa hàng bán sách (mô hình multi-vendor) */
 .shop-line { font-size: .9rem; color: var(--muted); }
-.shop-line a { color: var(--forest-600); font-weight: 600; }
+.shop-line a { color: var(--brown-600); font-weight: 600; }
 .shop-line a:hover { color: var(--amber-800); }
 
-/* Đánh giá sao */
-.rating-stars i { color: var(--gold-500); }
+.rating-stars i { color: var(--bright-500); }
 .review-card { border: 1px solid var(--lime-200); border-radius: 10px; padding: 1rem; margin-bottom: .8rem; background: var(--lime-100); }
 
-/* Trạng thái đơn hàng (theo dõi đơn) - nhiều bậc xanh -> vàng thể hiện tiến trình */
 .order-steps { display: flex; justify-content: space-between; margin: 1.5rem 0; }
 .order-steps .step { text-align: center; flex: 1; position: relative; font-size: .8rem; color: var(--muted); }
 .order-steps .step i { display: block; font-size: 1.3rem; margin-bottom: .3rem; color: var(--lime-200); }
-.order-steps .step.done { color: var(--forest-700); font-weight: 600; }
-.order-steps .step.done i { color: var(--gold-500); }
+.order-steps .step.done { color: var(--brown-700); font-weight: 600; }
+.order-steps .step.done i { color: var(--bright-500); }
 .order-steps .step.active i { color: var(--amber-800); }
 
 

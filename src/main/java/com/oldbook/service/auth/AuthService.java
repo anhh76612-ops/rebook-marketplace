@@ -38,16 +38,6 @@ public class AuthService {
     private static final String LOAI_XAC_THUC_QUEN_MAT_KHAU = "QUEN_MAT_KHAU";
     private final RevokedTokenService revokedTokenService;
 
-    /**
-     * Đăng ký người dùng mới.
-     *
-     * Hiện tại:
-     * - Tạo NguoiDung
-     * - Mã hóa mật khẩu bằng BCrypt
-     * - Tạo TaiKhoan với vai trò Khách hàng
-     *
-     * OTP sẽ được bổ sung sau khi xây dựng module mã xác thực.
-     */
     @Transactional
     public void register(RegisterRequest request) {
 
@@ -443,9 +433,6 @@ public class AuthService {
         taiKhoanRepository.save(taiKhoan);
         maXacThucRepository.save(maXacThuc);
     }
-    /**
-     * Đăng nhập.
-     */
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
 
@@ -524,11 +511,6 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * Đăng xuất tài khoản hiện tại.
-     *
-     * JWT được đánh dấu là đã thu hồi.
-     */
     @Transactional
     public void logout(String token) {
 

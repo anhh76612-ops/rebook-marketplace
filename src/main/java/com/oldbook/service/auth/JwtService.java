@@ -32,7 +32,6 @@ public class JwtService {
     }
 
     // JWT chính thức
-    // JWT chính thức
     public String generateToken(
             Integer maND,
             Integer maTK,
