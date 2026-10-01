@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trang Chủ - OldBook</title>
+    <!-- Nhúng CSS của Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<!-- Chèn Header từ file header.html -->
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="container mt-4 min-vh-100">
+    <h2 class="mb-4">Sách nổi bật</h2>
+
+    <div class="row g-4">
+        <!-- Khung card hiển thị sách mẫu (Chưa có data thực) -->
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm">
+                <img src="https://via.placeholder.com/150x200" class="card-img-top" alt="Ảnh sách">
+                <div class="card-body">
+                    <h6 class="card-title">Tên sách mẫu 1</h6>
+                    <p class="card-text text-danger fw-bold">50.000 đ</p>
+                    <a href="#" class="btn btn-outline-primary btn-sm w-100">Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chèn Footer từ file footer.html -->
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- Nhúng JS của Bootstrap 5 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
