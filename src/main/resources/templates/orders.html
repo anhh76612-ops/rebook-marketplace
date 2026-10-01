@@ -1,78 +1,76 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Đơn hàng của tôi')}"></head>
-<body>
-<header th:replace="~{fragments/layout :: header}"></header>
-<main class="container">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a th:href="@{/}">Trang chủ</a></li>
-      <li class="breadcrumb-item active">Đơn hàng của tôi</li>
-    </ol>
-  </nav>
-  <h1 class="h4 fw-bold mb-3">Đơn hàng của tôi</h1>
-
-  <ul class="nav nav-pills mb-3">
-    <li class="nav-item"><a class="nav-link active" href="#" style="background:var(--accent)">Tất cả</a></li>
-    <li class="nav-item"><a class="nav-link" href="#">Chờ xác nhận</a></li>
-    <li class="nav-item"><a class="nav-link" href="#">Đang giao</a></li>
-    <li class="nav-item"><a class="nav-link" href="#">Hoàn thành</a></li>
-    <li class="nav-item"><a class="nav-link" href="#">Đã hủy</a></li>
-  </ul>
-
-  <div class="panel mb-3" th:each="o : ${orders}">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-      <div>
-        <strong th:text="'Đơn hàng #' + ${o.code}">Đơn hàng #DH001</strong>
-        <span class="text-muted small ms-2" th:text="${o.shop}">Cửa hàng</span>
-      </div>
-      <span class="condition-badge" th:text="${o.status}">Đang giao</span>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Đơn hàng của tôi - OldBook</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+</head>
+<body data-page-requires-login>
+<div th:replace="~{fragments/header :: header}"></div>
+<main class="container py-3">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/}">Trang chủ</a></li>
+        <li class="breadcrumb-item active">Đơn hàng của tôi</li>
+    </ol></nav>
+    <h1 class="h4 fw-bold mb-3">Đơn hàng của tôi</h1>
+    <div id="ordersAlert" class="alert d-none"></div>
+    <div id="ordersLoading" class="text-center text-muted py-5"><span class="spinner-border spinner-border-sm me-2"></span>Đang tải đơn hàng...</div>
+    <div id="ordersEmpty" class="panel text-center py-5 d-none">
+        <i class="bi bi-receipt fs-1 text-muted"></i>
+        <p class="mt-3">Bạn chưa có đơn hàng nào.</p>
+        <a href="/books" class="btn btn-accent">Mua sách ngay</a>
     </div>
-
-    <div class="order-steps">
-      <div class="step done"><i class="bi bi-check-circle-fill"></i>Chờ xác nhận</div>
-      <div class="step done"><i class="bi bi-check-circle-fill"></i>Đã xác nhận</div>
-      <div th:class="${o.stepDone} ? 'step done' : 'step'"><i class="bi bi-truck"></i>Đang giao</div>
-      <div class="step"><i class="bi bi-box-seam"></i>Đã giao</div>
-    </div>
-
-    <div class="d-flex align-items-center gap-3 mb-2" th:each="b : ${o.books}">
-      <div class="mini-cover" th:classappend="'c' + ${b.id % 6}"></div>
-      <div class="flex-grow-1">
-        <div class="fw-semibold" th:text="${b.title}">Tên sách</div>
-        <div class="small text-muted" th:text="${#numbers.formatInteger(b.ebookPrice, 1, 'COMMA')} + ' đ'">0 đ</div>
-      </div>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center mt-2">
-      <span class="fw-bold" th:text="'Tổng: ' + ${#numbers.formatInteger(o.total, 1, 'COMMA')} + ' đ'">Tổng: 0 đ</span>
-      <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#cancelModal">Gửi yêu cầu hủy</button>
-        <a th:href="@{/sach}" class="btn btn-accent btn-sm">Mua lại</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal gửi yêu cầu hủy đơn -->
-  <div class="modal fade" id="cancelModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Gửi yêu cầu hủy đơn</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <label class="form-label">Lý do hủy đơn</label>
-          <textarea class="form-control" rows="3" placeholder="Nhập lý do..."></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
-          <button type="button" class="btn btn-accent" data-bs-dismiss="modal">Gửi yêu cầu</button>
-        </div>
-      </div>
-    </div>
-  </div>
+    <div id="ordersList" class="d-none"></div>
 </main>
-<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/footer :: footer}"></div>
+<script th:inline="none">
+(function () {
+    var OB = window.OldBook, Auth = OB.auth, ROLE = OB.ROLE_CUSTOMER;
+    var $ = function (id) { return document.getElementById(id); };
+    function money(v) { return OB.formatMoney(v); }
+    function statusText(v) {
+        var map = { CHO_XU_LY: 'Chờ xử lý', DA_XAC_NHAN: 'Đã xác nhận', DANG_GIAO: 'Đang giao', DA_GIAO: 'Đã giao', DA_HUY: 'Đã hủy', CHO_THANH_TOAN: 'Chờ thanh toán', DA_THANH_TOAN: 'Đã thanh toán' };
+        return map[v] || v || 'Không xác định';
+    }
+    function badge(v) {
+        return '<span class="condition-badge">' + OB.escapeHtml(statusText(v)) + '</span>';
+    }
+    function renderStore(store) {
+        return '<div class="border rounded p-3 mb-3">' +
+            '<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2"><div class="fw-bold"><i class="bi bi-shop me-1"></i>' + OB.escapeHtml(store.tenCuaHang || 'Cửa hàng') + '</div>' + badge(store.trangThaiDonHang) + '</div>' +
+            (store.items || []).map(function (it) {
+                return '<div class="d-flex justify-content-between align-items-center gap-3 py-2 border-top"><div><div class="fw-semibold">' + OB.escapeHtml(it.tenSach) + '</div><div class="small text-muted">Số lượng: ' + it.soLuong + '</div></div><span class="fw-semibold">' + money(it.thanhTien) + '</span></div>';
+            }).join('') +
+            '<div class="text-end mt-2 fw-bold">Tổng cửa hàng: ' + money(store.tongTienShopOrder) + '</div>' +
+            '</div>';
+    }
+    function renderOrder(o) {
+        return '<div class="panel mb-3"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><strong>Đơn hàng #' + o.maDH + '</strong><div class="small text-muted">' + (o.ngayTao ? new Date(o.ngayTao).toLocaleString('vi-VN') : '') + '</div></div><div>' + badge(o.trangThaiThanhToan) + '</div></div>' +
+            '<div class="small mb-3"><i class="bi bi-person me-1"></i>' + OB.escapeHtml(o.tenNguoiNhan || '') + ' · ' + OB.escapeHtml(o.soDienThoaiNhan || '') + '<br><i class="bi bi-geo-alt me-1"></i>' + OB.escapeHtml([o.diaChiGiaoChiTiet, o.phuongXaGiao, o.quanHuyenGiao, o.tinhThanhGiao].filter(Boolean).join(', ')) + '</div>' +
+            (o.storeOrders || []).map(renderStore).join('') +
+            '<div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top"><span class="fw-bold">Tổng thanh toán</span><span class="fs-5 fw-bold price">' + money(o.tongThanhToan) + '</span></div></div>';
+    }
+    function load() {
+        if (!Auth.isLoggedIn()) { Auth.redirectToLogin('/orders'); return; }
+        if (!Auth.hasRole(ROLE)) { $('ordersLoading').classList.add('d-none'); $('ordersAlert').className = 'alert alert-warning'; $('ordersAlert').textContent = 'Chỉ tài khoản khách hàng mới được xem đơn hàng.'; return; }
+        OB.request('GET', '/api/order/orders').then(function (orders) {
+            $('ordersLoading').classList.add('d-none');
+            if (!orders || !orders.length) { $('ordersEmpty').classList.remove('d-none'); return; }
+            $('ordersList').innerHTML = orders.map(renderOrder).join('');
+            $('ordersList').classList.remove('d-none');
+        }).catch(function (err) {
+            $('ordersLoading').classList.add('d-none');
+            if (Auth.handleAuthError(err, ROLE)) { return; }
+            $('ordersAlert').className = 'alert alert-danger';
+            $('ordersAlert').textContent = err.message;
+        });
+    }
+    load();
+})();
+</script>
 </body>
 </html>

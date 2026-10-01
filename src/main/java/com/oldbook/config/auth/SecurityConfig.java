@@ -44,6 +44,8 @@ public class SecurityConfig {
                                 "/orders",
                                 "/cart",
                                 "/wishlist",
+                                "/checkout",
+                                "/order-success",
                                 "/login",
                                 "/register",
                                 "/css/**",
