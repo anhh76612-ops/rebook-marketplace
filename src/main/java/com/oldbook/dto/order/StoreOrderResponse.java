@@ -3,6 +3,7 @@ package com.oldbook.dto.order;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -19,5 +20,18 @@ public class StoreOrderResponse {
     private BigDecimal tongTienShopOrder;
     private String trangThaiDonHang;
     private String trangThaiThanhToanShop;
+
+    // Ghi chú riêng của khách cho cửa hàng này
+    private String ghiChu;
+
+    // Đơn vị vận chuyển khách đã chọn cho đơn hàng con này
+    private Integer maDVVC;
+    private String tenDonViVanChuyen;
+
+    private LocalDateTime ngayXacNhan;
+
+    // null cho tới khi cửa hàng xác nhận đơn
+    private ShipmentResponse vanChuyen;
+
     private List<OrderItemResponse> items;
 }

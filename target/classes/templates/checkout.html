@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Thanh toán - OldBook</title>
+    <title>Đặt hàng - OldBook</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
@@ -26,12 +26,12 @@
                 <a th:href="@{/cart}">Giỏ hàng</a>
             </li>
             <li class="breadcrumb-item active">
-                Thanh toán
+                Đặt hàng
             </li>
         </ol>
     </nav>
 
-    <h1 class="h4 fw-bold mb-3">Thanh toán</h1>
+    <h1 class="h4 fw-bold mb-3">Đặt hàng</h1>
 
     <div id="checkoutAlert"
          class="alert d-none"
@@ -103,18 +103,24 @@
                 </div>
 
 
-                <!-- GHI CHÚ -->
+                <!-- VẬN CHUYỂN & GHI CHÚ THEO TỪNG CỬA HÀNG -->
                 <div class="panel mb-3">
 
-                    <h2 class="h5 fw-bold mb-3">
-                        Ghi chú đơn hàng
+                    <h2 class="h5 fw-bold mb-1">
+                        Vận chuyển &amp; ghi chú theo cửa hàng
                     </h2>
 
-                    <textarea id="orderNote"
-                              class="form-control"
-                              rows="3"
-                              maxlength="1000"
-                              placeholder="Ví dụ: Giao giờ hành chính..."></textarea>
+                    <p class="small text-muted mb-3">
+                        Mỗi cửa hàng giao hàng riêng. Hãy chọn đơn vị vận chuyển
+                        và để lại ghi chú (nếu cần) cho từng cửa hàng.
+                    </p>
+
+                    <div id="noCarrier"
+                         class="alert alert-warning d-none">
+                        Hiện chưa có đơn vị vận chuyển nào khả dụng.
+                    </div>
+
+                    <div id="storeOptions"></div>
 
                 </div>
 
@@ -149,8 +155,7 @@
                     <div class="small text-muted mt-2">
 
                         Hiện hệ thống chỉ hỗ trợ COD.
-                        Phí vận chuyển và voucher đang để 0
-                        theo API hiện tại.
+                        Voucher chưa được áp dụng.
 
                     </div>
 
@@ -174,6 +179,12 @@
                     <div id="checkoutItems"></div>
 
                     <hr>
+
+                    <!-- MÃ GIẢM GIÁ (chưa xử lý) -->
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="Mã giảm giá (sắp có)" disabled>
+                        <button type="button" class="btn btn-outline-brown" disabled>Áp dụng</button>
+                    </div>
 
                     <div class="d-flex justify-content-between mb-2">
 
@@ -199,7 +210,7 @@
 
                         <span>Phí vận chuyển</span>
 
-                        <span>
+                        <span id="checkoutShipping">
                             0 đ
                         </span>
 
@@ -526,6 +537,77 @@
 
     var cart = null;
 
+    var carriers = [];
+
+    var SELECTED_KEY = 'ob_checkout_items';
+
+
+    /* ========================= */
+    /* SẢN PHẨM ĐƯỢC CHỌN TỪ GIỎ */
+    /* ========================= */
+
+    function getSelectedIds() {
+
+        try {
+
+            var raw = window.sessionStorage.getItem(SELECTED_KEY);
+
+            var ids = raw ? JSON.parse(raw) : [];
+
+            return Array.isArray(ids) ? ids.map(Number) : [];
+
+        } catch (e) {
+
+            return [];
+
+        }
+
+    }
+
+
+    function clearSelectedIds() {
+
+        try {
+
+            window.sessionStorage.removeItem(SELECTED_KEY);
+
+        } catch (e) { }
+
+    }
+
+
+    function filterSelected(data) {
+
+        var ids = getSelectedIds();
+
+        var items = (data.items || []).filter(function (it) {
+
+            return it.coTheMua && ids.indexOf(Number(it.maCTGioHang)) !== -1;
+
+        });
+
+        var qty = 0;
+
+        var total = 0;
+
+        items.forEach(function (it) {
+
+            qty += Number(it.soLuong || 0);
+
+            total += Number(it.thanhTien || 0);
+
+        });
+
+        return {
+            maGioHang: data.maGioHang,
+            items: items,
+            soMuc: items.length,
+            tongSoLuong: qty,
+            tongTien: total
+        };
+
+    }
+
 
     /* ========================= */
     /* HIỂN THỊ */
@@ -572,6 +654,7 @@
             if (!groups[key]) {
 
                 groups[key] = {
+                    maCH: it.maCH,
                     name: it.tenCuaHang,
                     items: []
                 };
@@ -630,6 +713,10 @@
 
                         '</div>' +
 
+                        '<div class="small text-muted mb-2" data-ship-label="' +
+                            g.maCH +
+                        '">Chưa chọn đơn vị vận chuyển</div>' +
+
                         g.items.map(function (it) {
 
                             return (
@@ -686,11 +773,170 @@
         $('checkoutSubtotal').textContent =
             OB.formatMoney(data.tongTien);
 
-        $('checkoutGrand').textContent =
-            OB.formatMoney(data.tongTien);
+        renderStoreOptions(groups);
+
+        updateTotals();
 
 
         return true;
+
+    }
+
+
+    /* ========================= */
+    /* VẬN CHUYỂN + GHI CHÚ      */
+    /* THEO TỪNG CỬA HÀNG        */
+    /* ========================= */
+
+    function carrierLabel(c) {
+
+        var text = c.tenDonVi + ' — ' + OB.formatMoney(c.phiVanChuyen || 0);
+
+        if (c.thoiGianGiaoDuKien) {
+
+            text += ' (dự kiến ' + c.thoiGianGiaoDuKien + ' ngày)';
+
+        }
+
+        return text;
+
+    }
+
+
+    function findCarrier(id) {
+
+        return carriers.find(function (c) {
+
+            return String(c.maDVVC) === String(id);
+
+        });
+
+    }
+
+
+    function renderStoreOptions(groups) {
+
+        if (!carriers.length) {
+
+            show('noCarrier');
+
+        } else {
+
+            hide('noCarrier');
+
+        }
+
+
+        var options =
+            '<option value="">-- Chọn đơn vị vận chuyển --</option>' +
+            carriers.map(function (c) {
+
+                return '<option value="' + c.maDVVC + '">' +
+                    OB.escapeHtml(carrierLabel(c)) +
+                    '</option>';
+
+            }).join('');
+
+
+        $('storeOptions').innerHTML =
+            groups.map(function (g) {
+
+                return (
+
+                    '<div class="border rounded p-3 mb-3">' +
+
+                        '<div class="fw-bold mb-2">' +
+
+                            '<i class="bi bi-shop me-1"></i>' +
+
+                            OB.escapeHtml(g.name || 'Cửa hàng') +
+
+                            '<span class="small text-muted fw-normal ms-2">' +
+                                g.items.length + ' sản phẩm' +
+                            '</span>' +
+
+                        '</div>' +
+
+                        '<label class="form-label fw-semibold" for="carrier-' + g.maCH + '">' +
+                            'Đơn vị vận chuyển ' +
+                            '<span class="text-danger">*</span>' +
+                        '</label>' +
+
+                        '<select id="carrier-' + g.maCH + '" ' +
+                                'class="form-select mb-3 store-carrier" ' +
+                                'data-ch="' + g.maCH + '">' +
+                            options +
+                        '</select>' +
+
+                        '<label class="form-label fw-semibold" for="note-' + g.maCH + '">' +
+                            'Ghi chú cho cửa hàng' +
+                        '</label>' +
+
+                        '<textarea id="note-' + g.maCH + '" ' +
+                                  'class="form-control store-note" ' +
+                                  'data-ch="' + g.maCH + '" ' +
+                                  'rows="2" ' +
+                                  'maxlength="1000" ' +
+                                  'placeholder="Ví dụ: Giao giờ hành chính, gói kỹ giúp mình..."></textarea>' +
+
+                    '</div>'
+
+                );
+
+            }).join('');
+
+
+        Array.prototype.forEach.call(
+            document.querySelectorAll('.store-carrier'),
+            function (select) {
+
+                select.addEventListener('change', updateTotals);
+
+            }
+        );
+
+    }
+
+
+    function updateTotals() {
+
+        var ship = 0;
+
+        Array.prototype.forEach.call(
+            document.querySelectorAll('.store-carrier'),
+            function (select) {
+
+                var carrier = findCarrier(select.value);
+
+                var label = document.querySelector(
+                    '[data-ship-label="' + select.getAttribute('data-ch') + '"]'
+                );
+
+                if (carrier) {
+
+                    ship += Number(carrier.phiVanChuyen || 0);
+
+                    if (label) {
+
+                        label.textContent =
+                            carrier.tenDonVi + ' · Phí: ' +
+                            OB.formatMoney(carrier.phiVanChuyen || 0);
+
+                    }
+
+                } else if (label) {
+
+                    label.textContent = 'Chưa chọn đơn vị vận chuyển';
+
+                }
+
+            }
+        );
+
+        $('checkoutShipping').textContent = OB.formatMoney(ship);
+
+        $('checkoutGrand').textContent =
+            OB.formatMoney(Number(cart ? cart.tongTien : 0) + ship);
 
     }
 
@@ -889,6 +1135,15 @@
         }
 
 
+        if (!getSelectedIds().length) {
+
+            window.location.href = '/cart';
+
+            return;
+
+        }
+
+
         Promise.all([
 
             OB.cart.get(),
@@ -896,13 +1151,20 @@
             OB.request(
                 'GET',
                 '/api/profile/addresses'
+            ),
+
+            OB.request(
+                'GET',
+                '/api/order/shipping-carriers'
             )
 
         ])
         .then(function (values) {
 
+            carriers = values[2] || [];
+
             var ok =
-                renderCart(values[0]);
+                renderCart(filterSelected(values[0]));
 
             renderAddresses(values[1]);
 
@@ -1138,6 +1400,50 @@
                 }
 
 
+                var storeOrders = [];
+
+                var missing = null;
+
+                Array.prototype.forEach.call(
+                    document.querySelectorAll('.store-carrier'),
+                    function (select) {
+
+                        var maCH = select.getAttribute('data-ch');
+
+                        if (!select.value) {
+
+                            missing = missing || select;
+
+                            return;
+
+                        }
+
+                        var noteBox = document.getElementById('note-' + maCH);
+
+                        storeOrders.push({
+                            maCH: parseInt(maCH, 10),
+                            maDVVC: parseInt(select.value, 10),
+                            ghiChu: (noteBox && noteBox.value.trim()) || null
+                        });
+
+                    }
+                );
+
+
+                if (missing) {
+
+                    alertBox(
+                        'Vui lòng chọn đơn vị vận chuyển cho từng cửa hàng.',
+                        'warning'
+                    );
+
+                    missing.focus();
+
+                    return;
+
+                }
+
+
                 var btn =
                     $('placeOrder');
 
@@ -1164,15 +1470,20 @@
                         phuongThucTT:
                             'COD',
 
-                        ghiChu:
-                            $('orderNote')
-                                .value
-                                .trim() || null
+                        maCTGioHangs:
+                            cart.items.map(function (it) {
+                                return it.maCTGioHang;
+                            }),
+
+                        storeOrders:
+                            storeOrders
 
                     }
                 )
 
                 .then(function (order) {
+
+                    clearSelectedIds();
 
                     window.location.href =
                         '/order-success?maDH=' +

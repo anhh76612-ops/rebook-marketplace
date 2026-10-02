@@ -1,17 +1,22 @@
 package com.oldbook.service.order;
 
 import com.oldbook.constant.catalog.TrangThaiBan;
+import com.oldbook.constant.order.TrangThaiDonHang;
+import com.oldbook.constant.shipping.TrangThaiDonViVanChuyen;
 import com.oldbook.constant.catalog.TrangThaiDuyet;
 import com.oldbook.dto.order.*;
+import com.oldbook.entity.catalog.CuaHang;
 import com.oldbook.entity.catalog.Sach;
 import com.oldbook.entity.identity.DiaChi;
 import com.oldbook.entity.identity.NguoiDung;
 import com.oldbook.entity.order.*;
+import com.oldbook.entity.shipping.DonViVanChuyen;
 import com.oldbook.exception.common.BusinessException;
 import com.oldbook.repository.catalog.SachRepository;
 import com.oldbook.repository.identity.DiaChiRepository;
 import com.oldbook.repository.identity.NguoiDungRepository;
 import com.oldbook.repository.order.*;
+import com.oldbook.repository.shipping.DonViVanChuyenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,8 +31,7 @@ public class DonHangService {
 
     private static final String PHUONG_THUC_COD = "COD";
     private static final String TRANG_THAI_TT_CHO = "CHO_THANH_TOAN";
-    private static final String TRANG_THAI_DON_MOI = "CHO_XU_LY";
-    private static final BigDecimal PHI_SHIP_MAC_DINH = BigDecimal.ZERO;
+    private static final String TRANG_THAI_DON_MOI = TrangThaiDonHang.CHO_XU_LY.name();
 
     private final GioHangRepository gioHangRepository;
     private final ChiTietGioHangRepository chiTietGioHangRepository;
@@ -37,6 +41,8 @@ public class DonHangService {
     private final DiaChiRepository diaChiRepository;
     private final NguoiDungRepository nguoiDungRepository;
     private final SachRepository sachRepository;
+    private final DonViVanChuyenRepository donViVanChuyenRepository;
+    private final OrderMapper orderMapper;
 
     @Transactional
     public OrderResponse createOrder(Integer maND, CreateOrderRequest request) {
@@ -60,11 +66,24 @@ public class DonHangService {
         gioHang = gioHangRepository.findByIdForUpdate(gioHang.getMaGioHang())
                 .orElseThrow(() -> new BusinessException("Giỏ hàng không tồn tại"));
 
-        List<ChiTietGioHang> cartItems =
+        List<ChiTietGioHang> allCartItems =
                 chiTietGioHangRepository.findAllByGioHang(gioHang.getMaGioHang());
 
-        if (cartItems.isEmpty()) {
+        if (allCartItems.isEmpty()) {
             throw new BusinessException("Giỏ hàng đang trống");
+        }
+
+        // Chỉ đặt các dòng giỏ hàng mà khách đã tích chọn.
+        Set<Integer> selectedIds = new HashSet<>(request.getMaCTGioHangs());
+
+        List<ChiTietGioHang> cartItems = allCartItems.stream()
+                .filter(ct -> selectedIds.contains(ct.getMaCTGioHang()))
+                .toList();
+
+        if (cartItems.isEmpty() || cartItems.size() != selectedIds.size()) {
+            throw new BusinessException(
+                    "Sản phẩm được chọn không còn trong giỏ hàng. Vui lòng quay lại giỏ hàng và chọn lại"
+            );
         }
 
         List<CheckoutLine> lines = new ArrayList<>();
@@ -86,11 +105,54 @@ public class DonHangService {
             lines.add(new CheckoutLine(cartItem, sach, donGia, thanhTien));
         }
 
-        BigDecimal tongTienHang = lines.stream()
-                .map(CheckoutLine::thanhTien)
+        // Gom sách theo cửa hàng: mỗi cửa hàng là một đơn hàng con riêng.
+        Map<Integer, List<CheckoutLine>> linesByStore = lines.stream()
+                .collect(Collectors.groupingBy(
+                        l -> l.sach().getCuaHang().getMaCH(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        // Mỗi cửa hàng phải có đúng một lựa chọn (đơn vị vận chuyển + ghi chú riêng).
+        Map<Integer, StoreOrderOptionRequest> optionsByStore =
+                indexStoreOptions(request.getStoreOrders(), linesByStore);
+
+        Map<Integer, DonViVanChuyen> carrierCache = new HashMap<>();
+        List<StoreDraft> drafts = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<CheckoutLine>> entry : linesByStore.entrySet()) {
+            List<CheckoutLine> storeLines = entry.getValue();
+            StoreOrderOptionRequest option = optionsByStore.get(entry.getKey());
+
+            DonViVanChuyen carrier = carrierCache.computeIfAbsent(
+                    option.getMaDVVC(), this::loadActiveCarrier
+            );
+
+            BigDecimal tienHangCH = storeLines.stream()
+                    .map(CheckoutLine::thanhTien)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal phiShipCH = Optional.ofNullable(carrier.getPhiVanChuyen())
+                    .orElse(BigDecimal.ZERO);
+
+            drafts.add(new StoreDraft(
+                    storeLines.get(0).sach().getCuaHang(),
+                    storeLines,
+                    carrier,
+                    normalizeNote(option.getGhiChu()),
+                    tienHangCH,
+                    phiShipCH
+            ));
+        }
+
+        BigDecimal tongTienHang = drafts.stream()
+                .map(StoreDraft::tienHang)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal tongPhiShip = PHI_SHIP_MAC_DINH;
+        BigDecimal tongPhiShip = drafts.stream()
+                .map(StoreDraft::phiShip)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal tongGiamGia = BigDecimal.ZERO;
         BigDecimal tongThanhToan = tongTienHang
                 .add(tongPhiShip)
@@ -116,42 +178,26 @@ public class DonHangService {
 
         donHang = donHangRepository.save(donHang);
 
-        Map<Integer, List<CheckoutLine>> linesByStore = lines.stream()
-                .collect(Collectors.groupingBy(
-                        l -> l.sach().getCuaHang().getMaCH(),
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ));
-
-        for (Map.Entry<Integer, List<CheckoutLine>> entry : linesByStore.entrySet()) {
-            Integer maCH = entry.getKey();
-            List<CheckoutLine> storeLines = entry.getValue();
-
-            BigDecimal tienHangCH = storeLines.stream()
-                    .map(CheckoutLine::thanhTien)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal phiShipCH = PHI_SHIP_MAC_DINH;
-            BigDecimal tongShop = tienHangCH.add(phiShipCH);
-
+        for (StoreDraft draft : drafts) {
             DonHangCuaHang dhch = DonHangCuaHang.builder()
                     .donHang(donHang)
-                    .cuaHang(storeLines.get(0).sach().getCuaHang())
+                    .cuaHang(draft.cuaHang())
+                    .donViVanChuyen(draft.carrier())
                     .giamGiaShop(BigDecimal.ZERO)
                     .giamGiaSanPhanBo(BigDecimal.ZERO)
-                    .tienHangCH(tienHangCH)
-                    .phiShipCH(phiShipCH)
+                    .tienHangCH(draft.tienHang())
+                    .phiShipCH(draft.phiShip())
                     .commissionTien(BigDecimal.ZERO)
-                    .tongTienShopOrder(tongShop)
+                    .tongTienShopOrder(draft.tienHang().add(draft.phiShip()))
                     .trangThaiDonHang(TRANG_THAI_DON_MOI)
                     .trangThaiThanhToanShop(TRANG_THAI_TT_CHO)
                     .tienHoanTra(BigDecimal.ZERO)
-                    .ghiChu(request.getGhiChu())
+                    .ghiChu(draft.ghiChu())
                     .build();
 
             dhch = donHangCuaHangRepository.save(dhch);
 
-            for (CheckoutLine line : storeLines) {
+            for (CheckoutLine line : draft.lines()) {
                 ChiTietDonHang chiTiet = ChiTietDonHang.builder()
                         .donHangCuaHang(dhch)
                         .sach(line.sach())
@@ -172,7 +218,9 @@ public class DonHangService {
             }
         }
 
-        chiTietGioHangRepository.deleteAllByGioHang(gioHang.getMaGioHang());
+        // Chỉ xóa các dòng đã đặt; sản phẩm không được chọn vẫn còn trong giỏ.
+        chiTietGioHangRepository.deleteAll(cartItems);
+        chiTietGioHangRepository.flush();
 
         return buildOrderResponse(donHang);
     }
@@ -195,6 +243,59 @@ public class DonHangService {
         }
 
         return buildOrderResponse(donHang);
+    }
+
+    private Map<Integer, StoreOrderOptionRequest> indexStoreOptions(
+            List<StoreOrderOptionRequest> options,
+            Map<Integer, List<CheckoutLine>> linesByStore
+    ) {
+        if (options == null || options.isEmpty()) {
+            throw new BusinessException(
+                    "Vui lòng chọn đơn vị vận chuyển cho từng cửa hàng"
+            );
+        }
+
+        Map<Integer, StoreOrderOptionRequest> byStore = new LinkedHashMap<>();
+        for (StoreOrderOptionRequest option : options) {
+            if (!linesByStore.containsKey(option.getMaCH())) {
+                throw new BusinessException(
+                        "Cửa hàng #" + option.getMaCH() + " không có trong giỏ hàng của bạn"
+                );
+            }
+            if (byStore.put(option.getMaCH(), option) != null) {
+                throw new BusinessException(
+                        "Mỗi cửa hàng chỉ được chọn một đơn vị vận chuyển"
+                );
+            }
+        }
+
+        for (Map.Entry<Integer, List<CheckoutLine>> entry : linesByStore.entrySet()) {
+            if (!byStore.containsKey(entry.getKey())) {
+                CuaHang cuaHang = entry.getValue().get(0).sach().getCuaHang();
+                throw new BusinessException(
+                        "Vui lòng chọn đơn vị vận chuyển cho cửa hàng \""
+                                + cuaHang.getTenCuaHang() + "\""
+                );
+            }
+        }
+
+        return byStore;
+    }
+
+    private DonViVanChuyen loadActiveCarrier(Integer maDVVC) {
+        return donViVanChuyenRepository
+                .findByMaDVVCAndTrangThai(maDVVC, TrangThaiDonViVanChuyen.HOAT_DONG.name())
+                .orElseThrow(() -> new BusinessException(
+                        "Đơn vị vận chuyển không tồn tại hoặc đã ngừng hoạt động"
+                ));
+    }
+
+    private String normalizeNote(String note) {
+        if (note == null) {
+            return null;
+        }
+        String trimmed = note.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void validateCanOrder(Sach sach, Integer maND, Integer soLuong) {
@@ -241,37 +342,8 @@ public class DonHangService {
                         donHang.getMaDH()
                 );
 
-        List<StoreOrderResponse> storeResponses = stores.stream()
-                .map(store -> {
-                    List<OrderItemResponse> items =
-                            chiTietDonHangRepository
-                                    .findAllByDonHangCuaHang_MaDHCHOrderByMaCTDHAsc(
-                                            store.getMaDHCH()
-                                    )
-                                    .stream()
-                                    .map(ct -> OrderItemResponse.builder()
-                                            .maCTDH(ct.getMaCTDH())
-                                            .maSach(ct.getSach().getMaSach())
-                                            .tenSach(ct.getSach().getTenSach())
-                                            .soLuong(ct.getSoLuong())
-                                            .donGia(ct.getDonGia())
-                                            .thanhTien(ct.getThanhTien())
-                                            .build())
-                                    .toList();
-
-                    return StoreOrderResponse.builder()
-                            .maDHCH(store.getMaDHCH())
-                            .maCH(store.getCuaHang().getMaCH())
-                            .tenCuaHang(store.getCuaHang().getTenCuaHang())
-                            .tienHangCH(store.getTienHangCH())
-                            .phiShipCH(store.getPhiShipCH())
-                            .tongTienShopOrder(store.getTongTienShopOrder())
-                            .trangThaiDonHang(store.getTrangThaiDonHang())
-                            .trangThaiThanhToanShop(store.getTrangThaiThanhToanShop())
-                            .items(items)
-                            .build();
-                })
-                .toList();
+        List<StoreOrderResponse> storeResponses =
+                orderMapper.toStoreOrderResponses(stores);
 
         return OrderResponse.builder()
                 .maDH(donHang.getMaDH())
@@ -294,6 +366,15 @@ public class DonHangService {
                 .storeOrders(storeResponses)
                 .build();
     }
+
+    private record StoreDraft(
+            CuaHang cuaHang,
+            List<CheckoutLine> lines,
+            DonViVanChuyen carrier,
+            String ghiChu,
+            BigDecimal tienHang,
+            BigDecimal phiShip
+    ) {}
 
     private record CheckoutLine(
             ChiTietGioHang cartItem,
