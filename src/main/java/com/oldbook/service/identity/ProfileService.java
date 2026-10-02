@@ -72,10 +72,23 @@ public class ProfileService {
 
         nguoiDung.setAvatarUrl(avatarUrl);
 
-        // 6. Lưu
+        // 6. Chuẩn hóa tiểu sử
+        String tieuSu = request.getTieuSu();
+
+        if (tieuSu != null) {
+            tieuSu = tieuSu.trim();
+
+            if (tieuSu.isEmpty()) {
+                tieuSu = null;
+            }
+        }
+
+        nguoiDung.setTieuSu(tieuSu);
+
+        // 7. Lưu
         nguoiDungRepository.save(nguoiDung);
 
-        // 7. Trả dữ liệu sau khi cập nhật
+        // 8. Trả dữ liệu sau khi cập nhật
         return toProfileResponse(nguoiDung);
     }
 
@@ -101,6 +114,7 @@ public class ProfileService {
                 .hoTen(nguoiDung.getHoTen())
                 .soDienThoai(nguoiDung.getSoDienThoai())
                 .avatarUrl(nguoiDung.getAvatarUrl())
+                .tieuSu(nguoiDung.getTieuSu())
                 .build();
     }
 
