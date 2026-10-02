@@ -20,6 +20,15 @@ public class UpdateProfileRequest {
     )
     private String soDienThoai;
 
-    @Size(max = 500, message = "URL avatar không được vượt quá 500 ký tự")
+    @Size(
+            max = 500,
+            message = "URL avatar không được vượt quá 500 ký tự"
+    )
     private String avatarUrl;
+
+    @Size(
+            max = 1000,
+            message = "Tiểu sử không được vượt quá 1000 ký tự"
+    )
+    private String tieuSu;
 }

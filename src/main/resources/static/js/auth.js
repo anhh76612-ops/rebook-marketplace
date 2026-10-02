@@ -5,6 +5,9 @@
 
   var TOKEN_KEY = 'oldbook_token';
   var NAME_KEY = 'oldbook_name';
+  var AVATAR_KEY = 'oldbook_avatar';
+  var PENDING_REGISTER_EMAIL_KEY = 'oldbook_pending_register_email';
+  var PENDING_REGISTER_SENT_AT_KEY = 'oldbook_pending_register_sent_at';
   var ROLE_CUSTOMER = 'KHACH_HANG';
 
   var ROLE_LABELS = {
@@ -96,7 +99,8 @@
         maND: payload.maND,
         maTK: payload.maTK,
         vaiTro: payload.vaiTro,
-        hoTen: lsGet(NAME_KEY)
+        hoTen: lsGet(NAME_KEY),
+        avatarUrl: lsGet(AVATAR_KEY)
       };
     },
 
@@ -112,11 +116,13 @@
     saveSession: function (loginData) {
       lsSet(TOKEN_KEY, loginData.token);
       lsRemove(NAME_KEY);
+      lsRemove(AVATAR_KEY);
     },
 
     clear: function () {
       lsRemove(TOKEN_KEY);
       lsRemove(NAME_KEY);
+      lsRemove(AVATAR_KEY);
     },
 
     safeRedirect: safeRedirect,
@@ -148,8 +154,106 @@
       return true;
     },
 
+    register: function (hoTen, email, matKhau, soDienThoai) {
+      return request('POST', '/api/auth/register', {
+        hoTen: hoTen,
+        email: email,
+        matKhau: matKhau,
+        soDienThoai: soDienThoai || null
+      }, { token: null });
+    },
+
+    setPendingRegister: function (email, sentAt) {
+      lsSet(PENDING_REGISTER_EMAIL_KEY, email);
+      lsSet(PENDING_REGISTER_SENT_AT_KEY, String(sentAt || Date.now()));
+    },
+
+    getPendingRegisterEmail: function () {
+      return lsGet(PENDING_REGISTER_EMAIL_KEY);
+    },
+
+    getPendingRegisterSentAt: function () {
+      var value = Number(lsGet(PENDING_REGISTER_SENT_AT_KEY) || 0);
+      return Number.isFinite(value) ? value : 0;
+    },
+
+    clearPendingRegister: function () {
+      lsRemove(PENDING_REGISTER_EMAIL_KEY);
+      lsRemove(PENDING_REGISTER_SENT_AT_KEY);
+    },
+
+    verifyRegisterOtp: function (email, maOtp) {
+      return request('POST', '/api/auth/verify-register-otp', {
+        email: email,
+        maOtp: maOtp
+      }, { token: null });
+    },
+
+    resendRegisterOtp: function (email) {
+      return request('POST', '/api/auth/resend-register-otp', {
+        email: email
+      }, { token: null });
+    },
+
     login: function (email, matKhau) {
       return request('POST', '/api/auth/login', { email: email, matKhau: matKhau }, { token: null });
+    },
+
+    forgotPassword: function (email) {
+        return request(
+            'POST',
+            '/api/auth/forgot-password',
+            {
+                email: email
+            },
+            { token: null }
+        );
+    },
+
+    resendForgotPasswordOtp: function (email) {
+        return request(
+            'POST',
+            '/api/auth/resend-forgot-password-otp',
+            {
+                email: email
+            },
+            { token: null }
+        );
+    },
+
+    resetPassword: function (
+        email,
+        maOtp,
+        matKhauMoi,
+        xacNhanMatKhauMoi
+    ) {
+        return request(
+            'POST',
+            '/api/auth/reset-password',
+            {
+                email: email,
+                maOtp: maOtp,
+                matKhauMoi: matKhauMoi,
+                xacNhanMatKhauMoi: xacNhanMatKhauMoi
+            },
+            { token: null }
+        );
+    },
+
+    changePassword: function (
+        matKhauHienTai,
+        matKhauMoi,
+        xacNhanMatKhauMoi
+    ) {
+        return request(
+            'POST',
+            '/api/auth/change-password',
+            {
+                matKhauHienTai: matKhauHienTai,
+                matKhauMoi: matKhauMoi,
+                xacNhanMatKhauMoi: xacNhanMatKhauMoi
+            }
+        );
     },
 
     selectRole: function (roleSelectionToken, maTK) {
@@ -158,7 +262,15 @@
 
     loadProfileName: function () {
       return request('GET', '/api/profile').then(function (profile) {
-        if (profile && profile.hoTen) { lsSet(NAME_KEY, profile.hoTen); }
+        if (profile && profile.hoTen) {
+          lsSet(NAME_KEY, profile.hoTen);
+        }
+        if (profile && profile.avatarUrl) {
+          lsSet(AVATAR_KEY, profile.avatarUrl);
+        } else {
+          lsRemove(AVATAR_KEY);
+        }
+        renderHeader();
       }, function () { });
     },
 
@@ -264,6 +376,26 @@
     for (var k = 0; k < names.length; k++) {
       names[k].textContent = label;
     }
+
+    var avatarImages = document.querySelectorAll('[data-user-avatar]');
+    var avatarPlaceholders =
+      document.querySelectorAll('[data-user-avatar-placeholder]');
+
+    var hasAvatar = !!(user && user.avatarUrl);
+
+    for (var x = 0; x < avatarImages.length; x++) {
+      if (hasAvatar) {
+        avatarImages[x].src = user.avatarUrl;
+        avatarImages[x].classList.remove('d-none');
+      } else {
+        avatarImages[x].removeAttribute('src');
+        avatarImages[x].classList.add('d-none');
+      }
+    }
+
+    for (var y = 0; y < avatarPlaceholders.length; y++) {
+      avatarPlaceholders[y].classList.toggle('d-none', hasAvatar);
+    }
   }
 
   document.addEventListener('click', function (e) {
@@ -292,6 +424,10 @@
       return;
     }
     renderHeader();
+
+    if (Auth.isLoggedIn()) {
+      Auth.loadProfileName();
+    }
   }
 
   window.OldBook = {
