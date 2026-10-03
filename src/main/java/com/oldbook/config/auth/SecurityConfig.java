@@ -78,6 +78,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**")
                         .hasRole("QUAN_TRI_VIEN")
 
+                        .requestMatchers("/api/store/kiem-duyet/**")
+                        .hasAnyRole("QUAN_LY", "QUAN_TRI_VIEN")
+
+                        .requestMatchers("/api/store/**")
+                        .hasRole("CHU_CUA_HANG")
+
                         .anyRequest().authenticated()
                 )
 
