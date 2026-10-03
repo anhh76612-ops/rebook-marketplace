@@ -79,7 +79,7 @@
           cover +
           '<div class="book-info">' +
             badge +
-            '<h3 class="book-title">' + esc(b.tenSach) + '</h3>' +
+            '<h3 class="book-title"><a href="/books/' + encodeURIComponent(b.maSach) + '" class="text-reset text-decoration-none">' + esc(b.tenSach) + '</a></h3>' +
             '<p class="book-author">Tác giả: ' + esc(b.tacGia || 'Đang cập nhật') + '</p>' +
             '<p class="shop-line mb-1"><i class="bi bi-shop"></i> ' + esc(b.tenCuaHang) + '</p>' +
             giaBia +
