@@ -18,4 +18,6 @@ public class ProfileResponse {
     private String soDienThoai;
 
     private String avatarUrl;
+
+    private String tieuSu;
 }
