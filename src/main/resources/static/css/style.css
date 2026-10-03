@@ -202,6 +202,7 @@ main { min-height: 60vh; }
 .badge-role-quan-ly { background: #94724A; color: #fff; }
 .badge-role-don-vi-van-chuyen { background: #787350; color: #fff; }
 .badge-role-quan-tri-vien { background: #352E1F; color: #fff; }
+<<<<<<< HEAD
 /* ===============================
    Auth / Marketplace UI refresh
    =============================== */
@@ -843,4 +844,52 @@ main { min-height: 60vh; }
   .address-page { margin-top: 1.25rem; }
   .profile-save-actions { flex-direction: column-reverse; }
   .profile-save-actions .btn { width: 100%; }
+=======
+
+/* ===== Đơn hàng của tôi ===== */
+.order-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+.order-tab { border: 0; background: transparent; color: var(--soft-leather); font-weight: 500; font-size: 1.05rem;
+  padding: .55rem 1.25rem; border-radius: 8px; }
+.order-tab:hover { background: rgba(148,166,93,.2); color: var(--pine-bark); }
+.order-tab.active { background: var(--spring-leaf); color: var(--pine-bark); }
+
+.order-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+.order-card-head { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.order-card-title { font-weight: 700; font-size: 1.1rem; }
+.order-card-sub { color: var(--muted); font-size: .95rem; margin-left: .5rem; font-weight: 400; }
+.order-pill { display: inline-block; background: var(--windy-dunes); color: var(--soft-leather); font-size: .85rem;
+  font-weight: 600; padding: .25rem .8rem; border-radius: 999px; white-space: nowrap; }
+.order-pill.is-cancel { background: #E8CFC9; color: var(--deep-mahogany); }
+.order-pill.is-done { background: #DCE6C3; color: var(--olive-grove); }
+
+.order-progress { display: flex; margin: 1.5rem 0 1.25rem; }
+.order-progress .op-step { flex: 1; text-align: center; font-size: .9rem; font-weight: 600; color: #B9AE96; }
+.order-progress .op-step i { display: block; font-size: 1.5rem; margin-bottom: .35rem; line-height: 1; }
+.order-progress .op-step.done { color: var(--soft-leather); }
+.order-progress .op-step.done i { color: var(--spring-leaf); }
+.order-progress .op-step.current { color: var(--soft-leather); }
+.order-progress .op-step.current i { color: var(--olive-grove); }
+
+.order-item { display: flex; align-items: center; gap: 1rem; padding: .35rem 0; }
+.order-item .mini-cover { width: 70px; border-radius: 8px; }
+.order-item-name { font-weight: 700; font-size: 1.05rem; }
+.order-item-price { color: var(--muted); }
+
+.order-store-block { border-top: 1px dashed var(--line); padding-top: .9rem; margin-top: .9rem; }
+.order-ship-info { font-size: .85rem; color: var(--muted); margin: .5rem 0 0; }
+
+.order-card-foot { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap;
+  margin-top: 1rem; }
+.order-total { font-weight: 700; font-size: 1.1rem; }
+.btn-order-cancel { background: #fff; border: 1px solid var(--pine-bark); color: var(--pine-bark); font-size: .95rem;
+  padding: .35rem .9rem; border-radius: 6px; }
+.btn-order-cancel:hover { background: var(--lime-100); }
+.btn-order-rebuy { background: var(--dull-chestnut); border: 1px solid var(--dull-chestnut); color: #fff; font-weight: 600;
+  font-size: .95rem; padding: .35rem .9rem; border-radius: 6px; }
+.btn-order-rebuy:hover { filter: brightness(.95); }
+
+@media (max-width: 575px) {
+  .order-progress .op-step { font-size: .72rem; }
+  .order-card { padding: 1rem; }
+>>>>>>> 1a5c9a504fd67e6a5f150224be4db8f8c22c2ff4
 }

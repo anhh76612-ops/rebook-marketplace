@@ -45,8 +45,13 @@ public class SecurityConfig {
                                 "/shipping",
                                 "/cart",
                                 "/wishlist",
+                                
                                 "/profile",
                                 "/addresses",
+
+                                "/checkout",
+                                "/order-success",
+
                                 "/login",
                                 "/register",
                                 "/forgot-password",

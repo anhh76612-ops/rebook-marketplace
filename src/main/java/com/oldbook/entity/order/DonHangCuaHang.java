@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 
 import com.oldbook.entity.catalog.CuaHang;
 import com.oldbook.entity.payment.KhuyenMai;
+import com.oldbook.entity.shipping.DonViVanChuyen;
 
 @Entity
 @Table(
@@ -46,6 +47,11 @@ public class DonHangCuaHang {
     )
     private KhuyenMai khuyenMaiShop;
 
+    // Đơn vị vận chuyển do khách chọn riêng cho đơn hàng con này
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_dvvc", referencedColumnName = "ma_dvvc")
+    private DonViVanChuyen donViVanChuyen;
+
     @Column(name = "giam_gia_shop", precision = 15, scale = 2)
     private BigDecimal giamGiaShop;
 
@@ -76,6 +82,11 @@ public class DonHangCuaHang {
     @Column(name = "ngay_cap_nhat")
     private LocalDateTime ngayCapNhat;
 
+    // Thời điểm chủ cửa hàng xác nhận đơn
+    @Column(name = "ngay_xac_nhan")
+    private LocalDateTime ngayXacNhan;
+
+    // Ghi chú của khách gửi riêng cho cửa hàng này
     @Column(name = "ghi_chu", columnDefinition = "TEXT")
     private String ghiChu;
 
