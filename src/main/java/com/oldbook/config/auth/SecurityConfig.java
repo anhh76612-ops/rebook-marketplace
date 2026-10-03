@@ -38,6 +38,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(authorize -> authorize
 
+                        // HTML shells load JWT from the browser; their API requests remain protected below.
                         .requestMatchers(
                                 "/",
                                 "/books/**",
@@ -46,6 +47,10 @@ public class SecurityConfig {
                                 "/wishlist",
                                 "/login",
                                 "/register",
+                                "/admin/accounts",
+                                "/store",
+                                "/vendor/books",
+                                "/store-moderation",
                                 "/css/**",
                                 "/js/**",
                                 "/images/**"

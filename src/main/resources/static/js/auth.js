@@ -137,11 +137,7 @@
     handleAuthError: function (err, requiredRole) {
       if (!(err instanceof ApiError)) { return false; }
 
-      var user = Auth.getUser();
-      var wrongRole = !!user && !!requiredRole && user.vaiTro !== requiredRole;
-      var sessionInvalid = err.status === 401 || (err.status === 403 && !wrongRole);
-
-      if (!sessionInvalid) { return false; }
+      if (err.status !== 401) { return false; }
 
       Auth.clear();
       Auth.redirectToLogin();
@@ -257,6 +253,12 @@
     var users = document.querySelectorAll('[data-auth="user"]');
     for (var j = 0; j < users.length; j++) {
       users[j].classList.toggle('d-none', !loggedIn);
+    }
+
+    var roleLinks = document.querySelectorAll('[data-roles]');
+    for (var r = 0; r < roleLinks.length; r++) {
+      var roles = roleLinks[r].getAttribute('data-roles').split(',');
+      roleLinks[r].classList.toggle('d-none', !user || roles.indexOf(user.vaiTro) === -1);
     }
 
     var label = (user && (user.hoTen || ROLE_LABELS[user.vaiTro])) || 'Tài khoản';

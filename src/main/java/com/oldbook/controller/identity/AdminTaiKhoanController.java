@@ -1,6 +1,7 @@
 package com.oldbook.controller.identity;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,7 +41,7 @@ public class AdminTaiKhoanController {
 
     @PostMapping
     public ApiResponse<AdminTaiKhoanResponse> create(
-            @RequestBody CreateTaiKhoanRequest request
+            @Valid @RequestBody CreateTaiKhoanRequest request
     ) {
         AuthenticatedUserDetails currentUser =
                 getCurrentUser();
@@ -58,7 +59,7 @@ public class AdminTaiKhoanController {
     @PutMapping("/{maTK}/khoa")
     public ApiResponse<Void> lock(
             @PathVariable Integer maTK,
-            @RequestBody LockTaiKhoanRequest request
+            @Valid @RequestBody LockTaiKhoanRequest request
     ) {
         AuthenticatedUserDetails currentUser =
                 getCurrentUser();
@@ -96,7 +97,7 @@ public class AdminTaiKhoanController {
     @PutMapping("/{maTK}/vai-tro")
     public ApiResponse<AdminTaiKhoanResponse> changeRole(
             @PathVariable Integer maTK,
-            @RequestBody ChangeRoleRequest request
+            @Valid @RequestBody ChangeRoleRequest request
     ) {
         AuthenticatedUserDetails currentUser =
                 getCurrentUser();

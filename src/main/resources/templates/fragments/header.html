@@ -94,7 +94,7 @@
 
       <div class="collapse navbar-collapse" id="mainMenu">
 
-        <ul class="navbar-nav">
+        <ul class="navbar-nav flex-wrap">
 
           <li class="nav-item">
             <a class="nav-link" th:href="@{/}">
@@ -159,6 +159,15 @@
             </a>
           </li>
 
+          <li class="nav-item d-none" data-roles="CHU_CUA_HANG">
+            <a class="nav-link" th:href="@{/vendor/books}" data-requires-login>Cửa hàng của tôi</a>
+          </li>
+          <li class="nav-item d-none" data-roles="QUAN_LY,QUAN_TRI_VIEN">
+            <a class="nav-link" th:href="@{/store-moderation}" data-requires-login>Kiểm duyệt</a>
+          </li>
+          <li class="nav-item d-none" data-roles="QUAN_TRI_VIEN">
+            <a class="nav-link" th:href="@{/admin/accounts}" data-requires-login>Quản lý tài khoản</a>
+          </li>
         </ul>
 
       </div>
