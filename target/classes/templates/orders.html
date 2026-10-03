@@ -17,12 +17,9 @@
         <li class="breadcrumb-item active">Đơn hàng của tôi</li>
     </ol></nav>
     <h1 class="h4 fw-bold mb-3">Đơn hàng của tôi</h1>
-    <div id="orderTabs" class="order-tabs" role="tablist">
-        <button type="button" class="order-tab active" data-tab="ALL">Tất cả</button>
-        <button type="button" class="order-tab" data-tab="CHO_XU_LY">Chờ xác nhận</button>
-        <button type="button" class="order-tab" data-tab="DANG_GIAO">Đang giao</button>
-        <button type="button" class="order-tab" data-tab="DA_GIAO">Hoàn thành</button>
-        <button type="button" class="order-tab" data-tab="DA_HUY">Đã hủy</button>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <div id="orderTabs" class="order-tabs mb-0" role="tablist"></div>
+        <button type="button" id="btnRefresh" class="btn-order-cancel"><i class="bi bi-arrow-clockwise me-1"></i>Làm mới</button>
     </div>
     <div id="ordersAlert" class="alert d-none"></div>
     <div id="ordersLoading" class="text-center text-muted py-5"><span class="spinner-border spinner-border-sm me-2"></span>Đang tải đơn hàng...</div>
@@ -35,25 +32,18 @@
     <div id="ordersTabEmpty" class="panel text-center text-muted py-5 d-none">Không có đơn hàng nào trong mục này.</div>
 </main>
 <div th:replace="~{fragments/footer :: footer}"></div>
+<script th:src="@{/js/order-tracking.js}"></script>
 <script th:inline="none">
 (function () {
-    var OB = window.OldBook, Auth = OB.auth, ROLE = OB.ROLE_CUSTOMER;
+    var OB = window.OldBook, Auth = OB.auth, ROLE = OB.ROLE_CUSTOMER, T = OB.tracking;
     var $ = function (id) { return document.getElementById(id); };
     function money(v) { return OB.formatMoney(v); }
-    function statusText(v) {
-        var map = { CHO_XU_LY: 'Chờ xác nhận', DA_XAC_NHAN: 'Đã xác nhận', DANG_GIAO: 'Đang giao', DA_GIAO: 'Đã giao', DA_HUY: 'Đã hủy', CHO_THANH_TOAN: 'Chờ thanh toán', DA_THANH_TOAN: 'Đã thanh toán', CHO_LAY_HANG: 'Chờ lấy hàng', GIAO_THAT_BAI: 'Giao thất bại' };
-        return map[v] || v || 'Không xác định';
-    }
-    function pill(v) {
-        var cls = v === 'DA_HUY' ? ' is-cancel' : (v === 'DA_GIAO' || v === 'DA_THANH_TOAN' ? ' is-done' : '');
-        return '<span class="order-pill' + cls + '">' + OB.escapeHtml(statusText(v)) + '</span>';
-    }
 
     /* ---------- dữ liệu ---------- */
     var allOrders = [];
     var currentTab = 'ALL';
 
-    // Tab con: gom toàn bộ đơn hàng con (đơn của từng cửa hàng) từ các đơn tổng
+    // Các tab trạng thái: gom toàn bộ đơn hàng con (đơn của từng cửa hàng) từ các đơn tổng
     function flattenStoreOrders(orders) {
         var list = [];
         orders.forEach(function (o) {
@@ -70,64 +60,34 @@
                 '<div class="order-item-price">' + money(it.donGia) + ' × ' + it.soLuong + '</div></div></div>';
         }).join('');
     }
-    function shippingInfo(store) {
-        var parts = [];
-        if (store.tenDonViVanChuyen) { parts.push('<i class="bi bi-truck me-1"></i>' + OB.escapeHtml(store.tenDonViVanChuyen) + (store.phiShipCH != null ? ' · Phí ' + money(store.phiShipCH) : '')); }
-        if (store.vanChuyen) {
-            parts.push('Giao hàng: ' + OB.escapeHtml(statusText(store.vanChuyen.trangThaiVanChuyen)));
-            if (store.vanChuyen.maVanDon) { parts.push('Mã vận đơn: <code>' + OB.escapeHtml(store.vanChuyen.maVanDon) + '</code>'); }
-            if (store.vanChuyen.ghiChuGiaoHang) { parts.push('Ghi chú giao hàng: ' + OB.escapeHtml(store.vanChuyen.ghiChuGiaoHang)); }
-        }
-        if (store.ghiChu) { parts.push('<i class="bi bi-chat-left-text me-1"></i>Ghi chú của bạn: ' + OB.escapeHtml(store.ghiChu)); }
-        return parts.length ? '<div class="order-ship-info">' + parts.join(' · ') + '</div>' : '';
-    }
-
-    /* ---------- thanh tiến trình của đơn hàng con ---------- */
-    var STEPS = [
-        { key: 'CHO_XU_LY', label: 'Chờ xác nhận', icon: 'bi-hourglass-split' },
-        { key: 'DA_XAC_NHAN', label: 'Đã xác nhận', icon: 'bi-clipboard-check' },
-        { key: 'DANG_GIAO', label: 'Đang giao', icon: 'bi-truck' },
-        { key: 'DA_GIAO', label: 'Đã giao', icon: 'bi-box-seam' }
-    ];
-    function progress(status) {
-        if (status === 'DA_HUY') { return ''; }
-        var idx = STEPS.map(function (x) { return x.key; }).indexOf(status);
-        var finished = status === 'DA_GIAO';
-        return '<div class="order-progress">' + STEPS.map(function (st, i) {
-            var cls = (i < idx || finished) ? 'done' : (i === idx ? 'current' : '');
-            var icon = cls === 'done' ? 'bi-check-circle-fill' : st.icon;
-            return '<div class="op-step ' + cls + '"><i class="bi ' + icon + '"></i>' + st.label + '</div>';
-        }).join('') + '</div>';
-    }
 
     /* ---------- tab "Tất cả": đơn hàng tổng ---------- */
     function renderParent(o) {
         var addr = [o.diaChiGiaoChiTiet, o.phuongXaGiao, o.quanHuyenGiao, o.tinhThanhGiao].filter(Boolean).join(', ');
         return '<div class="order-card">' +
             '<div class="order-card-head"><div><span class="order-card-title">Đơn hàng #' + o.maDH + '</span>' +
-            '<span class="order-card-sub">' + (o.ngayTao ? new Date(o.ngayTao).toLocaleString('vi-VN') : '') + '</span></div>' + pill(o.trangThaiThanhToan) + '</div>' +
+            '<span class="order-card-sub">' + T.dateTime(o.ngayTao) + '</span></div>' + T.pill(o.trangThaiThanhToan) + '</div>' +
             '<div class="small text-muted mt-2 mb-3"><i class="bi bi-person me-1"></i>' + OB.escapeHtml(o.tenNguoiNhan || '') + ' · ' + OB.escapeHtml(o.soDienThoaiNhan || '') +
             '<br><i class="bi bi-geo-alt me-1"></i>' + OB.escapeHtml(addr) + '</div>' +
             (o.storeOrders || []).map(function (st) {
                 return '<div class="order-store-block">' +
-                    '<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-1"><div class="fw-semibold"><i class="bi bi-shop me-1"></i>' + OB.escapeHtml(st.tenCuaHang || 'Cửa hàng') + ' <span class="small text-muted fw-normal">#' + st.maDHCH + '</span></div>' + pill(st.trangThaiDonHang) + '</div>' +
-                    itemRows(st.items) + shippingInfo(st) + '</div>';
+                    '<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-1"><div class="fw-semibold"><i class="bi bi-shop me-1"></i>' + OB.escapeHtml(st.tenCuaHang || 'Cửa hàng') + ' <span class="small text-muted fw-normal">#' + st.maDHCH + '</span></div>' + T.pill(st.trangThaiDonHang) + '</div>' +
+                    itemRows(st.items) + T.shipInfo(st) + T.timeline(st) + '</div>';
             }).join('') +
             '<div class="order-card-foot"><span class="order-total">Tổng: ' + money(o.tongThanhToan) + '</span>' +
             '<span class="small text-muted">Tiền hàng ' + money(o.tongTienHang) + ' · Phí ship ' + money(o.tongPhiShip) + (o.tongGiamGia ? ' · Giảm ' + money(o.tongGiamGia) : '') + '</span></div>' +
             '</div>';
     }
 
-    /* ---------- các tab còn lại: đơn hàng con ---------- */
+    /* ---------- các tab trạng thái: đơn hàng con ---------- */
     function renderChild(entry) {
-        var st = entry.store, o = entry.order;
+        var st = entry.store;
         var canCancel = st.trangThaiDonHang === 'CHO_XU_LY' || st.trangThaiDonHang === 'DA_XAC_NHAN';
-        var canRebuy = st.trangThaiDonHang === 'DA_GIAO' || st.trangThaiDonHang === 'DA_HUY';
+        var canRebuy = st.trangThaiDonHang === 'DA_GIAO' || st.trangThaiDonHang === 'DA_HUY' || st.trangThaiDonHang === 'DA_HOAN_TRA';
         return '<div class="order-card">' +
             '<div class="order-card-head"><div><span class="order-card-title">Đơn hàng #' + st.maDHCH + '</span>' +
-            '<span class="order-card-sub">' + OB.escapeHtml(st.tenCuaHang || 'Cửa hàng') + '</span></div>' + pill(st.trangThaiDonHang) + '</div>' +
-            progress(st.trangThaiDonHang) +
-            itemRows(st.items) + shippingInfo(st) +
+            '<span class="order-card-sub">' + OB.escapeHtml(st.tenCuaHang || 'Cửa hàng') + '</span></div>' + T.pill(st.trangThaiDonHang) + '</div>' +
+            itemRows(st.items) + T.shipInfo(st) + T.timeline(st) +
             '<div class="order-card-foot"><span class="order-total">Tổng: ' + money(st.tongTienShopOrder) + '</span><div class="d-flex gap-2">' +
             (canCancel ? '<button type="button" class="btn-order-cancel">Gửi yêu cầu hủy</button>' : '') +
             (canRebuy ? '<button type="button" class="btn-order-rebuy">Mua lại</button>' : '') + '</div></div>' +
@@ -149,30 +109,44 @@
         empty.classList.toggle('d-none', !!html);
     }
 
+    function drawTabs() { T.renderTabs($('orderTabs'), currentTab); }
+
     $('orderTabs').addEventListener('click', function (e) {
         var btn = e.target.closest('.order-tab');
         if (!btn) { return; }
         currentTab = btn.getAttribute('data-tab');
-        Array.prototype.forEach.call(document.querySelectorAll('.order-tab'), function (b) { b.classList.toggle('active', b === btn); });
+        drawTabs();
         renderTab();
     });
+    T.bindTimelineMemory($('ordersList'));
 
-    function load() {
+    function hasActiveOrder() {
+        return flattenStoreOrders(allOrders).some(function (e) { return !T.isFinal(e.store.trangThaiDonHang); });
+    }
+
+    function load(silent) {
         if (!Auth.isLoggedIn()) { Auth.redirectToLogin('/orders'); return; }
-        if (!Auth.hasRole(ROLE)) { $('ordersLoading').classList.add('d-none'); $('orderTabs').classList.add('d-none'); $('ordersAlert').className = 'alert alert-warning'; $('ordersAlert').textContent = 'Chỉ tài khoản khách hàng mới được xem đơn hàng.'; return; }
+        if (!Auth.hasRole(ROLE)) { $('ordersLoading').classList.add('d-none'); $('orderTabs').classList.add('d-none'); $('btnRefresh').classList.add('d-none'); $('ordersAlert').className = 'alert alert-warning'; $('ordersAlert').textContent = 'Chỉ tài khoản khách hàng mới được xem đơn hàng.'; return; }
         OB.request('GET', '/api/order/orders').then(function (orders) {
             $('ordersLoading').classList.add('d-none');
-            if (!orders || !orders.length) { $('orderTabs').classList.add('d-none'); $('ordersEmpty').classList.remove('d-none'); return; }
+            $('ordersAlert').className = 'alert d-none';
+            if (!orders || !orders.length) { $('orderTabs').classList.add('d-none'); $('btnRefresh').classList.add('d-none'); $('ordersEmpty').classList.remove('d-none'); return; }
             allOrders = orders;
             renderTab();
         }).catch(function (err) {
             $('ordersLoading').classList.add('d-none');
             if (Auth.handleAuthError(err, ROLE)) { return; }
+            if (silent) { return; }
             $('ordersAlert').className = 'alert alert-danger';
             $('ordersAlert').textContent = err.message;
         });
     }
-    load();
+
+    $('btnRefresh').addEventListener('click', function () { load(false); });
+    drawTabs();
+    load(false);
+    // Trạng thái do đơn vị vận chuyển cập nhật nên tự làm mới để khách thấy đơn tiến triển.
+    T.autoRefresh(function () { load(true); }, hasActiveOrder, 30000);
 })();
 </script>
 </body>

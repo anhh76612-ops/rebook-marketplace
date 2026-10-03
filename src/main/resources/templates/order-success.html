@@ -34,7 +34,7 @@
     var OB = window.OldBook, Auth = OB.auth, params = new URLSearchParams(window.location.search), id = params.get('maDH');
     var $ = function (x) { return document.getElementById(x); };
     function money(v) { return OB.formatMoney(v); }
-    function status(v) { var m = { CHO_XU_LY:'Chờ xử lý', CHO_THANH_TOAN:'Chờ thanh toán', DA_THANH_TOAN:'Đã thanh toán', DA_XAC_NHAN:'Đã xác nhận', DANG_GIAO:'Đang giao', DA_GIAO:'Đã giao', CHO_LAY_HANG:'Chờ lấy hàng', GIAO_THAT_BAI:'Giao thất bại' }; return m[v] || v || ''; }
+    function status(v) { var m = { CHO_XU_LY:'Chờ xử lý', CHO_THANH_TOAN:'Chờ thanh toán', DA_THANH_TOAN:'Đã thanh toán', DA_XAC_NHAN:'Đã xác nhận', DANG_LAY_HANG:'Đang lấy hàng', DA_LAY_HANG:'Đã lấy hàng', DANG_GIAO:'Đang giao', DA_GIAO:'Đã giao', DA_HOAN_TRA:'Đã hoàn trả', THANH_TOAN_MOT_PHAN:'Thanh toán một phần', KHONG_THANH_TOAN:'Không thu tiền', CHO_LAY_HANG:'Chờ lấy hàng', GIAO_THAT_BAI:'Giao thất bại' }; return m[v] || v || ''; }
     if (!Auth.isLoggedIn()) { Auth.redirectToLogin('/order-success?maDH=' + encodeURIComponent(id || '')); return; }
     $('successOrderId').textContent = '#' + (id || '');
     if (!id) { $('successLoading').textContent = 'Không xác định được mã đơn hàng.'; return; }

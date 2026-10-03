@@ -2,10 +2,9 @@ package com.oldbook.controller.order;
 
 import com.oldbook.dto.common.ApiResponse;
 import com.oldbook.dto.order.SellerOrderResponse;
-import com.oldbook.dto.order.UpdateShippingStatusRequest;
 import com.oldbook.security.store.StoreAccess;
 import com.oldbook.service.order.StoreOrderService;
-import jakarta.validation.Valid;
+import com.oldbook.service.shipping.ShipmentTrackingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +16,7 @@ import java.util.List;
 public class StoreOrderController {
 
     private final StoreOrderService storeOrderService;
+    private final ShipmentTrackingService shipmentTrackingService;
     private final StoreAccess storeAccess;
 
     @GetMapping
@@ -33,14 +33,12 @@ public class StoreOrderController {
         return ApiResponse.success(storeOrderService.confirmOrder(maND, maDHCH));
     }
 
-    @PatchMapping("/{maDHCH}/shipping-status")
-    public ApiResponse<SellerOrderResponse> updateShippingStatus(
-            @PathVariable Integer maDHCH,
-            @Valid @RequestBody UpdateShippingStatusRequest request
-    ) {
+    /** Kéo trạng thái mới nhất từ đơn vị vận chuyển (không cần chờ chu kỳ đồng bộ). */
+    @PostMapping("/{maDHCH}/sync-shipping")
+    public ApiResponse<SellerOrderResponse> syncShipping(@PathVariable Integer maDHCH) {
         Integer maND = storeAccess.requireOwner();
-        return ApiResponse.success(
-                storeOrderService.updateShippingStatus(maND, maDHCH, request)
-        );
+        storeOrderService.getMyStoreOrder(maND, maDHCH); // kiểm tra quyền sở hữu
+        shipmentTrackingService.pullLatest(maDHCH);
+        return ApiResponse.success(storeOrderService.getMyStoreOrder(maND, maDHCH));
     }
 }

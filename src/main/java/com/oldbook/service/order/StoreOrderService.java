@@ -3,15 +3,20 @@ package com.oldbook.service.order;
 import com.oldbook.constant.order.TrangThaiDonHang;
 import com.oldbook.constant.shipping.TrangThaiVanChuyen;
 import com.oldbook.dto.order.SellerOrderResponse;
-import com.oldbook.dto.order.UpdateShippingStatusRequest;
 import com.oldbook.entity.catalog.CuaHang;
 import com.oldbook.entity.order.DonHang;
 import com.oldbook.entity.order.DonHangCuaHang;
 import com.oldbook.entity.shipping.DonViVanChuyen;
+import com.oldbook.entity.shipping.LichSuVanChuyen;
 import com.oldbook.entity.shipping.VanChuyen;
 import com.oldbook.exception.common.BusinessException;
 import com.oldbook.repository.order.DonHangCuaHangRepository;
+import com.oldbook.repository.shipping.LichSuVanChuyenRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
+import com.oldbook.service.shipping.ShipmentSyncService;
+import com.oldbook.service.shipping.ShippingCarrierClient;
+import com.oldbook.service.shipping.ShippingCarrierClient.CarrierShipment;
+import com.oldbook.service.shipping.ShippingCarrierClient.CarrierShipmentRequest;
 import com.oldbook.repository.store.CuaHangRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -31,6 +35,8 @@ public class StoreOrderService {
     private final CuaHangRepository cuaHangRepository;
     private final DonHangCuaHangRepository donHangCuaHangRepository;
     private final VanChuyenRepository vanChuyenRepository;
+    private final LichSuVanChuyenRepository lichSuVanChuyenRepository;
+    private final ShippingCarrierClient carrierClient;
     private final OrderMapper orderMapper;
 
     @Transactional(readOnly = true)
@@ -63,7 +69,22 @@ public class StoreOrderService {
                 .toList();
     }
 
-    /** Chủ cửa hàng xác nhận đơn: từ lúc này đơn mới có thông tin giao hàng. */
+    @Transactional(readOnly = true)
+    public SellerOrderResponse getMyStoreOrder(Integer maND, Integer maDHCH) {
+        CuaHang cuaHang = requireStore(maND);
+
+        DonHangCuaHang order = donHangCuaHangRepository.findById(maDHCH)
+                .filter(o -> o.getCuaHang() != null && cuaHang.getMaCH().equals(o.getCuaHang().getMaCH()))
+                .orElseThrow(() -> new BusinessException("Đơn hàng không tồn tại"));
+
+        return toSellerResponse(order, vanChuyenRepository.findByDonHangCuaHang_MaDHCH(maDHCH).orElse(null));
+    }
+
+    /**
+     * Chủ cửa hàng xác nhận đơn. Sau bước này đơn được chuyển cho đơn vị vận chuyển tiếp nhận;
+     * mọi trạng thái giao hàng về sau do đơn vị vận chuyển cập nhật (đồng bộ qua API),
+     * chủ cửa hàng không tự đổi được.
+     */
     @Transactional
     public SellerOrderResponse confirmOrder(Integer maND, Integer maDHCH) {
         DonHangCuaHang order = loadOwnedOrderForUpdate(maND, maDHCH);
@@ -81,6 +102,19 @@ public class StoreOrderService {
             throw new BusinessException("Đơn hàng đã được xác nhận trước đó");
         }
 
+        DonHang donHang = order.getDonHang();
+
+        // Bàn giao đơn cho đơn vị vận chuyển; lỗi ở đây làm hủy cả bước xác nhận để cửa hàng thử lại.
+        CarrierShipment shipment = carrierClient.createShipment(new CarrierShipmentRequest(
+                carrier.getMaCode(),
+                order.getMaDHCH(),
+                donHang.getTenNguoiNhan(),
+                donHang.getSoDienThoaiNhan(),
+                formatAddress(donHang),
+                order.getTongTienShopOrder(),
+                order.getGhiChu()
+        ));
+
         order.setTrangThaiDonHang(TrangThaiDonHang.DA_XAC_NHAN.name());
         order.setNgayXacNhan(LocalDateTime.now());
         donHangCuaHangRepository.save(order);
@@ -89,61 +123,18 @@ public class StoreOrderService {
                 VanChuyen.builder()
                         .donHangCuaHang(order)
                         .donViVanChuyen(carrier)
-                        .maVanDon(generateTrackingCode(carrier, order))
+                        .maVanDon(shipment.maVanDon())
                         .trangThaiVanChuyen(TrangThaiVanChuyen.CHO_LAY_HANG.name())
                         .soLanGiaoThatBai(0)
                         .build()
         );
 
-        return toSellerResponse(order, vanChuyen);
-    }
-
-    /** Cập nhật trạng thái giao hàng (CHO_LAY_HANG -> DANG_GIAO -> DA_GIAO / GIAO_THAT_BAI). */
-    @Transactional
-    public SellerOrderResponse updateShippingStatus(
-            Integer maND,
-            Integer maDHCH,
-            UpdateShippingStatusRequest request
-    ) {
-        DonHangCuaHang order = loadOwnedOrderForUpdate(maND, maDHCH);
-
-        VanChuyen vanChuyen = vanChuyenRepository.findByDonHangCuaHang_MaDHCH(maDHCH)
-                .orElseThrow(() -> new BusinessException(
-                        "Đơn hàng chưa được xác nhận nên chưa có thông tin giao hàng"
-                ));
-
-        TrangThaiVanChuyen current = parseStatus(vanChuyen.getTrangThaiVanChuyen());
-        TrangThaiVanChuyen next = parseStatus(request.getTrangThaiVanChuyen());
-
-        if (!current.canMoveTo(next)) {
-            throw new BusinessException(
-                    "Không thể chuyển trạng thái giao hàng từ \""
-                            + current.getTenHienThi() + "\" sang \"" + next.getTenHienThi() + "\""
-            );
-        }
-
-        vanChuyen.setTrangThaiVanChuyen(next.name());
-
-        if (next == TrangThaiVanChuyen.GIAO_THAT_BAI) {
-            int soLan = vanChuyen.getSoLanGiaoThatBai() == null
-                    ? 0 : vanChuyen.getSoLanGiaoThatBai();
-            vanChuyen.setSoLanGiaoThatBai(soLan + 1);
-        }
-
-        if (request.getGhiChuGiaoHang() != null) {
-            String note = request.getGhiChuGiaoHang().trim();
-            vanChuyen.setGhiChuGiaoHang(note.isEmpty() ? null : note);
-        }
-
-        vanChuyenRepository.save(vanChuyen);
-
-        // Đồng bộ trạng thái đơn hàng con với trạng thái giao hàng.
-        if (next == TrangThaiVanChuyen.DANG_GIAO) {
-            order.setTrangThaiDonHang(TrangThaiDonHang.DANG_GIAO.name());
-        } else if (next == TrangThaiVanChuyen.DA_GIAO) {
-            order.setTrangThaiDonHang(TrangThaiDonHang.DA_GIAO.name());
-        }
-        donHangCuaHangRepository.save(order);
+        lichSuVanChuyenRepository.save(LichSuVanChuyen.builder()
+                .vanChuyen(vanChuyen)
+                .trangThai(TrangThaiVanChuyen.CHO_LAY_HANG.name())
+                .ghiChu("Cửa hàng đã xác nhận, " + carrier.getTenDonVi() + " đã tiếp nhận đơn")
+                .nguon(ShipmentSyncService.NGUON_HE_THONG)
+                .build());
 
         return toSellerResponse(order, vanChuyen);
     }
@@ -168,38 +159,10 @@ public class StoreOrderService {
         return order;
     }
 
-    private TrangThaiVanChuyen parseStatus(String value) {
-        try {
-            return TrangThaiVanChuyen.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException | NullPointerException ex) {
-            throw new BusinessException("Trạng thái giao hàng không hợp lệ: " + value);
-        }
-    }
-
-    private String generateTrackingCode(DonViVanChuyen carrier, DonHangCuaHang order) {
-        String prefix = carrier.getMaCode() == null || carrier.getMaCode().isBlank()
-                ? "VC" : carrier.getMaCode().trim().toUpperCase();
-
-        String code;
-        do {
-            String random = UUID.randomUUID().toString()
-                    .replace("-", "").substring(0, 6).toUpperCase();
-            code = prefix + String.format("%08d", order.getMaDHCH()) + random;
-        } while (vanChuyenRepository.existsByMaVanDon(code));
-
-        return code;
-    }
-
     private SellerOrderResponse toSellerResponse(DonHangCuaHang order, VanChuyen vanChuyen) {
         DonHang donHang = order.getDonHang();
 
-        String diaChi = java.util.stream.Stream.of(
-                        donHang.getDiaChiGiaoChiTiet(),
-                        donHang.getPhuongXaGiao(),
-                        donHang.getQuanHuyenGiao(),
-                        donHang.getTinhThanhGiao())
-                .filter(s -> s != null && !s.isBlank())
-                .collect(Collectors.joining(", "));
+        String diaChi = formatAddress(donHang);
 
         return SellerOrderResponse.builder()
                 .maDH(donHang.getMaDH())
@@ -210,5 +173,15 @@ public class StoreOrderService {
                 .diaChiGiao(diaChi)
                 .storeOrder(orderMapper.toStoreOrderResponse(order, vanChuyen))
                 .build();
+    }
+
+    private static String formatAddress(DonHang donHang) {
+        return java.util.stream.Stream.of(
+                        donHang.getDiaChiGiaoChiTiet(),
+                        donHang.getPhuongXaGiao(),
+                        donHang.getQuanHuyenGiao(),
+                        donHang.getTinhThanhGiao())
+                .filter(s -> s != null && !s.isBlank())
+                .collect(Collectors.joining(", "));
     }
 }
