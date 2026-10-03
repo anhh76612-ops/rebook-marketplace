@@ -47,6 +47,16 @@ body { font-family: 'Be Vietnam Pro', system-ui, sans-serif; color: var(--text);
 a { color: var(--bright_olive); text-decoration: none; }
 a:hover { color: var(--bright-500); }
 main { min-height: 60vh; }
+[hidden] { display: none !important; }
+
+.header-account-label { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.header-user-role { color: #fff; font-size: .7rem; font-weight: 400; }
+
+@media (max-width: 767px) {
+  .mainbar-content { flex-wrap: wrap; }
+  .mainbar-content .brand { flex: 1 1 auto; font-size: 1.1rem; }
+  .mainbar-content .search { order: 1; flex-basis: 100%; max-width: none; }
+}
 
 .text-brown { color: var(--brown-900) !important; }
 .text-olive { color: var(--olive-700) !important; }
