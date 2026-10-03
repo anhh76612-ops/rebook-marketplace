@@ -42,6 +42,7 @@ public class SecurityConfig {
                                 "/",
                                 "/books/**",
                                 "/orders",
+                                "/shipping",
                                 "/cart",
                                 "/wishlist",
                                 "/login",
@@ -69,6 +70,9 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/admin/**")
                         .hasRole("QUAN_TRI_VIEN")
+
+                        .requestMatchers("/api/shipping/**")
+                        .hasAnyRole("DON_VI_VAN_CHUYEN", "QUAN_LY", "QUAN_TRI_VIEN")
 
                         .anyRequest().authenticated()
                 )

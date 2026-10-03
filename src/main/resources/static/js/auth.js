@@ -259,6 +259,12 @@
       users[j].classList.toggle('d-none', !loggedIn);
     }
 
+    var shippingNav = document.querySelectorAll('[data-shipping-nav]');
+    var shippingAllowed = !!user && ['DON_VI_VAN_CHUYEN', 'QUAN_LY', 'QUAN_TRI_VIEN'].indexOf(user.vaiTro) >= 0;
+    for (var s = 0; s < shippingNav.length; s++) {
+      shippingNav[s].classList.toggle('d-none', !shippingAllowed);
+    }
+
     var label = (user && (user.hoTen || ROLE_LABELS[user.vaiTro])) || 'Tài khoản';
     var names = document.querySelectorAll('[data-user-name]');
     for (var k = 0; k < names.length; k++) {
