@@ -16,6 +16,11 @@ public class OrderWebController {
         return "orders";
     }
 
+    @GetMapping("/store/orders")
+    public String storeOrdersPage() {
+        return "store-orders";
+    }
+
     @GetMapping("/order-success")
     public String orderSuccessPage() {
         return "order-success";

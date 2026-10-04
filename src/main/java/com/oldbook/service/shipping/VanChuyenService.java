@@ -7,27 +7,36 @@ import com.oldbook.entity.order.DonHangCuaHang;
 import com.oldbook.entity.shipping.DonViVanChuyen;
 import com.oldbook.entity.shipping.VanChuyen;
 import com.oldbook.exception.common.BusinessException;
-import com.oldbook.repository.order.DonHangCuaHangRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Nghiệp vụ phía đơn vị vận chuyển. Mọi hàm đều nhận maCode (lấy từ URL /api/shipping/{maCode}/...)
- * và chỉ làm việc trên vận đơn có ma_dvvc trùng với hãng đó: hãng A không xem/cập nhật được đơn của hãng B.
+ * Cổng đối tác: đơn vị vận chuyển xem và cập nhật đơn của mình tại /shipping/{maCode}.
+ * Mọi hàm nhận maCode từ URL và chỉ làm việc trên vận đơn của đúng hãng đó.
  *
- * Luồng: khách chọn hãng khi đặt hàng -> cửa hàng xác nhận (StoreOrderService.confirmOrder tạo vận đơn
- * CHO_LAY_HANG gắn ma_dvvc) -> đơn tự xuất hiện ở /shipping/{maCode} của đúng hãng -> hãng tiếp nhận, cập nhật.
+ * Luồng (khớp với luồng đơn hàng):
+ *   khách chọn hãng -> cửa hàng xác nhận (StoreOrderService.confirmOrder bàn giao đơn, tạo vận đơn CHO_LAY_HANG)
+ *   -> hãng "Tiếp nhận" trên cổng (CHO_LAY_HANG -> DANG_LAY_HANG)
+ *   -> DA_LAY_HANG -> DANG_GIAO -> DA_GIAO | GIAO_THAT_BAI -> (DANG_GIAO | DA_HOAN_TRA).
+ * Việc đổi trạng thái đi qua ShipmentSyncService.applyPartnerUpdate, dùng chung với đồng bộ API
+ * (lịch sử vận chuyển, tự hoàn hàng khi hết lượt giao, chốt doanh thu COD / hoàn kho).
  */
 @Service
 @RequiredArgsConstructor
 public class VanChuyenService {
+
+    /** Trạng thái được phép báo qua endpoint /result. */
+    private static final Set<TrangThaiVanChuyen> KET_QUA = EnumSet.of(
+            TrangThaiVanChuyen.DA_GIAO, TrangThaiVanChuyen.GIAO_THAT_BAI, TrangThaiVanChuyen.DA_HOAN_TRA);
+
     private final VanChuyenRepository vanChuyenRepository;
-    private final DonHangCuaHangRepository donHangCuaHangRepository;
-    private final VanChuyenTrangThaiHandler trangThaiHandler;
+    private final ShipmentSyncService syncService;
     private final DonViVanChuyenResolver donViResolver;
 
     /** Thông tin hãng để trang /shipping/{maCode} hiển thị tiêu đề. */
@@ -37,90 +46,55 @@ public class VanChuyenService {
     }
 
     /**
-     * Đơn vị vận chuyển tiếp nhận (lấy hàng) một đơn đã được cửa hàng xác nhận.
-     * Vận đơn do luồng cửa hàng tạo sẵn khi confirm (trạng thái CHO_LAY_HANG, hãng do khách chọn),
-     * nên ở đây KHÔNG tạo vận đơn mới mà chuyển CHO_LAY_HANG -> DANG_GIAO và đồng bộ đơn hàng con.
+     * Hãng tiếp nhận một đơn cửa hàng đã xác nhận và phân công đi lấy hàng: CHO_LAY_HANG -> DANG_LAY_HANG.
+     * Mã vận đơn đã được cấp lúc cửa hàng xác nhận (dùng để đồng bộ, đối soát COD) nên không đổi ở đây.
      */
     @Transactional
     public VanChuyenResponse tiepNhan(String maCode, TiepNhanVanChuyenRequest req) {
         DonViVanChuyen dvvc = donViResolver.requireActive(maCode);
 
-        // Khóa đơn con như StoreOrderService để không đụng độ với cửa hàng cập nhật cùng lúc.
-        DonHangCuaHang dhch = donHangCuaHangRepository.findByIdForUpdate(req.getMaDHCH())
-                .orElseThrow(() -> new BusinessException("Đơn hàng không tồn tại"));
-
         VanChuyen vc = vanChuyenRepository.findByDonHangCuaHang_MaDHCH(req.getMaDHCH())
+                // Đơn của hãng khác: trả cùng thông báo để không lộ đơn ngoài phạm vi của hãng.
+                .filter(v -> dvvc.getMaDVVC().equals(v.getDonViVanChuyen().getMaDVVC()))
                 .orElseThrow(() -> new BusinessException("Đơn hàng không tồn tại"));
 
-        // Đơn của hãng khác: trả cùng thông báo để không lộ đơn ngoài phạm vi của hãng.
-        if (!dvvc.getMaDVVC().equals(vc.getDonViVanChuyen().getMaDVVC())) {
-            throw new BusinessException("Đơn hàng không tồn tại");
+        if (TrangThaiVanChuyen.fromName(vc.getTrangThaiVanChuyen()) != TrangThaiVanChuyen.CHO_LAY_HANG) {
+            throw new BusinessException("Đơn đã được tiếp nhận hoặc không còn ở trạng thái chờ lấy hàng");
         }
 
-        if (!TrangThaiDonHang.DA_XAC_NHAN.name().equals(dhch.getTrangThaiDonHang())) {
-            throw new BusinessException("Chỉ tiếp nhận đơn hàng đã được cửa hàng xác nhận");
-        }
-
-        if (TrangThaiVanChuyen.from(vc.getTrangThaiVanChuyen()) != TrangThaiVanChuyen.CHO_LAY_HANG) {
-            throw new BusinessException("Yêu cầu vận chuyển đã được tiếp nhận hoặc không ở trạng thái chờ lấy hàng");
-        }
-
-        capNhatMaVanDon(vc, req.getMaVanDon());
-
-        // Trạng thái do hệ thống quyết định.
-        trangThaiHandler.apply(dhch, vc, TrangThaiVanChuyen.DANG_GIAO, req.getGhiChuGiaoHang(), null);
-
-        return VanChuyenResponse.from(vc);
+        VanChuyen updated = syncService.applyPartnerUpdate(
+                req.getMaDHCH(), TrangThaiVanChuyen.DANG_LAY_HANG, req.getGhiChuGiaoHang());
+        return VanChuyenResponse.from(updated);
     }
 
-    /** Cập nhật trạng thái vận chuyển theo đúng các bước chuyển hợp lệ (dùng chung state machine với cửa hàng). */
+    /** Cập nhật trạng thái theo đúng bước chuyển hợp lệ của TrangThaiVanChuyen. */
     @Transactional
     public VanChuyenResponse capNhat(String maCode, Integer id, CapNhatVanChuyenRequest req) {
         DonViVanChuyen dvvc = donViResolver.requireActive(maCode);
+        TrangThaiVanChuyen next = parse(req.getTrangThai());
 
-        // Khóa đơn con trước rồi mới đọc vận đơn, giống StoreOrderService.updateShippingStatus.
+        // Chỉ lấy mã đơn con, kèm điều kiện đúng hãng; khóa đơn và đọc lại vận đơn nằm trong applyPartnerUpdate.
         Integer maDHCH = vanChuyenRepository.findMaDHCHByIdAndDonVi(id, dvvc.getMaDVVC())
                 .orElseThrow(() -> new BusinessException("Vận chuyển không tồn tại"));
-        DonHangCuaHang dhch = donHangCuaHangRepository.findByIdForUpdate(maDHCH)
-                .orElseThrow(() -> new BusinessException("Đơn hàng cửa hàng không tồn tại"));
-        VanChuyen vc = vanChuyenRepository.findByDonHangCuaHang_MaDHCH(maDHCH)
-                .orElseThrow(() -> new BusinessException("Vận chuyển không tồn tại"));
 
-        TrangThaiVanChuyen next = trangThaiHandler.parse(req.getTrangThai());
-        trangThaiHandler.apply(dhch, vc, next, req.getGhiChu(), req.getTienHoanTra());
-        capNhatMaVanDon(vc, req.getMaVanDon());
-
-        return VanChuyenResponse.from(vanChuyenRepository.save(vc));
+        return VanChuyenResponse.from(syncService.applyPartnerUpdate(maDHCH, next, req.getGhiChu()));
     }
 
-    /** Báo kết quả giao hàng: chỉ nhận DA_GIAO, GIAO_THAT_BAI hoặc HOAN_TRA. */
+    /** Báo kết quả giao hàng: chỉ nhận DA_GIAO, GIAO_THAT_BAI hoặc DA_HOAN_TRA. */
     @Transactional
     public VanChuyenResponse capNhatKetQua(String maCode, Integer id, CapNhatVanChuyenRequest req) {
-        TrangThaiVanChuyen next = trangThaiHandler.parse(req.getTrangThai());
-        if (!next.laKetQua()) {
-            throw new BusinessException("Kết quả giao hàng chỉ gồm: DA_GIAO, GIAO_THAT_BAI hoặc HOAN_TRA");
+        if (!KET_QUA.contains(parse(req.getTrangThai()))) {
+            throw new BusinessException("Kết quả giao hàng chỉ gồm: DA_GIAO, GIAO_THAT_BAI hoặc DA_HOAN_TRA");
         }
         return capNhat(maCode, id, req);
     }
 
-    // Mã vận đơn do hệ thống sinh khi cửa hàng xác nhận; chỉ đổi khi hãng gửi mã mới và không trùng.
-    private void capNhatMaVanDon(VanChuyen vc, String maVanDon) {
-        String code = maVanDon == null ? null : maVanDon.trim();
-        if (code == null || code.isEmpty() || code.equals(vc.getMaVanDon())) {
-            return;
-        }
-        if (vanChuyenRepository.existsByMaVanDon(code)) {
-            throw new BusinessException("Mã vận đơn đã tồn tại");
-        }
-        vc.setMaVanDon(code);
-    }
-
-    /** Các đơn của hãng này đã được cửa hàng xác nhận và đang chờ đến lấy hàng. */
+    /** Đơn cửa hàng đã xác nhận, đang chờ hãng tiếp nhận. */
     @Transactional(readOnly = true)
     public List<YeuCauVanChuyenResponse> getYeuCauChuaTiepNhan(String maCode) {
         DonViVanChuyen dvvc = donViResolver.require(maCode);
         return vanChuyenRepository.findAllByDonViVanChuyen_MaDVVCOrderByMaVanChuyenDesc(dvvc.getMaDVVC()).stream()
-                .filter(v -> TrangThaiVanChuyen.from(v.getTrangThaiVanChuyen()) == TrangThaiVanChuyen.CHO_LAY_HANG)
+                .filter(v -> TrangThaiVanChuyen.fromName(v.getTrangThaiVanChuyen()) == TrangThaiVanChuyen.CHO_LAY_HANG)
                 .filter(v -> TrangThaiDonHang.DA_XAC_NHAN.name().equals(v.getDonHangCuaHang().getTrangThaiDonHang()))
                 .map(v -> {
                     DonHangCuaHang d = v.getDonHangCuaHang();
@@ -130,6 +104,7 @@ public class VanChuyenService {
                             .maDVVC(dvvc.getMaDVVC())
                             .maCode(dvvc.getMaCode())
                             .tenDonVi(dvvc.getTenDonVi())
+                            .maVanDon(v.getMaVanDon())
                             .trangThaiDonHang(d.getTrangThaiDonHang())
                             .trangThaiThanhToan(d.getTrangThaiThanhToanShop())
                             .tongTien(d.getTongTienShopOrder())
@@ -156,5 +131,13 @@ public class VanChuyenService {
         return vanChuyenRepository.findByMaVanChuyenAndDonViVanChuyen_MaDVVC(id, dvvc.getMaDVVC())
                 .map(VanChuyenResponse::from)
                 .orElseThrow(() -> new BusinessException("Vận chuyển không tồn tại"));
+    }
+
+    private static TrangThaiVanChuyen parse(String value) {
+        TrangThaiVanChuyen status = TrangThaiVanChuyen.fromName(value);
+        if (status == null) {
+            throw new BusinessException("Trạng thái giao hàng không hợp lệ: " + value);
+        }
+        return status;
     }
 }

@@ -26,29 +26,36 @@
     a.textContent = message;
   }
 
-  // Cùng bộ trạng thái và bước chuyển hợp lệ với phía cửa hàng/khách (TrangThaiVanChuyen).
+  // Tên hiển thị khớp TrangThaiVanChuyen / TrangThaiDonHang ở server.
+  // Bước chuyển hợp lệ KHÔNG giữ ở đây: server trả về trong trangThaiTiepTheo của từng vận đơn.
   var LABELS = {
     CHO_LAY_HANG: 'Chờ lấy hàng',
+    DANG_LAY_HANG: 'Đang lấy hàng',
+    DA_LAY_HANG: 'Đã lấy hàng',
     DANG_GIAO: 'Đang giao',
     DA_GIAO: 'Đã giao',
     GIAO_THAT_BAI: 'Giao thất bại',
-    HOAN_TRA: 'Hoàn trả'
+    DA_HOAN_TRA: 'Đã hoàn trả'
   };
-  var NEXT = {
-    CHO_LAY_HANG: ['DANG_GIAO'],
-    DANG_GIAO: ['DA_GIAO', 'GIAO_THAT_BAI'],
-    GIAO_THAT_BAI: ['DANG_GIAO', 'HOAN_TRA'],
-    DA_GIAO: [],
-    HOAN_TRA: []
+  var ORDER_LABELS = { DA_XAC_NHAN: 'Đã xác nhận', DANG_LAY_HANG: 'Đang lấy hàng', DA_LAY_HANG: 'Đã lấy hàng',
+    DANG_GIAO: 'Đang giao', DA_GIAO: 'Đã giao', DA_HOAN_TRA: 'Đã hoàn trả', DA_HUY: 'Đã hủy' };
+  var PAYMENT_LABELS = { CHO_THANH_TOAN: 'Thu hộ (COD)', DA_THANH_TOAN: 'Đã thanh toán',
+    THANH_TOAN_MOT_PHAN: 'Thanh toán một phần', KHONG_THANH_TOAN: 'Không thanh toán' };
+  var HINTS = {
+    DA_GIAO: 'Xác nhận đã giao và thu tiền COD. Hệ thống sẽ chốt doanh thu cho cửa hàng.',
+    GIAO_THAT_BAI: 'Hết số lần giao cho phép thì đơn tự chuyển sang Đã hoàn trả.',
+    DA_HOAN_TRA: 'Hàng trả về cửa hàng, tồn kho được cộng lại, không thu tiền khách.'
   };
-  var RESULT = ['DA_GIAO', 'GIAO_THAT_BAI', 'HOAN_TRA'];
+  var IN_TRANSIT = ['DANG_LAY_HANG', 'DA_LAY_HANG', 'DANG_GIAO', 'GIAO_THAT_BAI'];
 
   function statusBadge(status) {
     var cls = {
       DA_GIAO: 'text-bg-success',
-      HOAN_TRA: 'text-bg-warning',
+      DA_HOAN_TRA: 'text-bg-warning',
       GIAO_THAT_BAI: 'text-bg-danger',
-      DANG_GIAO: 'text-bg-primary'
+      DANG_GIAO: 'text-bg-primary',
+      DANG_LAY_HANG: 'text-bg-info',
+      DA_LAY_HANG: 'text-bg-info'
     }[status] || 'text-bg-secondary';
     return '<span class="badge ' + cls + '">' + esc(LABELS[status] || status || 'Chưa cập nhật') + '</span>';
   }
@@ -87,11 +94,11 @@
   }
 
   function updateStats() {
-    function count(status) { return shipments.filter(function (x) { return x.trangThaiVanChuyen === status; }).length; }
+    function count(list) { return shipments.filter(function (x) { return list.indexOf(x.trangThaiVanChuyen) >= 0; }).length; }
     document.getElementById('statPending').textContent = pending.length;
-    document.getElementById('statShipping').textContent = count('DANG_GIAO');
-    document.getElementById('statDelivered').textContent = count('DA_GIAO');
-    document.getElementById('statReturned').textContent = count('HOAN_TRA');
+    document.getElementById('statShipping').textContent = count(IN_TRANSIT);
+    document.getElementById('statDelivered').textContent = count(['DA_GIAO']);
+    document.getElementById('statReturned').textContent = count(['DA_HOAN_TRA']);
   }
 
   function renderPending() {
@@ -103,9 +110,9 @@
     body.innerHTML = pending.map(function (x) {
       return '<tr>' +
         '<td><strong>#DHCH' + esc(x.maDHCH) + '</strong><div class="small text-muted">Đơn #' + esc(x.maDH) + '</div></td>' +
-        '<td>' + esc(x.tenDonVi || '-') + '</td>' +
-        '<td><span class="badge text-bg-light border">' + esc(x.trangThaiDonHang) + '</span></td>' +
-        '<td>' + esc(x.trangThaiThanhToan || '-') + '</td>' +
+        '<td class="small">' + esc(x.maVanDon || '-') + '</td>' +
+        '<td><span class="badge text-bg-light border">' + esc(ORDER_LABELS[x.trangThaiDonHang] || x.trangThaiDonHang) + '</span></td>' +
+        '<td>' + esc(PAYMENT_LABELS[x.trangThaiThanhToan] || x.trangThaiThanhToan || '-') + '</td>' +
         '<td>' + money(x.tongTien) + '</td>' +
         '<td class="small">' + date(x.ngayCapNhat) + '</td>' +
         '<td class="text-end"><button class="btn btn-accent btn-sm" onclick="Shipping.openAccept(' + x.maDHCH + ')"><i class="bi bi-box-arrow-in-right me-1"></i>Tiếp nhận</button></td>' +
@@ -115,19 +122,23 @@
 
   function renderShipments() {
     var body = document.getElementById('shipmentBody');
-    if (!shipments.length) {
-      body.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Chưa có vận đơn.</td></tr>';
+    // Đơn CHO_LAY_HANG nằm ở tab Tiếp nhận yêu cầu.
+    var rows = shipments.filter(function (x) { return x.trangThaiVanChuyen !== 'CHO_LAY_HANG'; });
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Chưa có vận đơn.</td></tr>';
       return;
     }
-    body.innerHTML = shipments.map(function (x) {
+    body.innerHTML = rows.map(function (x) {
+      var canUpdate = (x.trangThaiTiepTheo || []).length > 0;
       return '<tr>' +
         '<td><strong>' + esc(x.maVanDon || ('VC-' + x.maVanChuyen)) + '</strong></td>' +
-        '<td>#DHCH' + esc(x.maDHCH) + '</td>' +
-        '<td>' + esc(x.tenDonVi || '-') + '</td>' +
+        '<td>#DHCH' + esc(x.maDHCH) + '<div class="small text-muted">Đơn #' + esc(x.maDH) + '</div></td>' +
         '<td>' + statusBadge(x.trangThaiVanChuyen) + '</td>' +
         '<td>' + esc(x.soLanGiaoThatBai || 0) + '</td>' +
         '<td class="small">' + date(x.ngayCapNhat) + '</td>' +
-        '<td class="text-end"><button class="btn btn-outline-secondary btn-sm" onclick="Shipping.openStatus(' + x.maVanChuyen + ')"><i class="bi bi-pencil-square me-1"></i>Cập nhật</button></td>' +
+        '<td class="text-end">' + (canUpdate
+          ? '<button class="btn btn-outline-secondary btn-sm" onclick="Shipping.openStatus(' + x.maVanChuyen + ')"><i class="bi bi-pencil-square me-1"></i>Cập nhật</button>'
+          : '<span class="small text-muted">Đã kết thúc</span>') + '</td>' +
       '</tr>';
     }).join('');
   }
@@ -137,7 +148,7 @@
     if (!x) return;
     document.getElementById('acceptOrderId').value = orderId;
     document.getElementById('acceptOrderLabel').value = '#DHCH' + orderId + ' / Đơn #' + x.maDH;
-    document.getElementById('acceptTracking').value = '';
+    document.getElementById('acceptTracking').value = x.maVanDon || '';
     document.getElementById('acceptNote').value = '';
     bootstrap.Modal.getOrCreateInstance(document.getElementById('acceptModal')).show();
   }
@@ -145,26 +156,27 @@
   function accept() {
     var body = {
       maDHCH: Number(document.getElementById('acceptOrderId').value),
-      maVanDon: document.getElementById('acceptTracking').value || null,
       ghiChuGiaoHang: document.getElementById('acceptNote').value || null
     };
     if (!body.maDHCH) return;
     api('POST', '/requests', body).then(function () {
       bootstrap.Modal.getInstance(document.getElementById('acceptModal')).hide();
-      OldBook.toast('Đã tiếp nhận, đơn chuyển sang trạng thái đang giao.', 'success');
+      OldBook.toast('Đã tiếp nhận #DHCH' + body.maDHCH + ', đơn chuyển sang Đang lấy hàng.', 'success');
       loadAll();
     }).catch(function (e) { OldBook.toast(e.message, 'danger'); });
   }
 
   function onStatusChange() {
     var v = document.getElementById('statusValue').value;
-    document.getElementById('statusRefundWrap').classList.toggle('d-none', v !== 'HOAN_TRA');
+    var hint = document.getElementById('statusHint');
+    hint.textContent = HINTS[v] || '';
+    hint.classList.toggle('d-none', !HINTS[v]);
   }
 
   function openStatus(id) {
     var x = shipments.find(function (s) { return s.maVanChuyen === id; });
     if (!x) return;
-    var allowed = NEXT[x.trangThaiVanChuyen] || [];
+    var allowed = x.trangThaiTiepTheo || [];
     if (!allowed.length) {
       OldBook.toast('Vận đơn đã kết thúc, không thể cập nhật thêm.', 'warning');
       return;
@@ -173,23 +185,20 @@
     document.getElementById('statusValue').innerHTML = allowed.map(function (st) {
       return '<option value="' + st + '">' + esc(LABELS[st]) + '</option>';
     }).join('');
-    document.getElementById('statusRefund').value = 0;
-    document.getElementById('statusNote').value = x.ghiChuGiaoHang || '';
+    document.getElementById('statusNote').value = '';
     onStatusChange();
     bootstrap.Modal.getOrCreateInstance(document.getElementById('statusModal')).show();
   }
 
   function updateStatus() {
     var status = document.getElementById('statusValue').value;
-    var body = { trangThai: status, ghiChu: document.getElementById('statusNote').value || null };
-    if (status === 'HOAN_TRA') {
-      body.tienHoanTra = Number(document.getElementById('statusRefund').value || 0);
-    }
+    var body = { trangThai: status, ghiChu: document.getElementById('statusNote').value.trim() || null };
     var id = document.getElementById('statusId').value;
-    var path = RESULT.indexOf(status) >= 0 ? '/result' : '/status';
-    api('PATCH', '/requests/' + encodeURIComponent(id) + path, body).then(function () {
+    api('PATCH', '/requests/' + encodeURIComponent(id) + '/status', body).then(function (res) {
       bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
-      OldBook.toast('Đã cập nhật trạng thái vận chuyển.', 'success');
+      // Server có thể tự chuyển tiếp (ví dụ giao thất bại hết lượt -> hoàn trả), nên báo theo kết quả thật.
+      var now = res && res.trangThaiVanChuyen ? res.trangThaiVanChuyen : status;
+      OldBook.toast('Đã cập nhật: ' + (LABELS[now] || now) + '.', 'success');
       loadAll();
     }).catch(function (e) { OldBook.toast(e.message, 'danger'); });
   }

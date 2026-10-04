@@ -19,6 +19,7 @@ public class StoreOrderResponse {
     private BigDecimal phiShipCH;
     private BigDecimal tongTienShopOrder;
     private String trangThaiDonHang;
+    private String tenTrangThaiDonHang;
     private String trangThaiThanhToanShop;
 
     // Ghi chú riêng của khách cho cửa hàng này
@@ -29,6 +30,14 @@ public class StoreOrderResponse {
     private String tenDonViVanChuyen;
 
     private LocalDateTime ngayXacNhan;
+
+    // Chỉ có khi đã giao thành công / đã hoàn trả
+    private LocalDateTime ngayGiao;
+    private LocalDateTime ngayHoanTra;
+
+    // Chỉ có khi đã giao thành công
+    private BigDecimal commissionTien;
+    private BigDecimal doanhThuShop;
 
     // null cho tới khi cửa hàng xác nhận đơn
     private ShipmentResponse vanChuyen;

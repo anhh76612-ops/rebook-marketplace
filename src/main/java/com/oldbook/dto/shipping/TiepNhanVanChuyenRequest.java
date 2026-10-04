@@ -6,8 +6,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Đơn vị vận chuyển tiếp nhận đơn. Đơn vị nhận được xác định bằng {maCode} trên URL
- * (POST /api/shipping/{maCode}/requests), nên body không còn trường maDVVC.
+ * Đơn vị vận chuyển tiếp nhận đơn (POST /api/shipping/{maCode}/requests).
+ * Hãng lấy từ {maCode} trên URL; mã vận đơn đã cấp khi cửa hàng xác nhận nên không gửi lại.
  */
 @Getter
 @Setter
@@ -15,9 +15,6 @@ public class TiepNhanVanChuyenRequest {
     @NotNull
     private Integer maDHCH;
 
-    @Size(max = 255)
-    private String maVanDon;
-
-    @Size(max = 500)
+    @Size(max = 1000)
     private String ghiChuGiaoHang;
 }

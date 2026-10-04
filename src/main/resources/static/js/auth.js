@@ -371,6 +371,13 @@
       users[j].classList.toggle('d-none', !loggedIn);
     }
 
+    // Phần tử chỉ dành cho một vai trò nhất định (ví dụ liên kết quản lý đơn của chủ cửa hàng)
+    var roleOnly = document.querySelectorAll('[data-role]');
+    for (var r = 0; r < roleOnly.length; r++) {
+      var allowed = loggedIn && !!user && user.vaiTro === roleOnly[r].getAttribute('data-role');
+      roleOnly[r].classList.toggle('d-none', !allowed);
+    }
+
     var label = (user && (user.hoTen || ROLE_LABELS[user.vaiTro])) || 'Tài khoản';
     var names = document.querySelectorAll('[data-user-name]');
     for (var k = 0; k < names.length; k++) {

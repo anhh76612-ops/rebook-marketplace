@@ -15,6 +15,7 @@ public class YeuCauVanChuyenResponse {
     private Integer maDVVC;
     private String maCode;
     private String tenDonVi;
+    private String maVanDon;
     private String trangThaiDonHang;
     private String trangThaiThanhToan;
     private BigDecimal tongTien;

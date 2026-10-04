@@ -1,7 +1,5 @@
 package com.oldbook.config.auth;
 
-import com.oldbook.filter.auth.JwtAuthenticationFilter;
-import com.oldbook.dto.common.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import tools.jackson.databind.ObjectMapper;
@@ -15,6 +13,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.oldbook.dto.common.ApiResponse;
+import com.oldbook.filter.auth.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -56,6 +57,8 @@ public class SecurityConfig {
 
                                 "/checkout",
                                 "/order-success",
+
+                                "/store/orders",
 
                                 "/login",
                                 "/register",

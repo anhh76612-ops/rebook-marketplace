@@ -40,12 +40,12 @@
     <section class="tab-pane fade show active" id="requestsTab">
       <div class="panel">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-          <div><h2 class="h5 fw-bold mb-1">Yêu cầu chưa tiếp nhận</h2><div class="text-muted small">Các đơn cửa hàng đã xác nhận, đang chờ đơn vị vận chuyển đến lấy hàng.</div></div>
+          <div><h2 class="h5 fw-bold mb-1">Yêu cầu chưa tiếp nhận</h2><div class="text-muted small">Đơn cửa hàng đã xác nhận và bàn giao, chờ phân công đi lấy hàng.</div></div>
           <button class="btn btn-outline-secondary btn-sm" onclick="Shipping.loadAll()"><i class="bi bi-arrow-clockwise me-1"></i>Làm mới</button>
         </div>
         <div class="table-responsive">
           <table class="table align-middle">
-            <thead><tr class="small text-muted text-uppercase"><th>Đơn</th><th>Đơn vị vận chuyển</th><th>Trạng thái đơn</th><th>Thanh toán</th><th>Tổng đơn</th><th>Cập nhật</th><th class="text-end">Thao tác</th></tr></thead>
+            <thead><tr class="small text-muted text-uppercase"><th>Đơn</th><th>Mã vận đơn</th><th>Trạng thái đơn</th><th>Thanh toán</th><th>Tổng đơn</th><th>Cập nhật</th><th class="text-end">Thao tác</th></tr></thead>
             <tbody id="pendingBody"><tr><td colspan="7" class="text-center text-muted py-4">Đang tải...</td></tr></tbody>
           </table>
         </div>
@@ -55,13 +55,13 @@
     <section class="tab-pane fade" id="trackingTab">
       <div class="panel">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-          <div><h2 class="h5 fw-bold mb-1">Danh sách vận chuyển</h2><div class="text-muted small">Cập nhật trạng thái và kết quả giao hàng/hoàn trả.</div></div>
+          <div><h2 class="h5 fw-bold mb-1">Danh sách vận chuyển</h2><div class="text-muted small">Lấy hàng → giao hàng → kết quả. Trạng thái được đồng bộ ngay cho cửa hàng và khách.</div></div>
           <button class="btn btn-outline-secondary btn-sm" onclick="Shipping.loadShipments()"><i class="bi bi-arrow-clockwise me-1"></i>Làm mới</button>
         </div>
         <div class="table-responsive">
           <table class="table align-middle">
-            <thead><tr class="small text-muted text-uppercase"><th>Mã vận đơn</th><th>Đơn</th><th>Đơn vị</th><th>Trạng thái</th><th>Giao thất bại</th><th>Cập nhật</th><th class="text-end">Thao tác</th></tr></thead>
-            <tbody id="shipmentBody"><tr><td colspan="7" class="text-center text-muted py-4">Đang tải...</td></tr></tbody>
+            <thead><tr class="small text-muted text-uppercase"><th>Mã vận đơn</th><th>Đơn</th><th>Trạng thái</th><th>Giao thất bại</th><th>Cập nhật</th><th class="text-end">Thao tác</th></tr></thead>
+            <tbody id="shipmentBody"><tr><td colspan="6" class="text-center text-muted py-4">Đang tải...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -77,8 +77,9 @@
     <div class="modal-body">
       <input type="hidden" id="acceptOrderId">
       <div class="mb-3"><label class="form-label">Đơn hàng</label><input id="acceptOrderLabel" class="form-control" readonly></div>
-      <div class="mb-3"><label class="form-label">Mã vận đơn <span class="text-muted">(để trống sẽ giữ mã hệ thống đã tạo khi cửa hàng xác nhận)</span></label><input id="acceptTracking" class="form-control" maxlength="255"></div>
-      <div><label class="form-label">Ghi chú</label><textarea id="acceptNote" class="form-control" rows="2"></textarea></div>
+      <div class="mb-3"><label class="form-label">Mã vận đơn</label><input id="acceptTracking" class="form-control" readonly></div>
+      <div class="mb-2"><label class="form-label">Ghi chú</label><textarea id="acceptNote" class="form-control" rows="2" maxlength="1000"></textarea></div>
+      <div class="small text-muted">Sau khi tiếp nhận, đơn chuyển sang <strong>Đang lấy hàng</strong>.</div>
     </div>
     <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button><button class="btn btn-accent" onclick="Shipping.accept()">Tiếp nhận</button></div>
   </div></div>
@@ -93,8 +94,8 @@
       <div class="mb-3"><label class="form-label">Trạng thái</label>
         <select id="statusValue" class="form-select" onchange="Shipping.onStatusChange()"></select>
       </div>
-      <div class="mb-3 d-none" id="statusRefundWrap"><label class="form-label">Tiền hoàn trả</label><input id="statusRefund" type="number" min="0" class="form-control" value="0"></div>
-      <div><label class="form-label">Ghi chú giao hàng</label><textarea id="statusNote" class="form-control" rows="2"></textarea></div>
+      <div class="small text-muted mb-3 d-none" id="statusHint"></div>
+      <div><label class="form-label">Ghi chú giao hàng</label><textarea id="statusNote" class="form-control" rows="2" maxlength="1000"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button><button class="btn btn-accent" onclick="Shipping.updateStatus()">Lưu trạng thái</button></div>
   </div></div>

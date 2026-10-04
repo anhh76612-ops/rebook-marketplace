@@ -79,6 +79,16 @@ public class DonHangCuaHang {
     @Column(name = "tien_hoan_tra", precision = 15, scale = 2)
     private BigDecimal tienHoanTra;
 
+    // Doanh thu thực nhận của cửa hàng = tiền hàng - giảm giá shop - hoa hồng. Chỉ có khi đã giao thành công.
+    @Column(name = "doanh_thu_shop", precision = 15, scale = 2)
+    private BigDecimal doanhThuShop;
+
+    @Column(name = "ngay_giao")
+    private LocalDateTime ngayGiao;
+
+    @Column(name = "ngay_hoan_tra")
+    private LocalDateTime ngayHoanTra;
+
     @Column(name = "ngay_cap_nhat")
     private LocalDateTime ngayCapNhat;
 
