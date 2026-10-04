@@ -18,6 +18,12 @@
     QUAN_TRI_VIEN: 'Quản trị viên'
   };
 
+  var ROLE_HOME_URLS = {
+    CHU_CUA_HANG: '/vendor/books',
+    QUAN_LY: '/store-moderation',
+    QUAN_TRI_VIEN: '/admin/accounts'
+  };
+
   function lsGet(key) {
     try { return window.localStorage.getItem(key); } catch (e) { return null; }
   }
@@ -117,6 +123,7 @@
       lsSet(TOKEN_KEY, loginData.token);
       lsRemove(NAME_KEY);
       lsRemove(AVATAR_KEY);
+      renderHeader();
     },
 
     clear: function () {
@@ -126,6 +133,11 @@
     },
 
     safeRedirect: safeRedirect,
+
+    homeUrl: function () {
+      var user = Auth.getUser();
+      return (user && ROLE_HOME_URLS[user.vaiTro]) || '/';
+    },
 
     navigate: function (url) {
       window.location.assign(url);
@@ -142,12 +154,7 @@
 
     handleAuthError: function (err, requiredRole) {
       if (!(err instanceof ApiError)) { return false; }
-
-      var user = Auth.getUser();
-      var wrongRole = !!user && !!requiredRole && user.vaiTro !== requiredRole;
-      var sessionInvalid = err.status === 401 || (err.status === 403 && !wrongRole);
-
-      if (!sessionInvalid) { return false; }
+      if (err.status !== 401) { return false; }
 
       Auth.clear();
       Auth.redirectToLogin();
@@ -274,10 +281,10 @@
       }, function () { });
     },
 
-    logout: function () {
+    logout: function (redirect) {
       var finish = function () {
         Auth.clear();
-        Auth.navigate('/');
+        Auth.navigate(safeRedirect(redirect, '/'));
       };
 
       if (!Auth.getToken()) { finish(); return; }
@@ -361,14 +368,19 @@
     var loggedIn = Auth.isLoggedIn();
     var user = Auth.getUser();
 
-    var guests = document.querySelectorAll('[data-auth="guest"]');
-    for (var i = 0; i < guests.length; i++) {
-      guests[i].classList.toggle('d-none', loggedIn);
-    }
-
-    var users = document.querySelectorAll('[data-auth="user"]');
-    for (var j = 0; j < users.length; j++) {
-      users[j].classList.toggle('d-none', !loggedIn);
+    var links = document.querySelectorAll('[data-auth], [data-roles]');
+    for (var i = 0; i < links.length; i++) {
+      var authState = links[i].getAttribute('data-auth');
+      var visible = authState === 'guest' ? !loggedIn : authState !== 'user' || loggedIn;
+      var allowedRoles = links[i].getAttribute('data-roles');
+      if (allowedRoles !== null) {
+        var roleAllowed = user ? allowedRoles.split(',').some(function (role) {
+          return role.trim() === user.vaiTro;
+        }) : links[i].hasAttribute('data-allow-guest');
+        visible = visible && roleAllowed;
+      }
+      links[i].classList.toggle('d-none', !visible);
+      links[i].hidden = !visible;
     }
 
     // Phần tử chỉ dành cho một vai trò nhất định (ví dụ liên kết quản lý đơn của chủ cửa hàng)
@@ -382,6 +394,11 @@
     var names = document.querySelectorAll('[data-user-name]');
     for (var k = 0; k < names.length; k++) {
       names[k].textContent = label;
+    }
+
+    var roleLabels = document.querySelectorAll('[data-user-role]');
+    for (var r = 0; r < roleLabels.length; r++) {
+      roleLabels[r].textContent = (user && ROLE_LABELS[user.vaiTro]) || '';
     }
 
     var avatarImages = document.querySelectorAll('[data-user-avatar]');
@@ -422,6 +439,12 @@
     if (logout) {
       e.preventDefault();
       Auth.logout();
+    }
+
+    var switchRole = e.target.closest ? e.target.closest('[data-action="switch-role"]') : null;
+    if (switchRole) {
+      e.preventDefault();
+      Auth.logout('/login');
     }
   }, true);
 

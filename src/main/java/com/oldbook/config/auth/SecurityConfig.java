@@ -17,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.oldbook.dto.common.ApiResponse;
 import com.oldbook.filter.auth.JwtAuthenticationFilter;
 
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -39,6 +40,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(authorize -> authorize
 
+                        // HTML shells load JWT from the browser; their API requests remain protected below.
                         .requestMatchers(
                                 "/",
                                 "/books/**",
@@ -51,7 +53,12 @@ public class SecurityConfig {
                                 "/management/**",
                                 "/cart",
                                 "/wishlist",
-                                
+
+                                "/admin/accounts",
+                                "/store",
+                                "/vendor/books",
+                                "/store-moderation",
+
                                 "/profile",
                                 "/addresses",
 

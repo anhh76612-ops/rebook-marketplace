@@ -23,7 +23,13 @@ Trang công khai:
 - `/books/tim-kiem`: tìm kiếm, lọc, sắp xếp, phân trang sách thật.
 - `/books/{maSach}`: chi tiết sách; sách không công khai trả trang 404.
 
-Quản lý shop và kiểm duyệt được triển khai bằng REST API. Dùng Postman hoặc frontend gọi các API dưới đây.
+Quản lý shop và kiểm duyệt có giao diện gọi REST API:
+
+- `/vendor/books` hoặc `/store`: chủ cửa hàng đăng ký/sửa cửa hàng, xem trạng thái duyệt, quản lý sách, tồn kho và trạng thái bán.
+- `/store-moderation`: quản lý/quản trị viên lọc, xem chi tiết và duyệt/từ chối cửa hàng hoặc sách.
+- `/admin/accounts`: quản trị viên quản lý tài khoản và cấp vai trò.
+
+Menu và trang đích sau đăng nhập phụ thuộc vai trò trong JWT. Các trang HTML tải JWT từ trình duyệt khi gọi API; quyền truy cập dữ liệu vẫn được kiểm tra ở backend.
 
 ## Trạng thái và quyền
 
