@@ -11,6 +11,10 @@ import java.time.LocalDateTime;
 public class YeuCauVanChuyenResponse {
     private Integer maDHCH;
     private Integer maDH;
+    // Đơn vị vận chuyển khách đã chọn cho đơn này
+    private Integer maDVVC;
+    private String maCode;
+    private String tenDonVi;
     private String trangThaiDonHang;
     private String trangThaiThanhToan;
     private BigDecimal tongTien;

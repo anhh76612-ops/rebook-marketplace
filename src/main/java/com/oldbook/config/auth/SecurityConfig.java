@@ -42,7 +42,12 @@ public class SecurityConfig {
                                 "/",
                                 "/books/**",
                                 "/orders",
+
+                                // Trang đơn vị vận chuyển: không đăng nhập, ai có link /shipping/{maCode} đều vào được
                                 "/shipping",
+                                "/shipping/**",
+                                // Trang quản lý đối tác: HTML công khai, dữ liệu lấy qua /api/management/** (có phân quyền)
+                                "/management/**",
                                 "/cart",
                                 "/wishlist",
                                 
@@ -85,8 +90,14 @@ public class SecurityConfig {
                         .hasRole("QUAN_TRI_VIEN")
 
 
+                        // API đơn vị vận chuyển theo mã: /api/shipping/{maCode}/...
+                        // Không dùng tài khoản; service tự giới hạn dữ liệu theo maCode.
                         .requestMatchers("/api/shipping/**")
-                        .hasAnyRole("DON_VI_VAN_CHUYEN", "QUAN_LY", "QUAN_TRI_VIEN")
+                        .permitAll()
+
+                        // Quản lý thêm/sửa đối tác vận chuyển
+                        .requestMatchers("/api/management/**")
+                        .hasAnyRole("QUAN_LY", "QUAN_TRI_VIEN")
 
                         .requestMatchers("/api/store/kiem-duyet/**")
                         .hasAnyRole("QUAN_LY", "QUAN_TRI_VIEN")

@@ -13,6 +13,7 @@ import com.oldbook.exception.common.BusinessException;
 import com.oldbook.repository.order.DonHangCuaHangRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
 import com.oldbook.repository.store.CuaHangRepository;
+import com.oldbook.service.shipping.VanChuyenTrangThaiHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ public class StoreOrderService {
     private final DonHangCuaHangRepository donHangCuaHangRepository;
     private final VanChuyenRepository vanChuyenRepository;
     private final OrderMapper orderMapper;
+    private final VanChuyenTrangThaiHandler trangThaiHandler;
 
     @Transactional(readOnly = true)
     public List<SellerOrderResponse> getMyStoreOrders(Integer maND, String trangThai) {
@@ -98,7 +100,7 @@ public class StoreOrderService {
         return toSellerResponse(order, vanChuyen);
     }
 
-    /** Cập nhật trạng thái giao hàng (CHO_LAY_HANG -> DANG_GIAO -> DA_GIAO / GIAO_THAT_BAI). */
+    /** Cập nhật trạng thái giao hàng (CHO_LAY_HANG -> DANG_GIAO -> DA_GIAO / GIAO_THAT_BAI -> HOAN_TRA). */
     @Transactional
     public SellerOrderResponse updateShippingStatus(
             Integer maND,
@@ -112,38 +114,14 @@ public class StoreOrderService {
                         "Đơn hàng chưa được xác nhận nên chưa có thông tin giao hàng"
                 ));
 
-        TrangThaiVanChuyen current = parseStatus(vanChuyen.getTrangThaiVanChuyen());
-        TrangThaiVanChuyen next = parseStatus(request.getTrangThaiVanChuyen());
-
-        if (!current.canMoveTo(next)) {
-            throw new BusinessException(
-                    "Không thể chuyển trạng thái giao hàng từ \""
-                            + current.getTenHienThi() + "\" sang \"" + next.getTenHienThi() + "\""
-            );
-        }
-
-        vanChuyen.setTrangThaiVanChuyen(next.name());
-
-        if (next == TrangThaiVanChuyen.GIAO_THAT_BAI) {
-            int soLan = vanChuyen.getSoLanGiaoThatBai() == null
-                    ? 0 : vanChuyen.getSoLanGiaoThatBai();
-            vanChuyen.setSoLanGiaoThatBai(soLan + 1);
-        }
-
-        if (request.getGhiChuGiaoHang() != null) {
-            String note = request.getGhiChuGiaoHang().trim();
-            vanChuyen.setGhiChuGiaoHang(note.isEmpty() ? null : note);
-        }
-
-        vanChuyenRepository.save(vanChuyen);
-
-        // Đồng bộ trạng thái đơn hàng con với trạng thái giao hàng.
-        if (next == TrangThaiVanChuyen.DANG_GIAO) {
-            order.setTrangThaiDonHang(TrangThaiDonHang.DANG_GIAO.name());
-        } else if (next == TrangThaiVanChuyen.DA_GIAO) {
-            order.setTrangThaiDonHang(TrangThaiDonHang.DA_GIAO.name());
-        }
-        donHangCuaHangRepository.save(order);
+        // Cùng một state machine và cách đồng bộ đơn hàng con với đơn vị vận chuyển.
+        trangThaiHandler.apply(
+                order,
+                vanChuyen,
+                trangThaiHandler.parse(request.getTrangThaiVanChuyen()),
+                request.getGhiChuGiaoHang(),
+                null
+        );
 
         return toSellerResponse(order, vanChuyen);
     }
@@ -166,14 +144,6 @@ public class StoreOrderService {
         }
 
         return order;
-    }
-
-    private TrangThaiVanChuyen parseStatus(String value) {
-        try {
-            return TrangThaiVanChuyen.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException | NullPointerException ex) {
-            throw new BusinessException("Trạng thái giao hàng không hợp lệ: " + value);
-        }
     }
 
     private String generateTrackingCode(DonViVanChuyen carrier, DonHangCuaHang order) {

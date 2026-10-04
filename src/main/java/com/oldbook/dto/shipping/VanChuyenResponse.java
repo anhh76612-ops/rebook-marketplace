@@ -13,6 +13,7 @@ public class VanChuyenResponse {
     private Integer maDHCH;
     private Integer maDH;
     private Integer maDVVC;
+    private String maCode;
     private String tenDonVi;
     private String maVanDon;
     private String trangThaiVanChuyen;
@@ -26,6 +27,7 @@ public class VanChuyenResponse {
                 .maDHCH(e.getDonHangCuaHang().getMaDHCH())
                 .maDH(e.getDonHangCuaHang().getDonHang().getMaDH())
                 .maDVVC(e.getDonViVanChuyen().getMaDVVC())
+                .maCode(e.getDonViVanChuyen().getMaCode())
                 .tenDonVi(e.getDonViVanChuyen().getTenDonVi())
                 .maVanDon(e.getMaVanDon())
                 .trangThaiVanChuyen(e.getTrangThaiVanChuyen())
