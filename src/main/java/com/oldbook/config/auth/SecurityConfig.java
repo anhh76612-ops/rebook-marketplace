@@ -117,6 +117,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/store/**")
                         .hasRole("CHU_CUA_HANG")
 
+                        .requestMatchers("/api/wishlist", "/api/wishlist/**")
+                        .hasRole("KHACH_HANG")
+
                         .anyRequest().authenticated()
                 )
 

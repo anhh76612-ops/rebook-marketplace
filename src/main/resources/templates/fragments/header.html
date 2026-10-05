@@ -186,13 +186,16 @@
 
       <form
           class="search flex-grow-1"
-          th:action="@{/books}"
+          th:action="@{/books/tim-kiem}"
           method="get">
 
         <input
-            type="text"
-            name="q"
+            type="search"
+            name="tuKhoa"
+            th:value="${param.tuKhoa != null ? param.tuKhoa[0] : (param.q != null ? param.q[0] : '')}"
+            maxlength="255"
             class="form-control"
+            aria-label="Tìm sách"
             placeholder="Tìm sách theo tên, tác giả...">
 
         <button type="submit" class="btn btn-accent">

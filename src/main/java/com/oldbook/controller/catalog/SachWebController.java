@@ -1,6 +1,7 @@
 package com.oldbook.controller.catalog;
 
 import com.oldbook.dto.catalog.SachSearchRequest;
+import com.oldbook.service.catalog.DanhGiaService;
 import com.oldbook.service.catalog.SachService;
 import com.oldbook.exception.common.BusinessException;
 import org.springframework.http.HttpStatus;
@@ -15,9 +16,11 @@ import org.springframework.web.servlet.ModelAndView;
 public class SachWebController {
 
     private final SachService sachService;
+    private final DanhGiaService danhGiaService;
 
-    public SachWebController(SachService sachService) {
+    public SachWebController(SachService sachService, DanhGiaService danhGiaService) {
         this.sachService = sachService;
+        this.danhGiaService = danhGiaService;
     }
 
     @GetMapping({"/", "/books"})
@@ -35,7 +38,11 @@ public class SachWebController {
     @GetMapping("/books/{maSach}")
     public ModelAndView detailPage(@PathVariable Integer maSach) {
         try {
-            return new ModelAndView("books/detail", "book", sachService.getDetail(maSach));
+            var book = sachService.getDetail(maSach);
+            ModelAndView result = new ModelAndView("books/detail", "book", book);
+            result.addObject("reviews", danhGiaService.getByBook(maSach));
+            result.addObject("related", sachService.getRelated(maSach, book.maDM()));
+            return result;
         } catch (BusinessException exception) {
             ModelAndView result = new ModelAndView("books/not-found");
             result.setStatus(HttpStatus.NOT_FOUND);
