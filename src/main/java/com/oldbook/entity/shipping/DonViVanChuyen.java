@@ -3,6 +3,7 @@ package com.oldbook.entity.shipping;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -19,8 +20,19 @@ public class DonViVanChuyen {
     @Column(name = "ma_dvvc")
     private Integer maDVVC;
 
+    @Column(name = "ma_code", length = 30)
+    private String maCode;
+
     @Column(name = "ten_don_vi", length = 255)
     private String tenDonVi;
+
+    // Phí vận chuyển áp dụng cho mỗi đơn hàng con khi chọn đơn vị này
+    @Column(name = "phi_van_chuyen", precision = 15, scale = 2)
+    private BigDecimal phiVanChuyen;
+
+    // Số ngày giao dự kiến
+    @Column(name = "thoi_gian_giao_du_kien")
+    private Integer thoiGianGiaoDuKien;
 
     @Column(name = "so_dien_thoai", length = 20)
     private String soDienThoai;

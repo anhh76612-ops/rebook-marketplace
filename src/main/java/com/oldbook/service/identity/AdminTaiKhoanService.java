@@ -371,8 +371,9 @@ public class AdminTaiKhoanService {
             String vaiTro
     ) {
 
+        VaiTro role;
         try {
-            return VaiTro.valueOf(
+            role = VaiTro.valueOf(
                     vaiTro.trim()
                             .toUpperCase(Locale.ROOT)
             );
@@ -383,6 +384,15 @@ public class AdminTaiKhoanService {
                     "Vai trò không hợp lệ"
             );
         }
+
+        // Đơn vị vận chuyển không còn dùng tài khoản: truy cập bằng link /shipping/{maCode}.
+        if (role == VaiTro.DON_VI_VAN_CHUYEN) {
+            throw new BusinessException(
+                    "Đơn vị vận chuyển không dùng tài khoản. Hãy thêm đối tác ở mục quản lý đơn vị vận chuyển."
+            );
+        }
+
+        return role;
     }
 
     private String normalizePhone(

@@ -42,12 +42,19 @@ public class VanChuyen {
     @Column(name = "ghi_chu_giao_hang", columnDefinition = "TEXT")
     private String ghiChuGiaoHang;
 
+    @Column(name = "ngay_tao", updatable = false)
+    private LocalDateTime ngayTao;
+
     @Column(name = "ngay_cap_nhat")
     private LocalDateTime ngayCapNhat;
 
     @PrePersist
     @PreUpdate
     protected void onUpdate() {
-        this.ngayCapNhat = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        if (this.ngayTao == null) {
+            this.ngayTao = now;
+        }
+        this.ngayCapNhat = now;
     }
 }

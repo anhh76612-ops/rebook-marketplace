@@ -46,7 +46,7 @@
       Cart.get().then(function (cart) {
         Cart.setBadge(cart.soMuc);
       }, function (err) {
-        if (err.status === 401 || err.status === 403) {
+        if (err.status === 401) {
           Auth.clear();
           OB.renderHeader();
         }

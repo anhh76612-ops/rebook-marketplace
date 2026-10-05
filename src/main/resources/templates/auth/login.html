@@ -125,9 +125,11 @@
 
     var params = new URLSearchParams(window.location.search);
     var hasRedirect = params.has('redirect');
-    var target = Auth.safeRedirect(params.get('redirect'), '/');
+    function targetUrl() {
+        return Auth.safeRedirect(params.get('redirect'), Auth.homeUrl());
+    }
     if (Auth.isLoggedIn()) {
-        window.location.replace(target);
+        window.location.replace(targetUrl());
         return;
     }
 
@@ -164,7 +166,7 @@
     function finish(data) {
         Auth.saveSession(data);
         return Auth.loadProfileName().then(function () {
-            window.location.replace(target);
+            window.location.replace(targetUrl());
         });
     }
 

@@ -48,6 +48,9 @@
                     <table class="table align-middle mb-0">
                         <thead class="table-light">
                         <tr>
+                            <th class="ps-3" style="width:40px">
+                                <input type="checkbox" class="form-check-input" id="chkAll" title="Chọn tất cả" aria-label="Chọn tất cả">
+                            </th>
                             <th>Sách</th>
                             <th class="text-end">Đơn giá</th>
                             <th class="text-center">Số lượng</th>
@@ -68,19 +71,16 @@
         <div class="col-lg-4">
             <div class="panel">
                 <h2 class="h5 fw-bold mb-3">Tóm tắt đơn hàng</h2>
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control" placeholder="Mã giảm giá (sắp có)" disabled>
-                    <button type="button" class="btn btn-outline-brown" disabled>Áp dụng</button>
-                </div>
                 <div id="cartNote" class="small text-danger mb-2 d-none">
-                    <i class="bi bi-exclamation-triangle me-1"></i>Sản phẩm có cảnh báo không mua được nên không được tính vào tổng tiền.
+                    <i class="bi bi-exclamation-triangle me-1"></i>Sản phẩm có cảnh báo không mua được nên không thể chọn và không được tính vào tổng tiền.
                 </div>
+                <div class="d-flex justify-content-between mb-2"><span>Sản phẩm đã chọn</span><span id="selectedCount">0</span></div>
                 <div class="d-flex justify-content-between mb-2"><span>Số lượng sách</span><span id="totalQty">0</span></div>
                 <div class="d-flex justify-content-between mb-2"><span>Tạm tính</span><span id="subtotal">0 đ</span></div>
-                <div class="d-flex justify-content-between mb-2"><span>Giảm giá</span><span>0 đ</span></div>
                 <hr>
                 <div class="d-flex justify-content-between fs-5 fw-bold mb-3"><span>Tổng cộng</span><span class="price" id="grand">0 đ</span></div>
-                <button type="button" class="btn btn-accent btn-lg w-100" disabled title="Chức năng thanh toán sẽ có sau">Thanh toán</button>
+                <a id="btnCheckout" href="/checkout" class="btn btn-accent btn-lg w-100 disabled" aria-disabled="true">Đặt hàng</a>
+                <div id="selectHint" class="small text-muted text-center mt-2">Hãy tích chọn sản phẩm muốn đặt hàng.</div>
             </div>
         </div>
     </div>
@@ -99,6 +99,9 @@
     var $ = function (id) { return document.getElementById(id); };
     var busy = false;
     var lastCart = null;
+    var selected = {};
+    var selectionInit = false;
+    var SELECTED_KEY = 'ob_checkout_items';
 
     function show(id) { $(id).classList.remove('d-none'); }
     function hide(id) { $(id).classList.add('d-none'); }
@@ -127,6 +130,11 @@
 
         return '' +
         '<tr data-id="' + it.maCTGioHang + '" data-qty="' + it.soLuong + '">' +
+          '<td class="ps-3">' +
+            '<input type="checkbox" class="form-check-input item-check" aria-label="Chọn sản phẩm"' +
+              (it.coTheMua ? '' : ' disabled') +
+              (selected[it.maCTGioHang] ? ' checked' : '') + '>' +
+          '</td>' +
           '<td>' +
             '<div class="d-flex align-items-center gap-3">' + cover +
               '<div>' +
@@ -164,13 +172,59 @@
         }
 
         hide('cartEmpty');
+        syncSelection(cart);
         $('cartItems').innerHTML = cart.items.map(rowHtml).join('');
         var coDongKhongMua = cart.items.some(function (it) { return !it.coTheMua; });
         $('cartNote').classList.toggle('d-none', !coDongKhongMua);
-        $('totalQty').textContent = cart.tongSoLuong;
-        $('subtotal').textContent = OB.formatMoney(cart.tongTien);
-        $('grand').textContent = OB.formatMoney(cart.tongTien);
+        updateSummary();
         show('cartContent');
+    }
+
+    // Lần đầu: chọn sẵn mọi sản phẩm mua được. Các lần sau: giữ lựa chọn, bỏ dòng đã xóa/không còn mua được.
+    function syncSelection(cart) {
+        var valid = {};
+        cart.items.forEach(function (it) {
+            if (it.coTheMua) { valid[it.maCTGioHang] = true; }
+        });
+        if (!selectionInit) {
+            selected = valid;
+            selectionInit = true;
+            return;
+        }
+        Object.keys(selected).forEach(function (id) {
+            if (!valid[id]) { delete selected[id]; }
+        });
+    }
+
+    function selectedItems() {
+        return ((lastCart && lastCart.items) || []).filter(function (it) {
+            return it.coTheMua && selected[it.maCTGioHang];
+        });
+    }
+
+    function updateSummary() {
+        var items = selectedItems();
+        var qty = 0;
+        var total = 0;
+        items.forEach(function (it) {
+            qty += Number(it.soLuong || 0);
+            total += Number(it.thanhTien || 0);
+        });
+        $('selectedCount').textContent = items.length;
+        $('totalQty').textContent = qty;
+        $('subtotal').textContent = OB.formatMoney(total);
+        $('grand').textContent = OB.formatMoney(total);
+
+        var buyable = ((lastCart && lastCart.items) || []).filter(function (it) { return it.coTheMua; });
+        var chkAll = $('chkAll');
+        chkAll.disabled = buyable.length === 0;
+        chkAll.checked = buyable.length > 0 && items.length === buyable.length;
+        chkAll.indeterminate = items.length > 0 && items.length < buyable.length;
+
+        var btn = $('btnCheckout');
+        btn.classList.toggle('disabled', items.length === 0);
+        btn.setAttribute('aria-disabled', items.length === 0 ? 'true' : 'false');
+        $('selectHint').classList.toggle('d-none', items.length > 0);
     }
 
     function setBusy(value) {
@@ -220,6 +274,43 @@
         } else if (e.target.closest('.btn-remove')) {
             run(function () { return Cart.remove(id); });
         }
+    });
+
+    $('cartItems').addEventListener('change', function (e) {
+        if (!e.target.classList.contains('item-check')) { return; }
+        var tr = e.target.closest('tr');
+        var id = tr.getAttribute('data-id');
+        if (e.target.checked) { selected[id] = true; } else { delete selected[id]; }
+        updateSummary();
+    });
+
+    $('chkAll').addEventListener('change', function () {
+        var checked = this.checked;
+        selected = {};
+        ((lastCart && lastCart.items) || []).forEach(function (it) {
+            if (it.coTheMua && checked) { selected[it.maCTGioHang] = true; }
+        });
+        var boxes = document.querySelectorAll('#cartItems .item-check');
+        for (var i = 0; i < boxes.length; i++) {
+            if (!boxes[i].disabled) { boxes[i].checked = checked; }
+        }
+        updateSummary();
+    });
+
+    $('btnCheckout').addEventListener('click', function (e) {
+        e.preventDefault();
+        var ids = selectedItems().map(function (it) { return it.maCTGioHang; });
+        if (!ids.length) {
+            showAlert('Vui lòng tích chọn ít nhất một sản phẩm để đặt hàng.');
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(SELECTED_KEY, JSON.stringify(ids));
+        } catch (err) {
+            showAlert('Trình duyệt không cho lưu lựa chọn. Vui lòng bật lưu trữ phiên (sessionStorage) rồi thử lại.');
+            return;
+        }
+        window.location.href = '/checkout';
     });
 
     $('btnClearCart').addEventListener('click', function () {

@@ -1,7 +1,5 @@
 package com.oldbook.config.auth;
 
-import com.oldbook.filter.auth.JwtAuthenticationFilter;
-import com.oldbook.dto.common.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import tools.jackson.databind.ObjectMapper;
@@ -15,6 +13,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.oldbook.dto.common.ApiResponse;
+import com.oldbook.filter.auth.JwtAuthenticationFilter;
+
 
 @Configuration
 @EnableWebSecurity
@@ -38,14 +40,33 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(authorize -> authorize
 
+                        // HTML shells load JWT from the browser; their API requests remain protected below.
                         .requestMatchers(
                                 "/",
                                 "/books/**",
                                 "/orders",
+
+                                // Trang đơn vị vận chuyển: không đăng nhập, ai có link /shipping/{maCode} đều vào được
+                                "/shipping",
+                                "/shipping/**",
+                                // Trang quản lý đối tác: HTML công khai, dữ liệu lấy qua /api/management/** (có phân quyền)
+                                "/management/**",
                                 "/cart",
                                 "/wishlist",
+
+                                "/admin/accounts",
+                                "/store",
+                                "/vendor/books",
+                                "/store-moderation",
+
                                 "/profile",
                                 "/addresses",
+
+                                "/checkout",
+                                "/order-success",
+
+                                "/store/orders",
+
                                 "/login",
                                 "/register",
                                 "/forgot-password",
@@ -78,11 +99,22 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**")
                         .hasRole("QUAN_TRI_VIEN")
 
+
+                        // API đơn vị vận chuyển theo mã: /api/shipping/{maCode}/...
+                        // Không dùng tài khoản; service tự giới hạn dữ liệu theo maCode.
+                        .requestMatchers("/api/shipping/**")
+                        .permitAll()
+
+                        // Quản lý thêm/sửa đối tác vận chuyển
+                        .requestMatchers("/api/management/**")
+                        .hasAnyRole("QUAN_LY", "QUAN_TRI_VIEN")
+
                         .requestMatchers("/api/store/kiem-duyet/**")
                         .hasAnyRole("QUAN_LY", "QUAN_TRI_VIEN")
 
                         .requestMatchers("/api/store/**")
                         .hasRole("CHU_CUA_HANG")
+
 
                         .anyRequest().authenticated()
                 )
