@@ -4,26 +4,16 @@ Giao diện Thymeleaf dùng client `static/js/auth.js` để gửi JSON, đọc 
 
 | Trang | Chức năng đã kết nối |
 |---|---|
-| `/login` | Đăng nhập, chọn vai trò khi có nhiều tài khoản, chuyển đến trang phù hợp với vai trò; giữ đường dẫn quay lại hợp lệ nếu có |
+| `/login` | Đăng nhập, chọn vai trò khi có nhiều tài khoản, đăng xuất từ menu |
 | `/admin/accounts` | Quản trị viên xem/lọc tài khoản, cấp tài khoản/vai trò, khóa/mở khóa, đổi vai trò theo API hiện có |
 | `/vendor/books`, `/store` | Chủ cửa hàng đăng ký/sửa shop, xem trạng thái/lý do từ chối, xem chi tiết sách ở mọi trạng thái, thêm/sửa sách, điều chỉnh tồn kho, bật/ngừng bán, lọc/sắp xếp/phân trang |
 | `/store-moderation` | Quản lý/quản trị viên lọc/phân trang cửa hàng và sách, xem chi tiết, duyệt/từ chối kèm lý do |
 | `/`, `/books`, `/books/tim-kiem`, `/books/{maSach}` | Danh sách/tìm kiếm/chi tiết sách công khai và thêm vào giỏ (đã có) |
 | `/cart` | Xem/thêm/sửa/xóa sản phẩm, xóa giỏ (đã có) |
-| `/profile`, `/addresses` | Xem/sửa hồ sơ, ảnh đại diện và địa chỉ (giữ chức năng hiện tại) |
-
-Menu chính, menu tài khoản và footer hiển thị theo vai trò:
-
-- `KHACH_HANG`: giỏ hàng, yêu thích, đơn hàng; trang đích mặc định `/`.
-- `CHU_CUA_HANG`: Cửa hàng của tôi; trang đích `/vendor/books`.
-- `QUAN_LY`: Kiểm duyệt cửa hàng và sách; trang đích `/store-moderation`.
-- `QUAN_TRI_VIEN`: Quản lý tài khoản và Kiểm duyệt; trang đích `/admin/accounts`.
-
-Hồ sơ, đổi mật khẩu và đăng xuất dùng chung cho các vai trò. Nút tài khoản luôn có trên màn hình nhỏ. Chọn **Đăng nhập bằng vai trò khác** để kết thúc phiên hiện tại và đăng nhập/chọn lại vai trò. Quyền giao diện chỉ giúp điều hướng; API vẫn kiểm tra quyền độc lập.
 
 Vai trò chủ cửa hàng/quản lý do quản trị viên cấp từ chức năng tài khoản hiện có; người dùng đăng nhập lại và chọn vai trò phù hợp. Sửa thông tin cửa hàng hoặc nội dung sách gửi đối tượng về `CHO_DUYET`. Sửa nội dung sách gửi đủ các trường tùy chọn và không gửi tồn kho; tồn kho và trạng thái bán có thao tác riêng. Ảnh dùng URL theo API hiện có.
 
-Các luồng đăng ký tài khoản, OTP, đặt lại mật khẩu, sửa hồ sơ/địa chỉ và đổi mật khẩu hiện có được giữ nguyên.
+Đăng ký tài khoản, OTP, đặt lại mật khẩu, sửa hồ sơ và đổi mật khẩu nằm ngoài phạm vi kết nối giao diện này. Các API backend hiện có cho những chức năng đó vẫn được giữ nguyên.
 
 Các template đơn hàng, thanh toán, yêu thích chưa có controller/API nghiệp vụ tương ứng. Việc nối các luồng này cần bổ sung backend; không thể tạo đơn hay xác nhận thanh toán bằng các API hiện có.
 

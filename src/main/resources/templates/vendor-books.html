@@ -19,7 +19,7 @@
     </div>
     <button type="button" class="btn btn-outline-secondary" id="refreshStore"><i class="bi bi-arrow-clockwise me-1"></i>Làm mới</button>
   </div>
-  <div id="sellerAccessError" class="alert alert-warning d-none" role="alert">Trang này dành cho tài khoản chủ cửa hàng. Hãy đăng nhập bằng vai trò chủ cửa hàng để tiếp tục. <a href="#" data-action="switch-role" class="alert-link">Đăng nhập bằng vai trò khác</a></div>
+  <div id="sellerAccessError" class="alert alert-warning d-none" role="alert">Trang này dành cho tài khoản chủ cửa hàng. Hãy đăng nhập bằng vai trò chủ cửa hàng để tiếp tục. <a th:href="@{/login(redirect='/vendor/books')}" class="alert-link">Đăng nhập</a></div>
 
   <section id="sellerWorkspace">
     <div id="storeLoading" class="panel p-4 text-muted" role="status"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải cửa hàng...</div>

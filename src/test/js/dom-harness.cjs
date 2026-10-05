@@ -1,3 +1,7 @@
+// Merged from both test-harness variants.
+// Keeps the superset of capabilities: fragment inclusion, inline-script execution,
+// configurable test location, sessionToken helper, and the shared DOM shim.
+
 'use strict';
 
 // A dependency-free DOM shim populated from the application's real templates.

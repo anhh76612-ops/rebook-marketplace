@@ -1,5 +1,7 @@
 package com.oldbook.config.auth;
 
+import com.oldbook.filter.auth.JwtAuthenticationFilter;
+import com.oldbook.dto.common.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import tools.jackson.databind.ObjectMapper;
@@ -114,7 +116,6 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/store/**")
                         .hasRole("CHU_CUA_HANG")
-
 
                         .anyRequest().authenticated()
                 )
