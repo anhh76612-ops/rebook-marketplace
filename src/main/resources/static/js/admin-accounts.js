@@ -9,8 +9,9 @@
   var BASE = '/api/admin/tai-khoan';
   var statusLabels = { HOAT_DONG: 'Hoạt động', CHO_XAC_THUC: 'Chờ xác thực', BI_KHOA: 'Bị khóa' };
   var roleClasses = {
-    KHACH_HANG: 'badge-role-khach-hang', CHU_CUA_HANG: 'badge-role-chu-cua-hang',
-    DON_VI_VAN_CHUYEN: 'badge-role-don-vi-van-chuyen', QUAN_LY: 'badge-role-quan-ly',
+    KHACH_HANG: 'badge-role-khach-hang',
+    CHU_CUA_HANG: 'badge-role-chu-cua-hang',
+    QUAN_LY: 'badge-role-quan-ly',
     QUAN_TRI_VIEN: 'badge-role-quan-tri-vien'
   };
   var accounts = [];

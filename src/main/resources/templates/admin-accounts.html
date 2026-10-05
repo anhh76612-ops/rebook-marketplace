@@ -42,7 +42,6 @@
                     <option value="">Tất cả vai trò</option>
                     <option value="KHACH_HANG">Khách hàng</option>
                     <option value="CHU_CUA_HANG">Chủ cửa hàng</option>
-                    <option value="DON_VI_VAN_CHUYEN">Đơn vị vận chuyển</option>
                     <option value="QUAN_LY">Quản lý</option>
                     <option value="QUAN_TRI_VIEN">Quản trị viên</option>
                 </select>
@@ -103,7 +102,10 @@
                 <div class="col-sm-6"><label for="createAccountEmail" class="form-label">Email</label><input id="createAccountEmail" type="email" class="form-control" maxlength="255" required autocomplete="email"></div>
                 <div class="col-sm-6"><label for="createAccountPhone" class="form-label">Số điện thoại</label><input id="createAccountPhone" type="tel" class="form-control" autocomplete="tel"></div>
                 <div class="col-sm-6"><label for="createAccountRole" class="form-label">Vai trò</label><select id="createAccountRole" class="form-select" required>
-                    <option value="KHACH_HANG">Khách hàng</option><option value="CHU_CUA_HANG">Chủ cửa hàng</option><option value="DON_VI_VAN_CHUYEN">Đơn vị vận chuyển</option><option value="QUAN_LY">Quản lý</option><option value="QUAN_TRI_VIEN">Quản trị viên</option>
+                    <option value="KHACH_HANG">Khách hàng</option>
+                    <option value="CHU_CUA_HANG">Chủ cửa hàng</option>
+                    <option value="QUAN_LY">Quản lý</option>
+                    <option value="QUAN_TRI_VIEN">Quản trị viên</option>
                 </select></div>
                 <div class="col-12"><label for="createAccountPassword" class="form-label">Mật khẩu khởi tạo</label><input id="createAccountPassword" type="password" class="form-control" minlength="6" required autocomplete="new-password"><div class="form-text">Ít nhất 6 ký tự.</div></div>
             </div>
@@ -137,7 +139,11 @@
             <p id="accountRoleSelfNotice" class="text-muted small d-none">Bạn đang đổi vai trò tài khoản hiện tại và sẽ cần đăng nhập lại.</p>
             <div id="accountRoleError" class="alert alert-danger d-none" role="alert"></div>
             <label for="accountNewRole" class="form-label">Vai trò mới</label>
-            <select id="accountNewRole" class="form-select" required><option value="KHACH_HANG">Khách hàng</option><option value="CHU_CUA_HANG">Chủ cửa hàng</option><option value="DON_VI_VAN_CHUYEN">Đơn vị vận chuyển</option><option value="QUAN_LY">Quản lý</option><option value="QUAN_TRI_VIEN">Quản trị viên</option></select>
+            <select id="accountNewRole" class="form-select" required>
+                <option value="KHACH_HANG">Khách hàng</option>
+                <option value="CHU_CUA_HANG">Chủ cửa hàng</option>
+                <option value="QUAN_LY">Quản lý</option>
+                <option value="QUAN_TRI_VIEN">Quản trị viên</option></select>
         </div>
         <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button><button type="submit" class="btn btn-accent">Lưu vai trò</button></div>
     </form></div></div>

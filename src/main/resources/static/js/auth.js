@@ -157,7 +157,7 @@
 
       var user = Auth.getUser();
       var wrongRole = !!user && !!requiredRole && user.vaiTro !== requiredRole;
-      var sessionInvalid = err.status === 401 || (err.status === 403 && !wrongRole);
+      var sessionInvalid = err.status === 401;
 
       if (!sessionInvalid) { return false; }
 
@@ -393,12 +393,6 @@
     for (var r = 0; r < roleOnly.length; r++) {
       var allowed = loggedIn && !!user && user.vaiTro === roleOnly[r].getAttribute('data-role');
       roleOnly[r].classList.toggle('d-none', !allowed);
-    }
-
-    var roleLinks = document.querySelectorAll('[data-roles]');
-    for (var r = 0; r < roleLinks.length; r++) {
-      var roles = roleLinks[r].getAttribute('data-roles').split(',');
-      roleLinks[r].classList.toggle('d-none', !user || roles.indexOf(user.vaiTro) === -1);
     }
 
     var label = (user && (user.hoTen || ROLE_LABELS[user.vaiTro])) || 'Tài khoản';

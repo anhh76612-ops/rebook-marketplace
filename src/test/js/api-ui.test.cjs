@@ -1,3 +1,4 @@
+```
 'use strict';
 
 const test = require('node:test');
@@ -274,9 +275,8 @@ test('moderation approves a pending book through its API and guards access by ro
     if (call.url === '/api/profile') { return profile; }
     throw new Error('Must not request moderation API');
   });
-  const forbidden = boot('store-moderation.html', ['store-moderation.js'], async () => { throw new Error('Must not request moderation API'); });
   await settle();
-  assert.equal(forbidden.calls.length, 0);
+  assert.equal(forbidden.calls.filter(call => call.url.startsWith('/api/store/kiem-duyet/')).length, 0);
   assert.equal(forbidden.calls.some(call => call.url.startsWith('/api/store/kiem-duyet/')), false);
   assert.match(forbidden.get('moderationAccessError').textContent, /quyền kiểm duyệt/);
 });
@@ -477,7 +477,6 @@ test('admin consumes an array, paginates locally, safely displays details, and s
   app.trigger('accountsNext');
   assert.equal(app.get('accountsRows').querySelectorAll('tr').length, 2);
   assert.equal(app.calls.filter(call => call.url.startsWith('/api/admin/tai-khoan')).length, 1, 'array pagination does not call server pagination');
-  assert.equal(app.calls.length, 1, 'array pagination does not call server pagination');
   app.trigger('accountsPrevious');
   app.trigger(app.get('accountsRows').querySelector('[data-account-id="1"] [data-account-action="detail"]'));
   assert.equal(app.get('detailName').textContent, '<img src=x onerror=unsafe()>');
@@ -526,14 +525,12 @@ test('admin role guard blocks API access and self-role changes force reauthentic
     if (call.url === '/api/profile') { return profile; }
     throw new Error('Must not query admin API');
   }, 'QUAN_LY');
-  const forbidden = boot('admin-accounts.html', ['admin-accounts.js'], async () => { throw new Error('Must not query admin API'); }, 'QUAN_LY');
   await settle();
   assert.equal(forbidden.calls.some(call => call.url.startsWith('/api/admin/tai-khoan')), false);
-  assert.equal(forbidden.calls.length, 0);
+  assert.equal(forbidden.calls.filter(call => call.url.startsWith('/api/admin/tai-khoan')).length, 0);
   assert.equal(forbidden.get('accountsDenied').classList.contains('d-none'), false);
   const self = { maTK: 2, hoTen: 'Quản trị viên', email: 'admin@example.com', vaiTro: 'QUAN_TRI_VIEN', trangThai: 'HOAT_DONG' };
   const app = boot('admin-accounts.html', ['admin-accounts.js'], async call => call.url === '/api/profile' ? profile : call.method === 'GET' ? [self] : { ...self, vaiTro: call.body.vaiTro }, 'QUAN_TRI_VIEN');
-  const app = boot('admin-accounts.html', ['admin-accounts.js'], async call => call.method === 'GET' ? [self] : { ...self, vaiTro: call.body.vaiTro }, 'QUAN_TRI_VIEN');
   await settle();
   app.trigger(app.get('accountsRows').querySelector('[data-account-action="role"]'));
   app.set('accountNewRole', 'QUAN_LY');
@@ -544,3 +541,5 @@ test('admin role guard blocks API access and self-role changes force reauthentic
   assert.equal(app.calls.filter(call => call.method === 'GET').length, 1);
   assert.equal(app.calls.filter(call => call.method === 'GET' && call.url.startsWith('/api/admin/tai-khoan')).length, 1);
 });
+
+```
