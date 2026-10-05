@@ -72,6 +72,29 @@ class SachQueryTest {
     }
 
     @Test
+    void relatedBooksExcludeCurrentBookAndRequireMatchingCategoryAndPublicVisibility() {
+        var current = book(approvedStore, category, "Current", "DA_DUYET", "DANG_BAN", 1, "100", "80");
+        var visible = List.of(
+                book(approvedStore, category, "Related 1", "DA_DUYET", "DANG_BAN", 1, "100", "80"),
+                book(approvedStore, category, "Related 2", "DA_DUYET", "DANG_BAN", 1, "100", "80"),
+                book(approvedStore, category, "Related 3", "DA_DUYET", "DANG_BAN", 1, "100", "80"),
+                book(approvedStore, category, "Related 4", "DA_DUYET", "DANG_BAN", 1, "100", "80"),
+                book(approvedStore, category, "Related 5", "DA_DUYET", "DANG_BAN", 1, "100", "80")
+        );
+        book(approvedStore, category("Other category"), "Other category", "DA_DUYET", "DANG_BAN", 1, "100", "80");
+        book(approvedStore, category, "Pending book", "CHO_DUYET", "DANG_BAN", 1, "100", "80");
+        book(approvedStore, category, "Stopped selling", "DA_DUYET", "NGUNG_BAN", 1, "100", "80");
+        book(store("CHO_DUYET"), category, "Pending store", "DA_DUYET", "DANG_BAN", 1, "100", "80");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(sachService.getRelated(current.getMaSach(), category.getMaDM()))
+                .extracting(response -> response.maSach())
+                .containsExactly(visible.get(4).getMaSach(), visible.get(3).getMaSach(),
+                        visible.get(2).getMaSach(), visible.get(1).getMaSach());
+    }
+
+    @Test
     void filtersCombineWithInclusivePriceAndConditionBounds() {
         var matching = book(approvedStore, category, "Sách phù hợp", "DA_DUYET", "DANG_BAN", 3, "120", "75");
         book(approvedStore, category, "Giá thấp", "DA_DUYET", "DANG_BAN", 3, "119", "75");

@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -181,6 +182,52 @@ class StoreApiIntegrationTest {
         assertThat(request("GET", "/cart", null, null).statusCode()).isEqualTo(200);
         assertThat(request("GET", "/", null, null).statusCode()).isEqualTo(200);
         assertThat(request("GET", "/books/" + pending.getMaSach(), null, null).statusCode()).isEqualTo(404);
+    }
+
+    @Test
+    void searchPresetFiltersKeepSelectionsAndResultsWhenFollowingPagination() throws Exception {
+        CuaHang shop = store(owner, "DA_DUYET");
+        Sach newBook = book(shop, "Java 1 như mới", "DA_DUYET", "DANG_BAN", 5);
+        newBook.setDoMoiPercent(new BigDecimal("90"));
+        sachRepository.save(newBook);
+        Sach fairBook = book(shop, "Java 2 khá", "DA_DUYET", "DANG_BAN", 5);
+        fairBook.setDoMoiPercent(new BigDecimal("69.99"));
+        sachRepository.save(fairBook);
+        book(shop, "Java 3 tốt", "DA_DUYET", "DANG_BAN", 5);
+
+        String path = "/books/tim-kiem?tuKhoa=Java&maDM=" + category.getMaDM()
+                + "&maCH=" + shop.getMaCH()
+                + "&tinhTrang=NHU_MOI&tinhTrang=KHA&khoangGia=TU_50000_DEN_150000"
+                + "&conHang=true&sort=ten-az&size=1";
+        var first = request("GET", path, null, null);
+        assertThat(first.statusCode()).as(first.body()).isEqualTo(200);
+        assertThat(first.body()).contains("2 sách phù hợp", "Java 1 như mới")
+                .doesNotContain("Java 2 khá", "Java 3 tốt");
+        assertThat(inputTag(first.body(), "conditionNew")).contains("checked=\"checked\"");
+        assertThat(inputTag(first.body(), "conditionFair")).contains("checked=\"checked\"");
+        assertThat(inputTag(first.body(), "conditionGood")).doesNotContain("checked=");
+        assertThat(inputTag(first.body(), "priceMedium")).contains("checked=\"checked\"");
+        assertThat(inputTag(first.body(), "priceLow")).doesNotContain("checked=");
+        assertThat(inputTag(first.body(), "priceHigh")).doesNotContain("checked=");
+
+        var nextLink = Pattern.compile("<a\\b[^>]*href=\"([^\"]*)\"[^>]*>Sau</a>").matcher(first.body());
+        assertThat(nextLink.find()).isTrue();
+        String nextPath = nextLink.group(1).replace("&amp;", "&");
+        assertThat(nextPath).contains("tinhTrang=NHU_MOI", "tinhTrang=KHA",
+                "khoangGia=TU_50000_DEN_150000", "tuKhoa=Java", "maDM=" + category.getMaDM(),
+                "maCH=" + shop.getMaCH(), "conHang=true", "sort=ten-az", "size=1", "page=1");
+        var second = request("GET", nextPath, null, null);
+        assertThat(second.statusCode()).as(second.body()).isEqualTo(200);
+        assertThat(second.body()).contains("2 sách phù hợp", "Java 2 khá")
+                .doesNotContain("Java 1 như mới", "Java 3 tốt");
+        assertThat(inputTag(second.body(), "conditionNew")).contains("checked=\"checked\"");
+        assertThat(inputTag(second.body(), "priceMedium")).contains("checked=\"checked\"");
+
+        var cleared = request("GET", "/books/tim-kiem", null, null);
+        assertThat(cleared.statusCode()).as(cleared.body()).isEqualTo(200);
+        assertThat(cleared.body()).contains("3 sách phù hợp", "Java 3 tốt");
+        assertThat(inputTag(cleared.body(), "conditionNew")).doesNotContain("checked=");
+        assertThat(inputTag(cleared.body(), "priceMedium")).doesNotContain("checked=");
     }
 
     @Test
@@ -377,6 +424,12 @@ class StoreApiIntegrationTest {
                 .soDienThoai(String.format("09%08d", ++actorSequence)).build());
         TaiKhoan account = taiKhoanRepository.save(TaiKhoan.builder().nguoiDung(user).vaiTro(role).trangThai("HOAT_DONG").build());
         return new Actor(user.getMaND(), account.getMaTK(), jwtService.generateToken(user.getMaND(), account.getMaTK(), role));
+    }
+
+    private String inputTag(String html, String id) {
+        var input = Pattern.compile("<input\\b[^>]*id=\"" + Pattern.quote(id) + "\"[^>]*>").matcher(html);
+        assertThat(input.find()).as("Rendered input " + id).isTrue();
+        return input.group();
     }
 
     private CuaHang store(Actor actor, String approval) {

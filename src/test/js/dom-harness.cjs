@@ -167,7 +167,7 @@ function matchesSelector(element, selector) {
 function parseInto(parent, html) {
   const stack = [parent];
   const voidTags = new Set(['INPUT', 'IMG', 'LINK', 'META', 'BR', 'HR', 'SOURCE']);
-  for (const token of html.match(/<!--[\s\S]*?-->|<![^>]*>|<[^>]+>|[^<]+/g) || []) {
+  for (const token of html.match(/<!--[\s\S]*?-->|<![^>]*>|<(?:[^>"']|"[^"]*"|'[^']*')+>|[^<]+/g) || []) {
     if (token.startsWith('<!')) { continue; }
     if (token.startsWith('</')) { if (stack.length > 1) { stack.pop(); } continue; }
     if (token.startsWith('<')) {

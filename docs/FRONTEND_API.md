@@ -9,6 +9,7 @@ Giao diện Thymeleaf dùng client `static/js/auth.js` để gửi JSON, đọc 
 | `/vendor/books`, `/store` | Chủ cửa hàng đăng ký/sửa shop, xem trạng thái/lý do từ chối, xem chi tiết sách ở mọi trạng thái, thêm/sửa sách, điều chỉnh tồn kho, bật/ngừng bán, lọc/sắp xếp/phân trang |
 | `/store-moderation` | Quản lý/quản trị viên lọc/phân trang cửa hàng và sách, xem chi tiết, duyệt/từ chối kèm lý do |
 | `/`, `/books`, `/books/tim-kiem`, `/books/{maSach}` | Danh sách/tìm kiếm/chi tiết sách công khai và thêm vào giỏ (đã có) |
+| `/wishlist` | Lưu và bỏ yêu thích từ trang chi tiết, xem danh sách sách yêu thích theo tài khoản khách hàng |
 | `/cart` | Xem/thêm/sửa/xóa sản phẩm, xóa giỏ (đã có) |
 | `/profile`, `/addresses` | Xem/sửa hồ sơ, ảnh đại diện và địa chỉ (giữ chức năng hiện tại) |
 
@@ -25,7 +26,9 @@ Vai trò chủ cửa hàng/quản lý do quản trị viên cấp từ chức n�
 
 Các luồng đăng ký tài khoản, OTP, đặt lại mật khẩu, sửa hồ sơ/địa chỉ và đổi mật khẩu hiện có được giữ nguyên.
 
-Các template đơn hàng, thanh toán, yêu thích chưa có controller/API nghiệp vụ tương ứng. Việc nối các luồng này cần bổ sung backend; không thể tạo đơn hay xác nhận thanh toán bằng các API hiện có.
+Danh sách yêu thích lưu trong bảng `yeu_thich`, gắn với người dùng từ JWT. `GET /api/wishlist` tải sách yêu thích còn được công khai; `PUT /api/wishlist/{maSach}` lưu sách và `DELETE /api/wishlist/{maSach}` bỏ yêu thích. Các thao tác chỉ dành cho tài khoản khách hàng và không nhận mã người dùng từ trình duyệt. Nút yêu thích cập nhật sau khi API thành công; danh sách vẫn được giữ khi tải lại trang hoặc đăng nhập lại.
+
+Các template đơn hàng và thanh toán chưa có controller/API nghiệp vụ tương ứng. Việc nối các luồng này cần bổ sung backend; không thể tạo đơn hay xác nhận thanh toán bằng các API hiện có.
 
 ## Kiểm tra
 
