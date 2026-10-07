@@ -4,11 +4,10 @@
   var OB = window.OldBook;
   var grid = document.getElementById('wishlistGrid');
   var toggles = document.querySelectorAll('[data-toggle-wishlist]');
-  if (!OB || (!grid && !toggles.length) || OB.wishlist) { return; }
+  if (!OB || !OB.bookCards || (!grid && !toggles.length) || OB.wishlist) { return; }
 
   var Auth = OB.auth;
   var ROLE = OB.ROLE_CUSTOMER;
-  var esc = OB.escapeHtml;
   var books = [];
   var known = false;
   var loading = false;
@@ -19,7 +18,8 @@
   var Wishlist = {
     get: function () { return OB.request('GET', BASE); },
     add: function (id) { return OB.request('PUT', BASE + '/' + encodeURIComponent(id)); },
-    remove: function (id) { return OB.request('DELETE', BASE + '/' + encodeURIComponent(id)); }
+    remove: function (id) { return OB.request('DELETE', BASE + '/' + encodeURIComponent(id)); },
+    refreshButtons: updateButtons
   };
   OB.wishlist = Wishlist;
 
@@ -39,18 +39,20 @@
   }
 
   function updateButtons() {
-    var buttons = document.querySelectorAll('[data-toggle-wishlist], [data-remove-wishlist]');
+    var buttons = document.querySelectorAll('[data-toggle-wishlist]');
     for (var i = 0; i < buttons.length; i++) {
       var button = buttons[i];
       var id = bookId(button.getAttribute('data-ma-sach'));
       var busy = loading || !!pending[id];
       button.disabled = busy;
       button.setAttribute('aria-busy', String(busy));
-      if (!button.hasAttribute('data-toggle-wishlist')) { continue; }
-
       var saved = known && isSaved(id);
       button.setAttribute('aria-pressed', String(saved));
       button.classList.toggle('active', saved);
+      if (button.classList.contains('wishlist-mini')) {
+        button.setAttribute('aria-label', saved ? 'Bỏ yêu thích sách' : 'Yêu thích sách');
+        button.setAttribute('title', saved ? 'Bỏ yêu thích' : 'Yêu thích');
+      }
       var heart = button.querySelector('i');
       if (heart) {
         heart.classList.toggle('bi-heart-fill', saved);
@@ -62,48 +64,10 @@
     if ($('wishlistRetry')) { $('wishlistRetry').disabled = loading; }
   }
 
-  function safeImage(value) {
-    if (typeof value !== 'string' || /[\\\u0000-\u001f\u007f]/.test(value)) { return null; }
-    if (/^\/(?![\/\\])/.test(value)) { return value; }
-    if (!/^https?:\/\//i.test(value)) { return null; }
-    try {
-      var url = new URL(value);
-      return url.protocol === 'http:' || url.protocol === 'https:' ? value : null;
-    } catch (e) { return null; }
-  }
-
-  function cardHtml(book) {
-    var id = bookId(book.maSach);
-    var href = '/books/' + id;
-    var image = safeImage(book.hinhAnhUrl);
-    var cover = image
-      ? '<img src="' + esc(image) + '" alt="' + esc(book.tenSach) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" loading="lazy">'
-      : '<span class="cover-title">' + esc(book.tenSach) + '</span>';
-    var percent = Number(book.doMoiPercent);
-    var condition = book.doMoiPercent != null && Number.isFinite(percent)
-      ? '<span class="condition-badge align-self-start mb-2">✓ ' + Math.round(percent) + '% mới</span>' : '';
-    var price = book.giaBanCu != null
-      ? '<strong class="price">' + esc(OB.formatMoney(book.giaBanCu)) + '</strong>'
-      : '<span class="text-muted">Chưa cập nhật</span>';
-    var inStock = Number(book.soLuongTon) > 0;
-    var cartButton = inStock && book.giaBanCu != null
-      ? '<button type="button" class="btn btn-accent btn-sm w-100" data-add-to-cart data-requires-login data-so-luong="1" data-ma-sach="' + id + '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>Thêm vào giỏ</button>'
-      : '<a href="' + href + '" class="btn btn-outline-brown btn-sm w-100">Xem chi tiết</a>';
-
-    return '<article class="col-6 col-md-4 col-lg-3"><div class="book-card">' +
-      '<a href="' + href + '" class="cover c' + (id % 6) + '">' + cover + '</a>' +
-      '<div class="book-info">' + condition +
-      '<h3 class="book-title"><a href="' + href + '">' + esc(book.tenSach) + '</a></h3>' +
-      '<p class="book-author">Tác giả: ' + esc(book.tacGia || 'Chưa cập nhật') + '</p>' +
-      '<p class="shop-line mb-1"><i class="bi bi-shop me-1" aria-hidden="true"></i>' + esc(book.tenCuaHang) + '</p>' +
-      '<p class="price-line mb-2">Giá bán: ' + price + '</p>' + cartButton +
-      (!inStock ? '<span class="small text-muted mt-2">Hết hàng</span>' : '') +
-      '<button type="button" class="btn btn-outline-brown btn-sm w-100 mt-2" data-remove-wishlist data-ma-sach="' + id + '"><i class="bi bi-heartbreak me-1" aria-hidden="true"></i>Bỏ yêu thích</button>' +
-      '</div></div></article>';
-  }
-
   function render() {
-    if (grid) { grid.innerHTML = books.map(cardHtml).join(''); }
+    if (grid) {
+      grid.innerHTML = books.map(function (book) { return OB.bookCards.render(book); }).join('');
+    }
     if ($('wishlistCount')) { $('wishlistCount').textContent = books.length + ' cuốn'; }
     visible('wishlistEmpty', known && books.length === 0);
     updateButtons();
@@ -163,7 +127,7 @@
   }
 
   document.addEventListener('click', function (event) {
-    var button = event.target.closest ? event.target.closest('[data-toggle-wishlist], [data-remove-wishlist], #wishlistRetry') : null;
+    var button = event.target.closest ? event.target.closest('[data-toggle-wishlist], #wishlistRetry') : null;
     if (!button) { return; }
     event.preventDefault();
     if (button.disabled) { return; }
@@ -176,7 +140,7 @@
     var id = bookId(button.getAttribute('data-ma-sach'));
     if (!id) { OB.toast('Không xác định được sách cần yêu thích.', 'danger'); return; }
     if (pending[id]) { return; }
-    mutate(id, button.hasAttribute('data-remove-wishlist') || isSaved(id));
+    mutate(id, isSaved(id));
   });
 
   function init() {
@@ -188,6 +152,10 @@
     }
     load();
   }
+
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) { init(); }
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

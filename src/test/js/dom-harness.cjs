@@ -225,8 +225,10 @@ function boot(template, scripts, handler, role = 'KHACH_HANG', options = {}) {
     }
   }
   const document = new Document(html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''));
+  if (options.setupDocument) { options.setupDocument(document); }
   const calls = [];
   const redirects = [];
+  const windowListeners = new Map();
   const storage = new Map(role ? [['oldbook_token', sessionToken(role)]] : []);
   class Modal {
     constructor(element) { this.element = element; }
@@ -240,13 +242,20 @@ function boot(template, scripts, handler, role = 'KHACH_HANG', options = {}) {
   }
   const window = {
     document, bootstrap: { Modal },
+    addEventListener(type, callback) {
+      if (!windowListeners.has(type)) { windowListeners.set(type, []); }
+      windowListeners.get(type).push(callback);
+    },
+    dispatchEvent(event) {
+      for (const listener of windowListeners.get(event.type) || []) { listener.call(window, event); }
+    },
     location: {
       origin: 'http://localhost:8080', pathname: options.pathname || '/test', search: options.search || '',
       assign: url => redirects.push(url), replace: url => redirects.push(url)
     },
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     atob: value => Buffer.from(value, 'base64').toString('binary'),
-    setTimeout: () => 0, clearTimeout() {}, confirm: () => true,
+    setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, confirm: () => true,
     fetch: async (url, init) => {
       const call = { url, method: init.method, body: init.body === undefined ? undefined : JSON.parse(init.body), headers: { ...init.headers } };
       calls.push(call);
@@ -255,7 +264,7 @@ function boot(template, scripts, handler, role = 'KHACH_HANG', options = {}) {
       return { ok: status >= 200 && status < 300, status, text: async () => JSON.stringify({ code: status, data: result && result.data !== undefined ? result.data : result, message: result && result.message }) };
     }
   };
-  const context = vm.createContext({ window, document, bootstrap: window.bootstrap, URL, URLSearchParams, console, setTimeout: window.setTimeout, clearTimeout: window.clearTimeout });
+  const context = vm.createContext({ window, document, bootstrap: window.bootstrap, URL, URLSearchParams, console, setTimeout: window.setTimeout, clearTimeout: window.clearTimeout, setInterval: window.setInterval });
   for (const file of ['auth.js', ...scripts]) {
     vm.runInContext(fs.readFileSync(path.join(root, 'src/main/resources/static/js', file), 'utf8'), context, { filename: file });
   }
