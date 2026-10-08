@@ -9,6 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { File } = require('node:buffer');
 const root = path.resolve(__dirname, '../../..');
 const decode = text => String(text).replace(/&(?:amp|lt|gt|quot|#39|nbsp);/g, entity => ({
   '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&nbsp;': ' '
@@ -29,6 +30,7 @@ class Element {
     this.disabled = 'disabled' in attributes;
     this.checked = 'checked' in attributes;
     this.customValidity = '';
+    if (attributes.type === 'file') { this.files = []; }
     this.classList = {
       contains: name => this.className.split(/\s+/).includes(name),
       add: (...names) => { this.className = [...new Set(this.className.split(/\s+/).filter(Boolean).concat(names))].join(' '); },
@@ -56,7 +58,10 @@ class Element {
   }
   set value(value) {
     if (this.tagName === 'SELECT') { this._selection = String(value); }
-    else { this._value = String(value); }
+    else {
+      this._value = String(value);
+      if (this.getAttribute('type') === 'file' && !value) { this.files = []; }
+    }
   }
   get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
   set textContent(text) { this._text = String(text); this.children = []; this._html = ''; }
@@ -228,6 +233,16 @@ function boot(template, scripts, handler, role = 'KHACH_HANG', options = {}) {
   if (options.setupDocument) { options.setupDocument(document); }
   const calls = [];
   const redirects = [];
+  const previewUrls = [];
+  const revokedPreviewUrls = [];
+  class BrowserURL extends URL {
+    static createObjectURL(file) {
+      const url = 'blob:http://localhost:8080/image-' + (previewUrls.length + 1);
+      previewUrls.push({ url, file });
+      return url;
+    }
+    static revokeObjectURL(url) { revokedPreviewUrls.push(url); }
+  }
   const windowListeners = new Map();
   const storage = new Map(role ? [['oldbook_token', sessionToken(role)]] : []);
   class Modal {
@@ -241,7 +256,7 @@ function boot(template, scripts, handler, role = 'KHACH_HANG', options = {}) {
     static getOrCreateInstance(element) { return new Modal(element); }
   }
   const window = {
-    document, bootstrap: { Modal },
+    document, bootstrap: { Modal }, FormData, File, URL: BrowserURL,
     addEventListener(type, callback) {
       if (!windowListeners.has(type)) { windowListeners.set(type, []); }
       windowListeners.get(type).push(callback);
@@ -257,14 +272,14 @@ function boot(template, scripts, handler, role = 'KHACH_HANG', options = {}) {
     atob: value => Buffer.from(value, 'base64').toString('binary'),
     setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, confirm: () => true,
     fetch: async (url, init) => {
-      const call = { url, method: init.method, body: init.body === undefined ? undefined : JSON.parse(init.body), headers: { ...init.headers } };
+      const call = { url, method: init.method, body: init.body instanceof FormData ? init.body : init.body === undefined ? undefined : JSON.parse(init.body), headers: { ...init.headers } };
       calls.push(call);
       const result = await handler(call, document);
       const status = result && result.httpStatus || 200;
       return { ok: status >= 200 && status < 300, status, text: async () => JSON.stringify({ code: status, data: result && result.data !== undefined ? result.data : result, message: result && result.message }) };
     }
   };
-  const context = vm.createContext({ window, document, bootstrap: window.bootstrap, URL, URLSearchParams, console, setTimeout: window.setTimeout, clearTimeout: window.clearTimeout, setInterval: window.setInterval });
+  const context = vm.createContext({ window, document, bootstrap: window.bootstrap, URL: BrowserURL, URLSearchParams, FormData, File, console, setTimeout: window.setTimeout, clearTimeout: window.clearTimeout, setInterval: window.setInterval });
   for (const file of ['auth.js', ...scripts]) {
     vm.runInContext(fs.readFileSync(path.join(root, 'src/main/resources/static/js', file), 'utf8'), context, { filename: file });
   }
@@ -277,7 +292,7 @@ function boot(template, scripts, handler, role = 'KHACH_HANG', options = {}) {
     }
   }
   return {
-    document, window, calls, redirects,
+    document, window, calls, redirects, previewUrls, revokedPreviewUrls,
     get: id => document.getElementById(id),
     set(id, value) { const element = document.getElementById(id); if (!element) { throw new Error('Missing template element: ' + id); } element.value = value; },
     trigger(id, type = 'click') {

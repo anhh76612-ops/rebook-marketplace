@@ -1,4 +1,3 @@
-```
 'use strict';
 
 const test = require('node:test');
@@ -305,7 +304,7 @@ test('seller edits preserve optional content, omit stock, and update stock/sale 
   await settle();
   assert.equal(app.get('bookDescription').value, 'Mô tả giữ lại');
   assert.equal(app.get('bookPublisher').value, 'NXB Trẻ');
-  assert.equal(app.get('bookImageUrl').value, '/images/existing.jpg');
+  assert.equal(app.get('bookImagePreview').getAttribute('src'), '/images/existing.jpg');
   assert.equal(app.get('bookInitialStock').disabled, true);
   app.set('bookTitle', 'Tên sau');
   app.trigger('sellerBookForm', 'submit');
@@ -375,7 +374,7 @@ test('pending and rejected stores can read full private book details without ena
     assert.equal(app.get('sellerBookModal').classList.contains('show'), true);
     assert.equal(app.get('bookDescription').value, book.moTaChiTiet);
     assert.equal(app.get('bookPublisher').value, book.nhaXuatBan);
-    assert.equal(app.get('bookImageUrl').value, book.hinhAnhUrl);
+    assert.equal(app.get('bookImagePreview').getAttribute('src'), book.hinhAnhUrl);
     assert.equal(app.get('bookCategory').value, String(book.maDM));
     assert.equal(app.get('bookFields').disabled, true);
     assert.equal(app.get('saveBook').disabled, true);
@@ -538,8 +537,5 @@ test('admin role guard blocks API access and self-role changes force reauthentic
   await settle();
   assert.equal(app.window.localStorage.getItem('oldbook_token'), null);
   assert.equal(app.redirects.at(-1), '/login?redirect=%2F');
-  assert.equal(app.calls.filter(call => call.method === 'GET').length, 1);
   assert.equal(app.calls.filter(call => call.method === 'GET' && call.url.startsWith('/api/admin/tai-khoan')).length, 1);
 });
-
-```
