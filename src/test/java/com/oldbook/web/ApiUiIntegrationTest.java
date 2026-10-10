@@ -44,7 +44,7 @@ class ApiUiIntegrationTest {
                 "/store", "store.js",
                 "/vendor/books", "store.js",
                 "/store-moderation", "store-moderation.js",
-                "/admin/accounts", "admin-accounts.js",
+                "/admin/accounts", "admin/accounts-roles.js",
                 "/profile", "profile.js",
                 "/addresses", "addresses.js");
         for (var page : pages.entrySet()) {

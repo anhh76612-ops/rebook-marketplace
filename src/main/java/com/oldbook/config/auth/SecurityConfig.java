@@ -16,9 +16,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.oldbook.dto.common.ApiResponse;
-import com.oldbook.filter.auth.JwtAuthenticationFilter;
-
 
 @Configuration
 @EnableWebSecurity
@@ -56,7 +53,13 @@ public class SecurityConfig {
                                 "/cart",
                                 "/wishlist",
 
+                                "/admin",
+                                "/admin/dashboard",
+                                "/admin/users/**",
                                 "/admin/accounts",
+                                "/admin/audit-logs",
+                                "/admin/reports",
+                                "/admin/profile",
                                 "/store",
                                 "/vendor/books",
                                 "/store-moderation",
