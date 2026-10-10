@@ -68,7 +68,7 @@ public interface NhatKyHeThongRepository
                             OR LOWER(COALESCE(n.loaiDoiTuong, ''))
                                 LIKE LOWER(CONCAT('%', :keyword, '%'))
 
-                            OR LOWER(COALESCE(n.moTa, ''))
+                            OR LOWER(COALESCE(CAST(n.moTa AS String), ''))
                                 LIKE LOWER(CONCAT('%', :keyword, '%'))
 
                             OR LOWER(COALESCE(n.diaChiIp, ''))
@@ -141,7 +141,7 @@ public interface NhatKyHeThongRepository
                             OR LOWER(COALESCE(n.loaiDoiTuong, ''))
                                 LIKE LOWER(CONCAT('%', :keyword, '%'))
 
-                            OR LOWER(COALESCE(n.moTa, ''))
+                            OR LOWER(COALESCE(CAST(n.moTa AS String), ''))
                                 LIKE LOWER(CONCAT('%', :keyword, '%'))
 
                             OR LOWER(COALESCE(n.diaChiIp, ''))

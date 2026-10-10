@@ -187,18 +187,18 @@
                             <span class="font-caption text-caption text-text-muted mt-0.5">Theo dõi hoạt động trên hệ thống</span>
                         </a>
 
-                        <a th:href="@{/admin/profile}" class="group flex flex-col p-space-md rounded-xl bg-surface-warm/80 hover:bg-surface-cream transition-all shadow-sm hover:shadow">
+                        <a th:href="@{/admin/reports}" class="group flex flex-col p-space-md rounded-xl bg-surface-warm/80 hover:bg-surface-cream transition-all shadow-sm hover:shadow">
                             <span class="w-10 h-10 rounded-lg bg-surface-container text-primary-container flex items-center justify-center mb-space-sm">
-                                <span class="material-symbols-outlined text-[22px]">badge</span>
+                                <span class="material-symbols-outlined text-[22px]">summarize</span>
                             </span>
-                            <span class="font-label-lg text-label-lg text-primary">Hồ sơ Admin</span>
-                            <span class="font-caption text-caption text-text-muted mt-0.5">Xem và cập nhật hồ sơ của bạn</span>
+                            <span class="font-label-lg text-label-lg text-primary">Báo cáo doanh thu</span>
+                            <span class="font-caption text-caption text-text-muted mt-0.5">Xem và xuất doanh thu sàn theo kỳ</span>
                         </a>
                     </div>
                 </section>
             </div>
 
-            <!-- NHẬT KÝ GẦN ĐÂY: chưa nối dữ liệu, xem GET /api/admin/nhat-ky -->
+            <!-- NHẬT KÝ GẦN ĐÂY: GET /api/admin/nhat-ky?page=0&size=10 -->
             <section class="bg-surface-white rounded-xl p-space-lg shadow-sm space-y-space-md">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-space-sm border-b border-surface-container">
                     <div class="flex items-center gap-space-sm">

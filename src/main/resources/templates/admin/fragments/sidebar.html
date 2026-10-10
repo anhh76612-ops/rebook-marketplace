@@ -1,23 +1,21 @@
 <aside
         th:fragment="sidebar"
-        class="fixed left-0 top-0 h-screen w-64 bg-surface-warm
-           shadow-[0_1px_8px_rgba(53,46,31,0.06)]
-           z-50 flex flex-col justify-between select-none">
+        class="fixed left-0 top-0 h-screen w-64 bg-chrome shadow-[0_1px_8px_rgba(53,46,31,0.06)] z-50 flex flex-col justify-between select-none">
 
     <!-- LOGO -->
     <div class="flex flex-col">
 
         <div class="h-16 px-space-lg flex items-center
-                    border-b border-line-border/60">
+                    border-b border-chrome-line">
 
             <a
                     th:href="@{/admin/dashboard}"
-                    class="flex items-center gap-space-sm text-primary no-underline">
+                    class="flex items-center gap-space-sm text-on-chrome no-underline">
 
                 <div
                         class="w-9 h-9 rounded-lg
-                           bg-primary-container
-                           text-on-primary-container
+                           bg-chrome-raised
+                           text-on-chrome-muted
                            flex items-center justify-center shadow-sm">
 
                     <span class="material-symbols-outlined text-[22px]">
@@ -28,13 +26,13 @@
                 <div class="flex flex-col">
                     <span
                             class="font-headline-sm text-headline-sm
-                               text-primary tracking-tight leading-tight">
+                               text-on-chrome tracking-tight leading-tight">
                         OldBook
                     </span>
 
                     <span
                             class="font-label-sm text-label-sm
-                               text-olive-grove uppercase tracking-wider">
+                               text-on-chrome-muted uppercase tracking-wider">
                         Admin Portal
                     </span>
                 </div>
@@ -47,7 +45,7 @@
 
             <span
                     class="px-space-sm font-label-sm text-label-sm
-                       text-text-muted uppercase tracking-wider
+                       text-on-chrome-muted uppercase tracking-wider
                        block mb-space-xs">
                 QUẢN LÝ HỆ THỐNG
             </span>
@@ -62,8 +60,8 @@
                            font-body-md text-body-md
                            transition-all"
                         th:classappend="${activeMenu == 'dashboard'}
-                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
-                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+                        ? 'bg-chrome-raised text-on-chrome font-headline-sm'
+                        : 'text-on-chrome-muted hover:bg-chrome-raised/60 hover:text-on-chrome'">
 
                     <span class="material-symbols-outlined text-[20px]">
                         space_dashboard
@@ -81,8 +79,8 @@
                            font-body-md text-body-md
                            transition-all"
                         th:classappend="${activeMenu == 'users'}
-                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
-                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+                        ? 'bg-chrome-raised text-on-chrome font-headline-sm'
+                        : 'text-on-chrome-muted hover:bg-chrome-raised/60 hover:text-on-chrome'">
 
                     <span class="material-symbols-outlined text-[20px]">
                         group
@@ -100,8 +98,8 @@
                            font-body-md text-body-md
                            transition-all"
                         th:classappend="${activeMenu == 'accounts'}
-                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
-                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+                        ? 'bg-chrome-raised text-on-chrome font-headline-sm'
+                        : 'text-on-chrome-muted hover:bg-chrome-raised/60 hover:text-on-chrome'">
 
                     <span class="material-symbols-outlined text-[20px]">
                         admin_panel_settings
@@ -119,14 +117,33 @@
                            font-body-md text-body-md
                            transition-all"
                         th:classappend="${activeMenu == 'audit-logs'}
-                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
-                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+                        ? 'bg-chrome-raised text-on-chrome font-headline-sm'
+                        : 'text-on-chrome-muted hover:bg-chrome-raised/60 hover:text-on-chrome'">
 
                     <span class="material-symbols-outlined text-[20px]">
                         receipt_long
                     </span>
 
                     <span>Nhật ký hệ thống</span>
+                </a>
+
+
+                <!-- Reports -->
+                <a
+                        th:href="@{/admin/reports}"
+                        class="flex items-center gap-space-sm
+                           px-space-md py-2.5 rounded-lg
+                           font-body-md text-body-md
+                           transition-all"
+                        th:classappend="${activeMenu == 'reports'}
+                        ? 'bg-chrome-raised text-on-chrome font-headline-sm'
+                        : 'text-on-chrome-muted hover:bg-chrome-raised/60 hover:text-on-chrome'">
+
+                    <span class="material-symbols-outlined text-[20px]">
+                        summarize
+                    </span>
+
+                    <span>Báo cáo doanh thu</span>
                 </a>
 
             </nav>
@@ -138,7 +155,7 @@
 
             <span
                     class="px-space-sm font-label-sm text-label-sm
-                       text-text-muted uppercase tracking-wider
+                       text-on-chrome-muted uppercase tracking-wider
                        block mb-space-xs">
                 CÁ NHÂN
             </span>
@@ -152,8 +169,8 @@
                            font-body-md text-body-md
                            transition-all"
                         th:classappend="${activeMenu == 'profile'}
-                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
-                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+                        ? 'bg-chrome-raised text-on-chrome font-headline-sm'
+                        : 'text-on-chrome-muted hover:bg-chrome-raised/60 hover:text-on-chrome'">
 
                     <span class="material-symbols-outlined text-[20px]">
                         badge
@@ -169,11 +186,11 @@
 
 
     <!-- ADMIN MINI PROFILE -->
-    <div class="p-space-md border-t border-line-border/60">
+    <div class="p-space-md border-t border-chrome-line">
 
         <div
                 class="p-space-sm rounded-xl
-                   bg-surface-cream/80
+                   bg-chrome-raised
                    flex items-center justify-between">
 
             <div class="flex items-center gap-space-sm overflow-hidden">
@@ -181,12 +198,12 @@
                 <div
                         id="adminSidebarAvatar"
                         data-admin-avatar
-                        class="w-9 h-9 overflow-hidden rounded-full bg-primary
+                        class="w-9 h-9 overflow-hidden rounded-full bg-chrome
                            flex items-center justify-center shrink-0">
 
                     <span
                             class="material-symbols-outlined
-                               text-on-primary text-[18px]">
+                               text-on-chrome text-[18px]">
                         person
                     </span>
                 </div>
@@ -198,14 +215,14 @@
                             id="adminSidebarName"
                             data-user-name
                             class="font-label-lg text-label-lg
-                               text-primary truncate leading-tight">
+                               text-on-chrome truncate leading-tight">
                         Quản trị viên
                     </span>
 
                     <span
                             id="adminSidebarEmail"
                             class="font-caption text-caption
-                               text-text-muted truncate">
+                               text-on-chrome-muted truncate">
                     </span>
 
                 </div>
@@ -218,7 +235,7 @@
                     data-action="logout" id="btnLogout"
                     class="w-8 h-8 rounded-lg
                        flex items-center justify-center
-                       text-text-muted
+                       text-on-chrome-muted
                        hover:bg-danger-soft
                        hover:text-mahogany-danger
                        transition-colors"

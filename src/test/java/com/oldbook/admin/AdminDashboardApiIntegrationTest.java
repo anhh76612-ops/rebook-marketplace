@@ -32,7 +32,7 @@ class AdminDashboardApiIntegrationTest {
 
     private static final String SUMMARY = "/api/admin/dashboard/summary";
 
-    // Các lớp test dùng chung một H2: đầu số 08 và 09 đã có lớp khác dùng, lớp này dùng 07.
+    // Các lớp test dùng chung một H2 và số điện thoại là duy nhất: mỗi lớp giữ một đầu số riêng, lớp này dùng 07.
     private static final AtomicInteger PHONE_SEQUENCE = new AtomicInteger();
 
     @Value("${local.server.port}") private int port;
@@ -50,7 +50,8 @@ class AdminDashboardApiIntegrationTest {
             assertThat(response.statusCode()).as(path + ": " + response.body()).isEqualTo(200);
             assertThat(response.body())
                     .contains("Tổng quan hệ thống - OldBook", "tailwind.config",
-                            "id=\"adminModal\"", "id=\"adminNotification\"",
+                            "id=\"adminModal\"", "id=\"adminNotification\"", "id=\"adminNotifyPanel\"",
+                            "href=\"/admin/reports\"",
                             "/js/auth.js", "/js/admin/layout.js", "/js/admin/dashboard.js")
                     .doesNotContain("th:replace", "th:fragment", "admin@oldbook.local");
         }
@@ -96,6 +97,9 @@ class AdminDashboardApiIntegrationTest {
             rolesTotal += role.get("soLuong").asLong();
         }
         assertThat(rolesTotal).isEqualTo(after.get("tongTaiKhoan").asLong());
+
+        // Dashboard chỉ theo dõi hệ thống; số liệu doanh thu nằm ở API báo cáo.
+        assertThat(after.has("gmv")).isFalse();
     }
 
     private NguoiDung user() {

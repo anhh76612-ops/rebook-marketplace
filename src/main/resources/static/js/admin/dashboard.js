@@ -9,20 +9,30 @@
 
     var $ = function (id) { return document.getElementById(id); };
 
+    // Màu xen kẽ sáng/tối để hai phần nằm cạnh nhau trên vòng tròn luôn phân biệt được
+    // (bản cũ dùng hai màu nâu sẫm gần như trùng nhau cho Quản lý và Quản trị viên).
     var ROLE_STYLES = {
         KHACH_HANG: { text: 'text-sand-dune', bg: 'bg-sand-dune' },
         CHU_CUA_HANG: { text: 'text-secondary', bg: 'bg-secondary' },
-        DON_VI_VAN_CHUYEN: { text: 'text-olive-grove', bg: 'bg-olive-grove' },
-        QUAN_LY: { text: 'text-primary-container', bg: 'bg-primary-container' },
+        DON_VI_VAN_CHUYEN: { text: 'text-outline', bg: 'bg-outline' },
+        QUAN_LY: { text: 'text-secondary-fixed-dim', bg: 'bg-secondary-fixed-dim' },
         QUAN_TRI_VIEN: { text: 'text-primary', bg: 'bg-primary' }
     };
     var DEFAULT_ROLE_STYLE = { text: 'text-outline', bg: 'bg-outline' };
 
     // Vòng tròn bán kính 15.9155 có chu vi đúng bằng 100, nên stroke-dasharray nhận thẳng số phần trăm.
     var DONUT_CIRCLE = ' cx="18" cy="18" r="15.9155" fill="none" stroke="currentColor" stroke-width="3.8"';
+    // Khe hở giữa hai phần liền nhau, tính theo phần trăm chu vi (khoảng 2px trên màn hình).
+    var DONUT_GAP = 0.5;
 
     var loading = false;
     var loadedAt = null;
+
+    // Khi một API trả 403, layout thay toàn bộ <main> bằng màn hình từ chối.
+    // Các phản hồi về sau đó không còn chỗ để hiển thị nên phải bỏ qua.
+    function pageGone() {
+        return !$('dashRefresh');
+    }
 
     function formatNumber(value) {
         return Number(value || 0).toLocaleString('vi-VN');
@@ -60,13 +70,14 @@
         var arcs = '<circle class="text-surface-variant"' + DONUT_CIRCLE + '></circle>';
         var rows = '';
         var offset = 0;
+        var gap = roles.length > 1 ? DONUT_GAP : 0;
 
         roles.forEach(function (role) {
             var style = ROLE_STYLES[role.vaiTro] || DEFAULT_ROLE_STYLE;
             var percent = role.soLuong / total * 100;
 
             arcs += '<circle class="' + style.text + '"' + DONUT_CIRCLE +
-                ' stroke-dasharray="' + percent.toFixed(2) + ' 100"' +
+                ' stroke-dasharray="' + Math.max(percent - gap, 0.1).toFixed(2) + ' 100"' +
                 ' stroke-dashoffset="' + (-offset).toFixed(2) + '"></circle>';
             offset += percent;
 
@@ -218,6 +229,9 @@
 
         OB.request('GET', '/api/admin/dashboard/summary')
             .then(function (summary) {
+                if (pageGone()) {
+                    return;
+                }
                 renderKpis(summary);
                 renderRoles(summary);
 
@@ -227,7 +241,7 @@
                 $('dashError').classList.add('hidden');
             })
             .catch(function (err) {
-                if (UI.handleApiError(err)) {
+                if (UI.handleApiError(err) || pageGone()) {
                     return;
                 }
 

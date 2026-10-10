@@ -18,6 +18,7 @@ import com.oldbook.exception.common.BusinessException;
 import com.oldbook.repository.identity.NguoiDungRepository;
 import com.oldbook.repository.identity.TaiKhoanRepository;
 import com.oldbook.repository.system.NhatKyHeThongRepository;
+import com.oldbook.service.admin.AdminThongBaoService;
 import com.oldbook.service.auth.EmailService;
 import com.oldbook.service.auth.TaiKhoanTokenService;
 
@@ -37,6 +38,8 @@ public class AdminTaiKhoanService {
     private final TaiKhoanTokenService taiKhoanTokenService;
 
     private final EmailService emailService;
+
+    private final AdminThongBaoService adminThongBaoService;
 
     @Transactional(readOnly = true)
     public List<AdminTaiKhoanResponse> getAll(
@@ -196,6 +199,8 @@ public class AdminTaiKhoanService {
                 ip
         );
 
+        adminThongBaoService.taiKhoanDuocTao(maTKAdmin, taiKhoan);
+
         emailService.sendAdminAccountCreatedEmail(
                 nguoiDung.getEmail(),
                 nguoiDung.getHoTen(),
@@ -252,6 +257,8 @@ public class AdminTaiKhoanService {
                 ip
         );
 
+        adminThongBaoService.taiKhoanBiKhoa(maTKAdmin, taiKhoan, request.getLyDo().trim());
+
         emailService.sendAccountLockedEmail(
                 taiKhoan.getNguoiDung().getEmail(),
                 request.getLyDo().trim()
@@ -291,6 +298,9 @@ public class AdminTaiKhoanService {
                 "Mở khóa tài khoản",
                 ip
         );
+
+        adminThongBaoService.taiKhoanDuocMoKhoa(maTKAdmin, taiKhoan);
+
         emailService.sendAccountUnlockedEmail(
                 taiKhoan.getNguoiDung().getEmail()
         );
@@ -351,6 +361,8 @@ public class AdminTaiKhoanService {
                         + vaiTroMoi.name(),
                 ip
         );
+
+        adminThongBaoService.vaiTroThayDoi(maTKAdmin, taiKhoan, vaiTroCu, vaiTroMoi.name());
 
         return toResponse(taiKhoan);
     }

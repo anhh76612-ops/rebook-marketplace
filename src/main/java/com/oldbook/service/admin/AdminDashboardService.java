@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// Dashboard admin chỉ theo dõi hệ thống: người dùng, tài khoản, vai trò. Số liệu doanh thu nằm ở AdminReportService.
 @Service
 @RequiredArgsConstructor
 public class AdminDashboardService {

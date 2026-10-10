@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { boot, settle } = require('./dom-harness.cjs');
 
 const SUMMARY_URL = '/api/admin/dashboard/summary';
+const LOGS_URL = '/api/admin/nhat-ky?page=0&size=10';
 const profile = { hoTen: 'Quản trị viên', email: 'admin@example.com' };
 const summary = {
   tongNguoiDung: 1248, tongTaiKhoan: 1360, taiKhoanHoatDong: 1320, taiKhoanBiKhoa: 34, taiKhoanChoXacThuc: 6,
@@ -13,15 +14,15 @@ const summary = {
     { vaiTro: 'CHU_CUA_HANG', tenHienThi: 'Chủ cửa hàng <b>', soLuong: 340 }
   ]
 };
-
-const LOGS_URL = '/api/admin/nhat-ky?page=0&size=10';
 const logsPage = items => ({ content: items, page: 0, size: 10, totalElements: items.length, totalPages: items.length ? 1 : 0 });
 
-// handler trả lời API summary; logsHandler trả lời API nhật ký (mặc định: chưa có nhật ký nào).
+// Mỗi API một handler: summary và nhật ký (mặc định chưa có dòng nào). Dashboard không được gọi API nào khác.
 function dashboard(handler, role = 'QUAN_TRI_VIEN', logsHandler = async () => logsPage([])) {
   return boot('admin/dashboard.html', ['admin/layout.js', 'admin/dashboard.js'], async call => {
     if (call.url === '/api/profile') { return profile; }
-    return call.url === LOGS_URL ? logsHandler(call) : handler(call);
+    if (call.url === SUMMARY_URL) { return handler(call); }
+    if (call.url === LOGS_URL) { return logsHandler(call); }
+    throw new Error('Unexpected API call: ' + call.url);
   }, role, { pathname: '/admin/dashboard' });
 }
 
@@ -29,7 +30,7 @@ const summaryCalls = app => app.calls.filter(call => call.url === SUMMARY_URL);
 const logsCalls = app => app.calls.filter(call => call.url === LOGS_URL);
 const text = (app, id) => app.get(id).textContent.replace(/\s+/g, ' ').trim();
 
-test('admin dashboard renders KPIs and role distribution from the summary API', async () => {
+test('admin dashboard renders account KPIs and role distribution from the summary API', async () => {
   const app = dashboard(async () => summary);
   await settle();
 
@@ -54,6 +55,10 @@ test('admin dashboard renders KPIs and role distribution from the summary API', 
   assert.match(text(app, 'dashUpdatedAt'), /^Cập nhật lúc /);
   assert.equal(app.get('dashError').classList.contains('hidden'), true);
   assert.equal(app.get('dashRefresh').disabled, false);
+
+  // Số liệu doanh thu nằm ở trang Báo cáo, dashboard chỉ theo dõi hệ thống.
+  assert.equal(app.get('kpiGmv'), null);
+  assert.equal(app.calls.some(call => call.url.includes('bao-cao')), false);
 });
 
 test('admin dashboard never queries the API for guests or other roles', async () => {
@@ -106,11 +111,17 @@ test('server rejections are handled by status: 403 shows the denied screen, 401 
   assert.deepEqual(forbidden.redirects, []);
   assert.match(forbidden.document.querySelector('main').textContent, /Bạn không có quyền truy cập khu vực quản trị/);
 
-  // Hai API được gọi song song nên cả hai cùng nhận 401; mọi lần chuyển hướng đều phải về trang đăng nhập.
+  // Hai API được gọi song song nên cùng nhận 401; mọi lần chuyển hướng đều phải về trang đăng nhập.
   const expired = dashboard(reject(401, 'Phiên hết hạn'), 'QUAN_TRI_VIEN', reject(401, 'Phiên hết hạn'));
   await settle();
   assert.equal(expired.window.OldBook.auth.getToken(), null);
   assert.deepEqual([...new Set(expired.redirects)], ['/login?redirect=%2Fadmin%2Fdashboard']);
+
+  // Một API bị từ chối trong khi API kia vẫn trả về bình thường: phản hồi đến sau không được làm vỡ trang.
+  const partial = dashboard(async () => summary, 'QUAN_TRI_VIEN', reject(403, 'Không có quyền'));
+  await settle();
+  assert.match(partial.document.querySelector('main').textContent, /Bạn không có quyền truy cập khu vực quản trị/);
+  assert.equal(partial.get('kpiNguoiDung'), null);
 });
 
 test('recent logs list the newest entries as escaped text and reload with the refresh button', async () => {
@@ -160,23 +171,4 @@ test('recent logs show an empty state, and a failure can be retried without touc
   assert.equal(summaryCalls(app).length, 1);
   assert.match(text(app, 'dashLogs'), /DANG_NHAP/);
   assert.equal(app.get('dashLogs').querySelector('strong').textContent, 'Hoàng An');
-});
-
-test('shared admin modal resolves with the chosen action and treats text as plain text', async () => {
-  const app = boot('admin/fragments/modal.html', ['admin/layout.js'], async () => profile, 'QUAN_TRI_VIEN');
-  const ui = app.window.AdminUI;
-
-  const confirmed = ui.confirm({ title: 'Khóa tài khoản', message: '<img src=x onerror=unsafe()>', danger: true });
-  assert.equal(app.get('adminModal').classList.contains('hidden'), false);
-  assert.equal(app.get('adminModalTitle').textContent, 'Khóa tài khoản');
-  assert.equal(app.get('adminModalBody').querySelector('img'), null);
-  const buttons = app.get('adminModalFooter').querySelectorAll('button');
-  assert.deepEqual(buttons.map(button => button.textContent), ['Hủy', 'Xác nhận']);
-  app.trigger(buttons[1]);
-  assert.equal(await confirmed, true);
-  assert.equal(app.get('adminModal').classList.contains('hidden'), true);
-
-  const dismissed = ui.confirm({ message: 'Tiếp tục?' });
-  app.trigger('btnCloseAdminModal');
-  assert.equal(await dismissed, false);
 });

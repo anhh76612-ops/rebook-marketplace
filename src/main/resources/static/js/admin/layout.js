@@ -230,6 +230,256 @@
         }
     }
 
+    // =========================================================
+    // TRUNG TÂM THÔNG BÁO (chuông trên header)
+    // Khác với notify() ở trên: notify() là lời nhắn tạm thời về thao tác vừa làm,
+    // còn đây là các thông báo được lưu trong database, có trạng thái đã đọc.
+    // =========================================================
+
+    var NOTIFY_API = '/api/thong-bao';
+    var NOTIFY_PAGE_SIZE = 10;
+
+    // Mức độ luôn đi kèm biểu tượng và nhãn chữ, không chỉ phân biệt bằng màu.
+    var NOTIFY_LEVELS = {
+        NGHIEM_TRONG: { label: 'Nghiêm trọng', icon: 'gpp_maybe', color: 'text-error', badge: 'bg-error-container text-on-error-container' },
+        QUAN_TRONG: { label: 'Quan trọng', icon: 'priority_high', color: 'text-tertiary', badge: 'bg-tertiary-fixed text-on-tertiary-fixed' },
+        THONG_TIN: { label: 'Thông tin', icon: 'info', color: 'text-olive-grove', badge: 'bg-surface-container text-on-surface-variant' }
+    };
+
+    var notifyUnread = 0;
+    var notifyNextPage = 0;
+    var notifyLoading = false;
+
+    function setUnread(count) {
+        notifyUnread = Math.max(0, Number(count) || 0);
+
+        var badge = $('adminNotifyBadge');
+        badge.textContent = notifyUnread > 99 ? '99+' : String(notifyUnread);
+        badge.classList.toggle('hidden', notifyUnread === 0);
+
+        $('btnNotifyReadAll').disabled = notifyUnread === 0;
+        $('btnNotifications').setAttribute(
+            'title',
+            notifyUnread ? 'Thông báo (' + notifyUnread + ' chưa đọc)' : 'Thông báo'
+        );
+    }
+
+    function loadUnread() {
+        OB.request('GET', NOTIFY_API + '/chua-doc')
+            .then(function (data) { setUnread(data && data.soLuong); }, function () { });
+    }
+
+    function notifyNote(message) {
+        var note = document.createElement('p');
+        note.className = 'px-4 py-6 text-center font-body-sm text-body-sm text-text-muted';
+        note.textContent = message;
+        return note;
+    }
+
+    // Tiêu đề và nội dung chứa tên người dùng, lý do khóa...: luôn gán bằng textContent.
+    function notifyItem(item) {
+        var level = NOTIFY_LEVELS[item.mucDo] || NOTIFY_LEVELS.THONG_TIN;
+
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'flex w-full gap-3 border-b border-line-border/60 px-4 py-3 text-left hover:bg-surface-cream/60' +
+            (item.daDoc ? '' : ' bg-surface-warm');
+        button.setAttribute('data-notify-id', item.maThongBao);
+
+        var icon = document.createElement('span');
+        icon.className = 'material-symbols-outlined mt-0.5 ' + level.color;
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = level.icon;
+
+        var body = document.createElement('span');
+        body.className = 'block min-w-0 flex-1';
+
+        var title = document.createElement('span');
+        title.className = 'block font-label-lg text-label-lg text-primary';
+        title.textContent = item.tieuDe;
+
+        var content = document.createElement('span');
+        content.className = 'mt-0.5 block font-body-sm text-body-sm text-on-surface-variant';
+        content.textContent = item.noiDung || '';
+
+        var meta = document.createElement('span');
+        meta.className = 'mt-1.5 flex flex-wrap items-center gap-2 font-caption text-caption text-text-muted';
+
+        var badge = document.createElement('span');
+        badge.className = 'rounded-full px-2 py-0.5 font-label-md text-label-md ' + level.badge;
+        badge.textContent = level.label;
+
+        var time = document.createElement('span');
+        var date = new Date(item.ngayTao);
+        time.textContent = isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN');
+
+        meta.appendChild(badge);
+        meta.appendChild(time);
+        if (!item.daDoc) {
+            var unread = document.createElement('span');
+            unread.className = 'font-label-md text-label-md text-secondary';
+            unread.setAttribute('data-notify-unread', '');
+            unread.textContent = 'Chưa đọc';
+            meta.appendChild(unread);
+        }
+
+        body.appendChild(title);
+        body.appendChild(content);
+        body.appendChild(meta);
+        button.appendChild(icon);
+        button.appendChild(body);
+
+        button.addEventListener('click', function () { openNotifyItem(item, button); });
+        return button;
+    }
+
+    // reset = true: tải lại từ trang đầu (mỗi lần mở chuông); false: nối thêm trang kế tiếp.
+    function loadNotifications(reset) {
+        if (notifyLoading) {
+            return;
+        }
+        notifyLoading = true;
+
+        var list = $('adminNotifyList');
+        var page = reset ? 0 : notifyNextPage;
+        if (reset) {
+            list.textContent = '';
+            list.appendChild(notifyNote('Đang tải thông báo...'));
+        }
+
+        OB.request('GET', NOTIFY_API + '?page=' + page + '&size=' + NOTIFY_PAGE_SIZE)
+            .then(function (data) {
+                var items = (data && data.content) || [];
+                if (reset) {
+                    list.textContent = '';
+                }
+                if (reset && !items.length) {
+                    list.appendChild(notifyNote('Chưa có thông báo nào.'));
+                }
+                items.forEach(function (item) { list.appendChild(notifyItem(item)); });
+
+                notifyNextPage = page + 1;
+                $('btnNotifyMore').classList.toggle('hidden', !data || notifyNextPage >= data.totalPages);
+            })
+            .catch(function (err) {
+                if (handleApiError(err)) {
+                    return;
+                }
+                if (reset) {
+                    list.textContent = '';
+                    list.appendChild(notifyNote('Không tải được thông báo. Hãy mở lại chuông để thử lại.'));
+                } else {
+                    notify((err && err.message) || 'Không tải thêm được thông báo.', 'error');
+                }
+            })
+            .then(function () { notifyLoading = false; });
+    }
+
+    function markItemRead(item, button) {
+        item.daDoc = true;
+        button.classList.remove('bg-surface-warm');
+        var unread = button.querySelector('[data-notify-unread]');
+        if (unread) {
+            unread.parentNode.removeChild(unread);
+        }
+        setUnread(notifyUnread - 1);
+    }
+
+    // Chỉ nhận đường dẫn trong chính trang web này ("/admin/..."), không nhận địa chỉ ngoài như "//evil.example".
+    function internalPath(path) {
+        var internal = typeof path === 'string'
+            && path.charAt(0) === '/'
+            && path.charAt(1) !== '/'
+            && path.charAt(1) !== '\\';
+        return internal ? path : '';
+    }
+
+    // Bấm vào một thông báo: đánh dấu đã đọc rồi mở trang cần xử lý.
+    function openNotifyItem(item, button) {
+        var target = internalPath(item.duongDan);
+        var go = function () {
+            if (target) {
+                Auth.navigate(target);
+            }
+        };
+
+        if (item.daDoc) {
+            go();
+            return;
+        }
+
+        OB.request('PUT', NOTIFY_API + '/' + encodeURIComponent(item.maThongBao) + '/da-doc')
+            .then(function () { markItemRead(item, button); }, function () { })
+            .then(go);
+    }
+
+    function markAllNotificationsRead() {
+        OB.request('PUT', NOTIFY_API + '/da-doc')
+            .then(function () {
+                setUnread(0);
+                loadNotifications(true);
+            })
+            .catch(function (err) {
+                if (!handleApiError(err)) {
+                    notify((err && err.message) || 'Không đánh dấu được thông báo.', 'error');
+                }
+            });
+    }
+
+    function setNotifyOpen(open) {
+        $('adminNotifyPanel').classList.toggle('hidden', !open);
+        $('btnNotifications').setAttribute('aria-expanded', String(open));
+        if (open) {
+            loadNotifications(true);
+        }
+    }
+
+    function initNotifications() {
+        var bell = $('btnNotifications');
+        if (!bell) {
+            return;
+        }
+
+        bell.addEventListener('click', function () {
+            setNotifyOpen($('adminNotifyPanel').classList.contains('hidden'));
+        });
+        $('btnNotifyReadAll').addEventListener('click', markAllNotificationsRead);
+        $('btnNotifyMore').addEventListener('click', function () { loadNotifications(false); });
+
+        // Bấm ra ngoài hoặc nhấn Esc thì đóng bảng thông báo.
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest || !event.target.closest('#adminNotify')) {
+                setNotifyOpen(false);
+            }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                setNotifyOpen(false);
+            }
+        });
+
+        loadUnread();
+    }
+
+    // =========================================================
+    // TẢI FILE
+    // =========================================================
+
+    // Tải một file văn bản do trình duyệt tự tạo (ví dụ CSV). BOM ở đầu giúp Excel đọc đúng tiếng Việt.
+    function downloadFile(filename, text, mimeType) {
+        var blob = new Blob(['﻿' + text], { type: mimeType || 'text/plain;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        URL.revokeObjectURL(url);
+    }
+
     function init() {
         var closeNotice = $('btnCloseNotification');
         if (closeNotice) {
@@ -254,6 +504,7 @@
         if (Auth.isLoggedIn() && Auth.hasRole(ADMIN_ROLE)) {
             // auth.js đã tự điền tên vào [data-user-name]; email và ảnh đại diện thì nó không giữ lại.
             OB.request('GET', '/api/profile').then(renderIdentity, function () { });
+            initNotifications();
         }
     }
 
@@ -264,7 +515,8 @@
         closeModal: closeModal,
         confirm: confirm,
         guard: guard,
-        handleApiError: handleApiError
+        handleApiError: handleApiError,
+        downloadFile: downloadFile
     };
 
     if (document.readyState === 'loading') {

@@ -58,6 +58,7 @@ public class SecurityConfig {
                                 "/admin/users/**",
                                 "/admin/accounts",
                                 "/admin/audit-logs",
+                                "/admin/reports",
                                 "/admin/profile",
                                 "/store",
                                 "/vendor/books",

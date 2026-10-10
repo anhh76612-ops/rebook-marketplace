@@ -89,23 +89,84 @@
                 class="flex items-center
                    gap-space-md shrink-0">
 
-            <!-- Notification: hệ thống thông báo chưa có, nên không hiện chấm đỏ giả -->
-            <button
-                    type="button"
-                    id="btnNotifications"
-                    disabled
-                    title="Thông báo chưa khả dụng"
-                    class="relative w-9 h-9 rounded-lg
-                       flex items-center justify-center
-                       text-on-surface-variant
-                       opacity-50 cursor-not-allowed">
+            <!-- Trung tâm thông báo: dữ liệu từ /api/thong-bao, điều khiển bởi js/admin/layout.js -->
+            <div id="adminNotify" class="relative">
 
-                <span
-                        class="material-symbols-outlined text-[22px]">
-                    notifications
-                </span>
+                <button
+                        type="button"
+                        id="btnNotifications"
+                        title="Thông báo"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="adminNotifyPanel"
+                        class="relative w-9 h-9 rounded-lg
+                           flex items-center justify-center
+                           text-on-surface-variant
+                           hover:bg-surface-cream
+                           hover:text-on-surface
+                           transition-colors">
 
-            </button>
+                    <span
+                            class="material-symbols-outlined text-[22px]">
+                        notifications
+                    </span>
+
+                    <!-- Số thông báo chưa đọc, chỉ hiện khi lớn hơn 0 -->
+                    <span
+                            id="adminNotifyBadge"
+                            class="hidden absolute -top-0.5 -right-0.5
+                               min-w-[18px] h-[18px] px-1
+                               rounded-full bg-error text-on-error
+                               text-[10px] font-bold leading-[18px] text-center">
+                    </span>
+
+                </button>
+
+                <div
+                        id="adminNotifyPanel"
+                        class="hidden absolute right-0 top-11
+                           w-96 max-w-[calc(100vw-2rem)]
+                           rounded-xl overflow-hidden
+                           bg-surface-white text-on-surface
+                           border border-line-border shadow-xl">
+
+                    <div
+                            class="flex items-center justify-between
+                               px-4 py-3
+                               border-b border-line-border">
+
+                        <h2 class="font-headline-sm text-headline-sm text-primary">
+                            Thông báo
+                        </h2>
+
+                        <button
+                                type="button"
+                                id="btnNotifyReadAll"
+                                disabled
+                                class="font-label-md text-label-md text-secondary
+                                   hover:underline
+                                   disabled:opacity-40 disabled:no-underline">
+                            Đánh dấu tất cả đã đọc
+                        </button>
+                    </div>
+
+                    <div
+                            id="adminNotifyList"
+                            aria-live="polite"
+                            class="max-h-[420px] overflow-y-auto">
+                    </div>
+
+                    <button
+                            type="button"
+                            id="btnNotifyMore"
+                            class="hidden w-full px-4 py-2.5
+                               border-t border-line-border
+                               font-label-md text-label-md text-primary
+                               hover:bg-surface-cream">
+                        Xem thêm
+                    </button>
+                </div>
+            </div>
 
 
             <div class="h-5 w-[1px] bg-line-border"></div>

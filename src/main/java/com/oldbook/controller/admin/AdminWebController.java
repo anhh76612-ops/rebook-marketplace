@@ -108,6 +108,18 @@ public class AdminWebController {
         return "admin/audit-logs";
     }
 
+    @GetMapping("/admin/reports")
+    public String reportsPage(Model model) {
+
+        prepareLayout(
+                model,
+                "reports",
+                "Báo cáo doanh thu sàn"
+        );
+
+        return "admin/reports";
+    }
+
     @GetMapping("/admin/profile")
     public String profilePage(Model model) {
 

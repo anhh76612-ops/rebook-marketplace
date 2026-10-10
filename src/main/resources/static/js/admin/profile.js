@@ -357,7 +357,7 @@
             tieuSu: $('editTieuSu').value.trim() || null
         })
             .then(function () {
-                OB.toast('Cập nhật hồ sơ thành công.', 'success');
+                window.AdminUI.notify('Cập nhật hồ sơ thành công.', 'success');
                 setEditMode(false);
                 return Auth.loadProfileName();
             })
@@ -366,7 +366,7 @@
                 if (Auth.handleAuthError(err, 'QUAN_TRI_VIEN')) {
                     return;
                 }
-                OB.toast(err.message || 'Không thể cập nhật hồ sơ.', 'danger');
+                window.AdminUI.notify(err.message || 'Không thể cập nhật hồ sơ.', 'error');
             })
             .then(function () {
                 busy = false;
