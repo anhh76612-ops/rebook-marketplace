@@ -132,7 +132,7 @@ public class StoreOrderService {
         lichSuVanChuyenRepository.save(LichSuVanChuyen.builder()
                 .vanChuyen(vanChuyen)
                 .trangThai(TrangThaiVanChuyen.CHO_LAY_HANG.name())
-                .ghiChu("Cửa hàng đã xác nhận, " + carrier.getTenDonVi() + " đã tiếp nhận đơn")
+                .ghiChu("Chủ cửa hàng đã xác nhận, chờ " + carrier.getTenDonVi() + " tiếp nhận")
                 .nguon(ShipmentSyncService.NGUON_HE_THONG)
                 .build());
 

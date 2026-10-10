@@ -152,6 +152,7 @@ main { min-height: 60vh; }
 .price-line { font-size: .85rem; margin: 0; color: var(--muted); }
 .price { color: var(--amber-800); font-size: 1rem; font-weight: 700; }
 .book-info .btn { margin-top: auto !important; }
+#wishlistGrid .book-info [data-remove-wishlist] { margin-top: .5rem !important; }
 .book-info .price-line:last-of-type { margin-bottom: .2rem; }
 
 .promo { border-radius: 14px; padding: 2rem; color: #fff; }
@@ -201,12 +202,6 @@ main { min-height: 60vh; }
 
 .rating-stars i { color: var(--bright-500); }
 .review-card { border: 1px solid var(--lime-200); border-radius: 10px; padding: 1rem; margin-bottom: .8rem; background: var(--lime-100); }
-
-.book-detail { overflow-wrap: anywhere; }
-.book-detail .detail-cover-image { display: block; max-height: 440px; object-fit: contain; background: var(--lime-100); }
-.book-detail .detail-description { white-space: pre-wrap; }
-.book-detail .related-cover-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.book-detail #customerReviews { scroll-margin-top: 1rem; }
 
 .order-steps { display: flex; justify-content: space-between; margin: 1.5rem 0; }
 .order-steps .step { text-align: center; flex: 1; position: relative; font-size: .8rem; color: var(--muted); }
@@ -391,4 +386,12 @@ main { min-height: 60vh; }
 @media (max-width: 575px) {
   .order-progress .op-step { font-size: .72rem; }
   .order-card { padding: 1rem; }
+}
+
+.order-timeline ul li { display: grid; grid-template-columns: 12.5rem 1fr; gap: .25rem 1rem; align-items: baseline; }
+.order-timeline .tl-time { color: var(--muted); white-space: nowrap; }
+.order-timeline .tl-note { color: inherit; }
+
+@media (max-width: 576px) {
+  .order-timeline ul li { grid-template-columns: 1fr; }
 }
