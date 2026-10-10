@@ -3,20 +3,30 @@ package com.oldbook.controller.store;
 import com.oldbook.dto.catalog.PageResponse;
 import com.oldbook.dto.catalog.SachResponse;
 import com.oldbook.dto.common.ApiResponse;
+import com.oldbook.dto.store.BookImageUploadResponse;
 import com.oldbook.dto.store.CreateSachRequest;
 import com.oldbook.dto.store.UpdateSachRequest;
 import com.oldbook.dto.store.UpdateTonKhoRequest;
 import com.oldbook.dto.store.UpdateTrangThaiBanRequest;
 import com.oldbook.service.store.StoreSachService;
+import com.oldbook.service.store.BookImageUploadService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/store/me/sach")
 @RequiredArgsConstructor
 public class StoreSachController {
     private final StoreSachService storeSachService;
+    private final BookImageUploadService bookImageUploadService;
+
+    @PostMapping(value = "/hinh-anh", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<BookImageUploadResponse> uploadImage(@RequestPart("file") MultipartFile file) {
+        return ApiResponse.success(bookImageUploadService.upload(file));
+    }
 
     @GetMapping
     public ApiResponse<PageResponse<SachResponse>> list(

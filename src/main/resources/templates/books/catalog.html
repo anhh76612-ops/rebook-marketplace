@@ -24,14 +24,14 @@
                     <a th:href="@{/books}" class="btn btn-accent btn-lg">Xem sách mới</a>
                 </div>
             </div>
-            <div class="carousel-item hero-slide hero-2">
+            <div class="carousel-item hero-slide hero-2" th:style="|--hero-image: url('@{/images/hero-books1.jpg}');|">
                 <div class="container">
                     <h2>Mua trọn bộ, tiết kiệm hơn mua lẻ</h2>
                     <p>Các bộ sách kinh tế, lịch sử, văn học được giảm giá khi mua cả bộ.</p>
                     <a th:href="@{/books(category='Bộ sách')}" class="btn btn-accent btn-lg">Xem bộ sách</a>
                 </div>
             </div>
-            <div class="carousel-item hero-slide hero-3">
+            <div class="carousel-item hero-slide hero-3" th:style="|--hero-image: url('@{/images/hero-books2.jpg}');|">
                 <div class="container">
                     <h2>Bán sách cũ của bạn cùng OldBook</h2>
                     <p>Mở cửa hàng miễn phí, đăng bán sách chỉ trong vài phút.</p>
