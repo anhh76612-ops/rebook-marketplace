@@ -1,0 +1,237 @@
+<aside
+        th:fragment="sidebar"
+        class="fixed left-0 top-0 h-screen w-64 bg-surface-warm
+           shadow-[0_1px_8px_rgba(53,46,31,0.06)]
+           z-50 flex flex-col justify-between select-none">
+
+    <!-- LOGO -->
+    <div class="flex flex-col">
+
+        <div class="h-16 px-space-lg flex items-center
+                    border-b border-line-border/60">
+
+            <a
+                    th:href="@{/admin/dashboard}"
+                    class="flex items-center gap-space-sm text-primary no-underline">
+
+                <div
+                        class="w-9 h-9 rounded-lg
+                           bg-primary-container
+                           text-on-primary-container
+                           flex items-center justify-center shadow-sm">
+
+                    <span class="material-symbols-outlined text-[22px]">
+                        auto_stories
+                    </span>
+                </div>
+
+                <div class="flex flex-col">
+                    <span
+                            class="font-headline-sm text-headline-sm
+                               text-primary tracking-tight leading-tight">
+                        OldBook
+                    </span>
+
+                    <span
+                            class="font-label-sm text-label-sm
+                               text-olive-grove uppercase tracking-wider">
+                        Admin Portal
+                    </span>
+                </div>
+            </a>
+        </div>
+
+
+        <!-- MENU HỆ THỐNG -->
+        <div class="px-space-md pt-space-md">
+
+            <span
+                    class="px-space-sm font-label-sm text-label-sm
+                       text-text-muted uppercase tracking-wider
+                       block mb-space-xs">
+                QUẢN LÝ HỆ THỐNG
+            </span>
+
+            <nav class="flex flex-col gap-1">
+
+                <!-- Dashboard -->
+                <a
+                        th:href="@{/admin/dashboard}"
+                        class="flex items-center gap-space-sm
+                           px-space-md py-2.5 rounded-lg
+                           font-body-md text-body-md
+                           transition-all"
+                        th:classappend="${activeMenu == 'dashboard'}
+                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+
+                    <span class="material-symbols-outlined text-[20px]">
+                        space_dashboard
+                    </span>
+
+                    <span>Tổng quan</span>
+                </a>
+
+
+                <!-- Users -->
+                <a
+                        th:href="@{/admin/users}"
+                        class="flex items-center gap-space-sm
+                           px-space-md py-2.5 rounded-lg
+                           font-body-md text-body-md
+                           transition-all"
+                        th:classappend="${activeMenu == 'users'}
+                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+
+                    <span class="material-symbols-outlined text-[20px]">
+                        group
+                    </span>
+
+                    <span>Người dùng</span>
+                </a>
+
+
+                <!-- Accounts -->
+                <a
+                        th:href="@{/admin/accounts}"
+                        class="flex items-center gap-space-sm
+                           px-space-md py-2.5 rounded-lg
+                           font-body-md text-body-md
+                           transition-all"
+                        th:classappend="${activeMenu == 'accounts'}
+                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+
+                    <span class="material-symbols-outlined text-[20px]">
+                        admin_panel_settings
+                    </span>
+
+                    <span>Tài khoản &amp; Vai trò</span>
+                </a>
+
+
+                <!-- Audit logs -->
+                <a
+                        th:href="@{/admin/audit-logs}"
+                        class="flex items-center gap-space-sm
+                           px-space-md py-2.5 rounded-lg
+                           font-body-md text-body-md
+                           transition-all"
+                        th:classappend="${activeMenu == 'audit-logs'}
+                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+
+                    <span class="material-symbols-outlined text-[20px]">
+                        receipt_long
+                    </span>
+
+                    <span>Nhật ký hệ thống</span>
+                </a>
+
+            </nav>
+        </div>
+
+
+        <!-- MENU CÁ NHÂN -->
+        <div class="px-space-md pt-space-lg">
+
+            <span
+                    class="px-space-sm font-label-sm text-label-sm
+                       text-text-muted uppercase tracking-wider
+                       block mb-space-xs">
+                CÁ NHÂN
+            </span>
+
+            <nav class="flex flex-col gap-1">
+
+                <a
+                        th:href="@{/admin/profile}"
+                        class="flex items-center gap-space-sm
+                           px-space-md py-2.5 rounded-lg
+                           font-body-md text-body-md
+                           transition-all"
+                        th:classappend="${activeMenu == 'profile'}
+                        ? 'bg-primary-container text-on-primary-container font-headline-sm'
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'">
+
+                    <span class="material-symbols-outlined text-[20px]">
+                        badge
+                    </span>
+
+                    <span>Hồ sơ Admin</span>
+                </a>
+
+            </nav>
+        </div>
+
+    </div>
+
+
+    <!-- ADMIN MINI PROFILE -->
+    <div class="p-space-md border-t border-line-border/60">
+
+        <div
+                class="p-space-sm rounded-xl
+                   bg-surface-cream/80
+                   flex items-center justify-between">
+
+            <div class="flex items-center gap-space-sm overflow-hidden">
+
+                <div
+                        id="adminSidebarAvatar"
+                        data-admin-avatar
+                        class="w-9 h-9 overflow-hidden rounded-full bg-primary
+                           flex items-center justify-center shrink-0">
+
+                    <span
+                            class="material-symbols-outlined
+                               text-on-primary text-[18px]">
+                        person
+                    </span>
+                </div>
+
+                <div class="flex flex-col truncate">
+
+                    <!-- Tên do auth.js điền qua [data-user-name], email do admin/layout.js điền -->
+                    <span
+                            id="adminSidebarName"
+                            data-user-name
+                            class="font-label-lg text-label-lg
+                               text-primary truncate leading-tight">
+                        Quản trị viên
+                    </span>
+
+                    <span
+                            id="adminSidebarEmail"
+                            class="font-caption text-caption
+                               text-text-muted truncate">
+                    </span>
+
+                </div>
+            </div>
+
+
+            <!-- Tạm thời để button logout -->
+            <button
+                    type="button"
+                    data-action="logout" id="btnLogout"
+                    class="w-8 h-8 rounded-lg
+                       flex items-center justify-center
+                       text-text-muted
+                       hover:bg-danger-soft
+                       hover:text-mahogany-danger
+                       transition-colors"
+                    title="Đăng xuất">
+
+                <span class="material-symbols-outlined text-[20px]">
+                    logout
+                </span>
+
+            </button>
+
+        </div>
+
+    </div>
+
+</aside>
