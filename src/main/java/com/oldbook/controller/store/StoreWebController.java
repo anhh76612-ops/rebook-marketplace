@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class StoreWebController {
 
-    @GetMapping({"/store", "/vendor/books"})
+    @GetMapping({"/store", "/store/books"})
     public String storePage() {
-        return "vendor-books";
+        return "store-books";
     }
 
     @GetMapping("/store-moderation")

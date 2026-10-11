@@ -62,4 +62,27 @@ public interface VanChuyenRepository extends JpaRepository<VanChuyen, Integer> {
             where v.donHangCuaHang.maDHCH = :maDHCH
             """)
     Optional<VanChuyen> findWithCarrierByMaDHCH(@Param("maDHCH") Integer maDHCH);
+
+    @Query("select v.donViVanChuyen.maDVVC, count(v) from VanChuyen v group by v.donViVanChuyen.maDVVC")
+    List<Object[]> demVanDonTheoDonVi();
+
+    @Query("""
+            select v.donViVanChuyen.maDVVC, count(v) from VanChuyen v
+            where v.trangThaiVanChuyen not in :trangThaiKetThuc
+            group by v.donViVanChuyen.maDVVC
+            """)
+    List<Object[]> demVanDonDangXuLyTheoDonVi(@Param("trangThaiKetThuc") Collection<String> trangThaiKetThuc);
+
+    @Query("""
+            select v.donViVanChuyen.maDVVC, count(v) from VanChuyen v
+            where v.trangThaiVanChuyen = :trangThai
+            group by v.donViVanChuyen.maDVVC
+            """)
+    List<Object[]> demVanDonTheoDonViVaTrangThai(@Param("trangThai") String trangThai);
+
+    long countByDonViVanChuyen_MaDVVC(Integer maDVVC);
+
+    long countByDonViVanChuyen_MaDVVCAndTrangThaiVanChuyenNotIn(Integer maDVVC, Collection<String> trangThaiKetThuc);
+
+    long countByDonViVanChuyen_MaDVVCAndTrangThaiVanChuyen(Integer maDVVC, String trangThai);
 }

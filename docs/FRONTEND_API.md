@@ -6,7 +6,7 @@ Giao diện Thymeleaf dùng client `static/js/auth.js` để gửi JSON, đọc 
 |---|---|
 | `/login` | Đăng nhập, chọn vai trò khi có nhiều tài khoản, đăng xuất từ menu |
 | `/admin/accounts` | Quản trị viên xem/lọc tài khoản, cấp tài khoản/vai trò, khóa/mở khóa, đổi vai trò theo API hiện có |
-| `/vendor/books`, `/store` | Chủ cửa hàng đăng ký/sửa shop, xem trạng thái/lý do từ chối, xem chi tiết sách ở mọi trạng thái, thêm/sửa sách, điều chỉnh tồn kho, bật/ngừng bán, lọc/sắp xếp/phân trang |
+| `/store/books`, `/store` | Chủ cửa hàng đăng ký/sửa shop, xem trạng thái/lý do từ chối, xem chi tiết sách ở mọi trạng thái, thêm/sửa sách, điều chỉnh tồn kho, bật/ngừng bán, lọc/sắp xếp/phân trang |
 | `/store-moderation` | Quản lý/quản trị viên lọc/phân trang cửa hàng và sách, xem chi tiết, duyệt/từ chối kèm lý do |
 | `/`, `/books`, `/books/tim-kiem`, `/books/{maSach}` | Danh sách/tìm kiếm/chi tiết sách công khai và thêm vào giỏ (đã có) |
 | `/wishlist` | Lưu và bỏ yêu thích từ trang chi tiết, xem danh sách sách yêu thích theo tài khoản khách hàng |

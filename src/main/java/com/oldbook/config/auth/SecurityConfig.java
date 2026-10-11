@@ -61,7 +61,7 @@ public class SecurityConfig {
                                 "/admin/reports",
                                 "/admin/profile",
                                 "/store",
-                                "/vendor/books",
+                                "/store/books",
                                 "/store-moderation",
 
                                 "/profile",

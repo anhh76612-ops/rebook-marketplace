@@ -453,7 +453,7 @@
   }
 
   function init() {
-    if (!OB.auth.isLoggedIn()) { OB.auth.redirectToLogin('/vendor/books'); return; }
+    if (!OB.auth.isLoggedIn()) { OB.auth.redirectToLogin('/store/books'); return; }
     if (!OB.auth.hasRole(ROLE)) {
       visible('sellerWorkspace', false);
       visible('sellerAccessError', true);
