@@ -9,6 +9,7 @@ import com.oldbook.entity.order.DonHang;
 import com.oldbook.entity.order.DonHangCuaHang;
 import com.oldbook.entity.system.DanhGia;
 import com.oldbook.service.catalog.DanhGiaService;
+import com.oldbook.service.catalog.ReviewMediaUploadService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,6 +29,8 @@ class DanhGiaQueryTest {
     private EntityManager entityManager;
     @Autowired
     private DanhGiaService danhGiaService;
+    @MockitoBean
+    private ReviewMediaUploadService reviewMediaUploadService;
 
     private NguoiDung customer;
     private CuaHang store;

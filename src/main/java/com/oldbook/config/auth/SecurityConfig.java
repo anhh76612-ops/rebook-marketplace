@@ -16,9 +16,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.oldbook.dto.common.ApiResponse;
-import com.oldbook.filter.auth.JwtAuthenticationFilter;
-
 
 @Configuration
 @EnableWebSecurity
@@ -56,7 +53,13 @@ public class SecurityConfig {
                                 "/cart",
                                 "/wishlist",
 
+                                "/admin",
+                                "/admin/dashboard",
+                                "/admin/users/**",
                                 "/admin/accounts",
+                                "/admin/audit-logs",
+                                "/admin/reports",
+                                "/admin/profile",
                                 "/store",
                                 "/vendor/books",
                                 "/store-moderation",
@@ -118,6 +121,12 @@ public class SecurityConfig {
                         .hasRole("CHU_CUA_HANG")
 
                         .requestMatchers("/api/wishlist", "/api/wishlist/**")
+                        .hasRole("KHACH_HANG")
+
+                        .requestMatchers("/api/recently-viewed", "/api/recently-viewed/**")
+                        .hasRole("KHACH_HANG")
+
+                        .requestMatchers("/api/reviews/**")
                         .hasRole("KHACH_HANG")
 
                         .anyRequest().authenticated()

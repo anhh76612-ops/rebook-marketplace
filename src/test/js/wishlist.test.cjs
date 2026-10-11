@@ -12,7 +12,7 @@ function book(id = 42, overrides = {}) {
 }
 
 function appFor(template, handler, role = 'KHACH_HANG') {
-  const app = boot(template, ['cart.js', 'wishlist.js'], async call => {
+  const app = boot(template, ['book-cards.js', 'cart.js', 'wishlist.js'], async call => {
     if (call.url === '/api/profile') { return { hoTen: 'Người mua' }; }
     if (call.url === '/api/order/cart' && call.method === 'GET') { return { soMuc: 0 }; }
     if (call.url === '/api/order/cart/items') { return { soMuc: 1 }; }
@@ -76,6 +76,9 @@ test('a detail favorite is written once, activates only after success and appear
   assert.equal(list.get('wishlistCount').textContent, '1 cuốn');
   assert.equal(list.get('wishlistGrid').querySelector('.book-title a').getAttribute('href'), '/books/42');
   assert.equal(list.get('wishlistGrid').querySelector('.book-title').textContent, 'Đắc nhân tâm');
+  assert.equal(list.get('wishlistGrid').querySelector('[data-remove-wishlist]'), null);
+  assert.equal(list.get('wishlistGrid').querySelector('.book-info [data-toggle-wishlist]'), null);
+  assert.ok(list.get('wishlistGrid').querySelector('.book-cover-wrap [data-toggle-wishlist]'));
   assert.equal(shown(list, 'wishlistEmpty'), false);
   assert.equal(shown(list, 'wishlistLoading'), false);
 });
@@ -120,11 +123,14 @@ test('wishlist removal waits for success, blocks duplicates and shows the empty 
   let completeRemove;
   const app = appFor('wishlist.html', call => call.method === 'GET' ? [book()] : new Promise(resolve => { completeRemove = resolve; }));
   await settle();
-  const button = app.get('wishlistGrid').querySelector('[data-remove-wishlist]');
+  const button = app.get('wishlistGrid').querySelector('.book-cover-wrap [data-toggle-wishlist]');
+  assert.equal(app.get('wishlistGrid').querySelector('[data-remove-wishlist]'), null);
+  assert.equal(button.getAttribute('aria-pressed'), 'true');
   app.trigger(button.querySelector('i'));
   app.trigger(button);
   assert.equal(calls(app, 'DELETE').length, 1);
   assert.equal(button.disabled, true);
+  assert.equal(button.getAttribute('aria-pressed'), 'true', 'the heart remains saved while removal is pending');
   assert.equal(app.get('wishlistCount').textContent, '1 cuốn');
   completeRemove({ data: null });
   await settle();
@@ -136,12 +142,15 @@ test('wishlist removal waits for success, blocks duplicates and shows the empty 
 test('failed wishlist removal preserves the item and restores its button for retry', async () => {
   const app = appFor('wishlist.html', call => call.method === 'GET' ? [book()] : { httpStatus: 500, message: 'Chưa thể bỏ yêu thích', data: null });
   await settle();
-  const button = app.get('wishlistGrid').querySelector('[data-remove-wishlist]');
+  const button = app.get('wishlistGrid').querySelector('.book-cover-wrap [data-toggle-wishlist]');
   app.trigger(button);
   await settle();
   assert.equal(app.get('wishlistCount').textContent, '1 cuốn');
-  assert.equal(app.get('wishlistGrid').querySelector('[data-remove-wishlist]'), button);
+  assert.equal(app.get('wishlistGrid').querySelector('[data-toggle-wishlist]'), button);
+  assert.equal(app.get('wishlistGrid').querySelector('[data-remove-wishlist]'), null);
   assert.equal(button.disabled, false);
+  assert.equal(button.getAttribute('aria-pressed'), 'true');
+  assert.ok(button.querySelector('.bi-heart-fill'), 'a failed removal retains the saved heart state');
   assert.equal(shown(app, 'wishlistEmpty'), false);
   assert.equal(shown(app, 'wishlistError'), true);
   assert.equal(app.get('wishlistError').textContent, 'Chưa thể bỏ yêu thích');
@@ -260,19 +269,27 @@ test('wishlist cards escape content and reject dangerous cover URLs', async () =
   assert.equal(app.get('wishlistCount').textContent, '5 cuốn');
 });
 
-test('wishlist retains out-of-stock books and uses the shared cart action for available books', async () => {
-  const app = appFor('wishlist.html', () => [book(), book(43, { soLuongTon: 0 })]);
+test('wishlist retains removable out-of-stock books and uses the shared cart action for available books', async () => {
+  const app = appFor('wishlist.html', call => call.method === 'GET' ? [book(), book(43, { soLuongTon: 0 })] : { data: null });
   await settle();
   assert.equal(app.get('wishlistCount').textContent, '2 cuốn');
   const cards = app.get('wishlistGrid').children;
   assert.ok(cards[0].querySelector('[data-add-to-cart]'));
   assert.equal(cards[1].querySelector('[data-add-to-cart]'), null);
   assert.match(cards[1].textContent, /Hết hàng/);
-  assert.ok(cards[1].querySelector('[data-remove-wishlist]'), 'out-of-stock favorites remain removable');
+  const soldOutHeart = cards[1].querySelector('.book-cover-wrap [data-toggle-wishlist]');
+  assert.ok(soldOutHeart, 'out-of-stock favorites remain removable through their cover heart');
+  assert.equal(soldOutHeart.getAttribute('aria-pressed'), 'true');
+  assert.equal(app.get('wishlistGrid').querySelector('[data-remove-wishlist]'), null);
   app.trigger(cards[0].querySelector('[data-add-to-cart]'));
   await settle();
   assert.deepEqual(app.calls.find(call => call.url === '/api/order/cart/items').body, { maSach: 42, soLuong: 1 });
   assert.equal(app.get('wishlistCount').textContent, '2 cuốn');
+  app.trigger(soldOutHeart);
+  await settle();
+  assert.equal(calls(app, 'DELETE')[0].url, '/api/wishlist/43');
+  assert.equal(app.get('wishlistCount').textContent, '1 cuốn');
+  assert.equal(app.get('wishlistGrid').querySelector('[data-ma-sach="43"]'), null);
 });
 
 test('loading the shared script on a page without wishlist hooks makes no wishlist request', async () => {

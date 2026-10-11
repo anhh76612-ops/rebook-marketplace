@@ -103,8 +103,14 @@ main { min-height: 60vh; }
 .carousel-item.hero-slide.carousel-item-prev { display: flex; }
 .hero-slide { --hero-img-opacity: .30; position: relative; overflow: hidden; }
 .hero-slide::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background: url('../images/hero-books.jpg') center / cover no-repeat; opacity: var(--hero-img-opacity); }
+  background: var(--hero-image, url('../images/hero-books.jpg')) center / cover no-repeat; opacity: var(--hero-img-opacity); }
 .hero-slide > .container { position: relative; z-index: 1; }
+#heroCarousel .hero-slide > .container { width: calc(100% - 7rem); }
+#heroCarousel .carousel-control-prev,
+#heroCarousel .carousel-control-next {
+  top: 50%; bottom: auto; width: 3rem; height: 3rem; transform: translateY(-50%); }
+#heroCarousel .carousel-control-prev { left: .5rem; }
+#heroCarousel .carousel-control-next { right: .5rem; }
 .hero-1 { background: linear-gradient(120deg, var(--pine-bark), var(--soft-leather) 35%, var(--olive-grove) 80%, var(--spring-leaf)); }
 .hero-2 { background: linear-gradient(120deg, var(--deep-mahogany), var(--dull-chestnut) 45%, var(--olive-grove) 85%, var(--spring-leaf)); }
 .hero-3 { background: linear-gradient(120deg, var(--pine-bark), var(--olive-grove) 60%, var(--spring-leaf)); }
@@ -120,11 +126,17 @@ main { min-height: 60vh; }
 .book-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; height: 100%;
   display: flex; flex-direction: column; }
 .book-card:hover { box-shadow: 0 6px 18px rgba(53,46,31,.18); }
+.book-cover-wrap { position: relative; }
+.book-card-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cover { position: relative; display: flex; align-items: flex-end; aspect-ratio: 3/4; padding: 1rem; color: #fff; }
 .cover:hover { color: #fff; }
-.wishlist-mini { position: absolute; top: .5rem; right: .5rem; width: 30px; height: 30px; border-radius: 50%;
-  border: none; background: rgba(255,255,255,.85); color: var(--amber-800); display: flex; align-items: center; justify-content: center; }
-.wishlist-mini:hover, .wishlist-mini:active { background: var(--spring-leaf); color: var(--pine-bark); }
+.wishlist-mini { position: absolute; top: .5rem; right: .5rem; width: 30px; height: 30px; border-radius: 0;
+  border: none; padding: 0; background: transparent; color: var(--amber-800); font-size: 1.25rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: color .18s ease; }
+.wishlist-mini:hover, .wishlist-mini:active { color: var(--soft-leather); }
+.wishlist-mini.active { color: var(--deep-mahogany); }
+.wishlist-mini:focus-visible { outline: 3px solid var(--olive-grove); outline-offset: 2px; }
+.wishlist-mini:disabled { opacity: .6; cursor: wait; }
 .cover-title { font-weight: 700; font-size: 1.05rem; line-height: 1.3; }
 .c0 { background: linear-gradient(160deg, #9e9e9e, #333333); }
 .c1 { background: linear-gradient(160deg, #bdbdbd, #4f4f4f); }
@@ -190,12 +202,6 @@ main { min-height: 60vh; }
 
 .rating-stars i { color: var(--bright-500); }
 .review-card { border: 1px solid var(--lime-200); border-radius: 10px; padding: 1rem; margin-bottom: .8rem; background: var(--lime-100); }
-
-.book-detail { overflow-wrap: anywhere; }
-.book-detail .detail-cover-image { display: block; max-height: 440px; object-fit: contain; background: var(--lime-100); }
-.book-detail .detail-description { white-space: pre-wrap; }
-.book-detail .related-cover-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.book-detail #customerReviews { scroll-margin-top: 1rem; }
 
 .order-steps { display: flex; justify-content: space-between; margin: 1.5rem 0; }
 .order-steps .step { text-align: center; flex: 1; position: relative; font-size: .8rem; color: var(--muted); }
@@ -349,8 +355,32 @@ main { min-height: 60vh; }
 
 .order-item { display: flex; align-items: center; gap: 1rem; padding: .35rem 0; }
 .order-item .mini-cover { width: 70px; border-radius: 8px; }
+.order-cover-image { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .order-item-name { font-weight: 700; font-size: 1.05rem; }
 .order-item-price { color: var(--muted); }
+.order-item-body { min-width: 0; flex: 1; }
+.order-review { padding: .6rem .75rem; border-radius: 8px; background: var(--lime-100); }
+.order-review-comment { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.review-star-options { display: flex; flex-wrap: wrap; gap: .5rem; }
+.review-star-option { display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .65rem;
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: .9rem; }
+.review-star-option i { color: #986e00; }
+.btn-check:checked + .review-star-option { border-color: var(--olive-grove); background: var(--lime-100); font-weight: 700; }
+.btn-check:focus-visible + .review-star-option { outline: 3px solid var(--spring-leaf); outline-offset: 2px; }
+.btn-check:disabled + .review-star-option { opacity: .6; cursor: wait; }
+.review-media { display: flex; flex-wrap: wrap; gap: .6rem; }
+.review-media-item { display: block; width: 160px; height: 130px; max-width: 100%;
+  border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+.review-media-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+video.review-media-item { object-fit: contain; background: #171717; }
+.review-media-previews { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.review-media-preview { min-width: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.review-media-preview > img, .review-media-preview > video { display: block; width: 100%; height: 130px; object-fit: contain; background: var(--lime-100); }
+.review-media-preview > video { background: #171717; }
+.review-media-caption { display: flex; align-items: center; gap: .35rem; padding: .35rem .5rem; }
+.review-media-caption span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8rem; }
+.review-media-caption button { flex-shrink: 0; }
+#orderReviewForm { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
 .order-store-block { border-top: 1px dashed var(--line); padding-top: .9rem; margin-top: .9rem; }
 .order-ship-info { font-size: .85rem; color: var(--muted); margin: .5rem 0 0; }
@@ -358,6 +388,17 @@ main { min-height: 60vh; }
 .order-card-foot { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap;
   margin-top: 1rem; }
 .order-total { font-weight: 700; font-size: 1.1rem; }
+.btn-order-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  min-height: 44px; padding: .65rem 1.2rem; border: 1px solid var(--olive-grove); border-radius: 10px;
+  background: var(--olive-grove); color: #fff; font-family: inherit; font-size: .95rem; font-weight: 600;
+  line-height: 1.4; white-space: nowrap; cursor: pointer; box-shadow: 0 3px 8px rgba(120,115,80,.18);
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.btn-order-primary i { font-size: 1.1rem; line-height: 1; }
+.btn-order-primary:hover:not(:disabled) { background: #625E40; border-color: #625E40;
+  box-shadow: 0 4px 12px rgba(120,115,80,.28); }
+.btn-order-primary:active:not(:disabled) { background: #514E35; border-color: #514E35; box-shadow: none; }
+.btn-order-primary:focus-visible { outline: 3px solid var(--spring-leaf); outline-offset: 3px; }
+.btn-order-primary:disabled { opacity: .6; cursor: wait; box-shadow: none; }
 .btn-order-cancel { background: #fff; border: 1px solid var(--pine-bark); color: var(--pine-bark); font-size: .95rem;
   padding: .35rem .9rem; border-radius: 6px; }
 .btn-order-cancel:hover { background: var(--lime-100); }
@@ -368,4 +409,12 @@ main { min-height: 60vh; }
 @media (max-width: 575px) {
   .order-progress .op-step { font-size: .72rem; }
   .order-card { padding: 1rem; }
+}
+
+.order-timeline ul li { display: grid; grid-template-columns: 12.5rem 1fr; gap: .25rem 1rem; align-items: baseline; }
+.order-timeline .tl-time { color: var(--muted); white-space: nowrap; }
+.order-timeline .tl-note { color: inherit; }
+
+@media (max-width: 576px) {
+  .order-timeline ul li { grid-template-columns: 1fr; }
 }

@@ -21,7 +21,7 @@
   var ROLE_HOME_URLS = {
     CHU_CUA_HANG: '/vendor/books',
     QUAN_LY: '/store-moderation',
-    QUAN_TRI_VIEN: '/admin/accounts'
+    QUAN_TRI_VIEN: '/admin/dashboard'
   };
 
   function lsGet(key) {
@@ -307,8 +307,12 @@
 
     var init = { method: method, headers: headers };
     if (body !== undefined) {
-      headers['Content-Type'] = 'application/json';
-      init.body = JSON.stringify(body);
+      if (typeof window.FormData === 'function' && body instanceof window.FormData) {
+        init.body = body;
+      } else {
+        headers['Content-Type'] = 'application/json';
+        init.body = JSON.stringify(body);
+      }
     }
 
     return window.fetch(url, init)

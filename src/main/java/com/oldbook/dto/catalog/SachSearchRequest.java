@@ -17,6 +17,7 @@ public class SachSearchRequest {
     private BigDecimal giaDen;
     private BigDecimal doMoiTu;
     private BigDecimal doMoiDen;
+    private Integer soSaoTu;
     private List<String> tinhTrang = new ArrayList<>();
     private String khoangGia;
     private Boolean conHang;

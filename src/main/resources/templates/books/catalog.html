@@ -24,14 +24,14 @@
                     <a th:href="@{/books}" class="btn btn-accent btn-lg">Xem sách mới</a>
                 </div>
             </div>
-            <div class="carousel-item hero-slide hero-2">
+            <div class="carousel-item hero-slide hero-2" th:style="|--hero-image: url('@{/images/hero-books1.jpg}');|">
                 <div class="container">
                     <h2>Mua trọn bộ, tiết kiệm hơn mua lẻ</h2>
                     <p>Các bộ sách kinh tế, lịch sử, văn học được giảm giá khi mua cả bộ.</p>
                     <a th:href="@{/books(category='Bộ sách')}" class="btn btn-accent btn-lg">Xem bộ sách</a>
                 </div>
             </div>
-            <div class="carousel-item hero-slide hero-3">
+            <div class="carousel-item hero-slide hero-3" th:style="|--hero-image: url('@{/images/hero-books2.jpg}');|">
                 <div class="container">
                     <h2>Bán sách cũ của bạn cùng OldBook</h2>
                     <p>Mở cửa hàng miễn phí, đăng bán sách chỉ trong vài phút.</p>
@@ -80,6 +80,13 @@
                 <a th:href="@{/books}" id="catalogSeeAll">Xem tất cả</a>
             </div>
         </div>
+
+        <nav aria-label="Lọc sách theo đánh giá" class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <span class="small text-muted">Đánh giá trung bình:</span>
+            <a id="catalogRatingFive" th:href="@{/books/tim-kiem(soSaoTu=5)}" class="btn btn-outline-brown btn-sm">5 sao</a>
+            <a id="catalogRatingFour" th:href="@{/books/tim-kiem(soSaoTu=4)}" class="btn btn-outline-brown btn-sm">4 sao trở lên</a>
+            <a id="catalogRatingThree" th:href="@{/books/tim-kiem(soSaoTu=3)}" class="btn btn-outline-brown btn-sm">3 sao trở lên</a>
+        </nav>
 
         <div id="catalogEmpty" class="panel text-center py-5 d-none">
             <i class="bi bi-search fs-1 text-muted"></i>

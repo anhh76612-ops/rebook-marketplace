@@ -10,9 +10,12 @@ import com.oldbook.constant.shipping.TrangThaiVanChuyen;
 import com.oldbook.entity.shipping.DonViVanChuyen;
 import com.oldbook.entity.shipping.LichSuVanChuyen;
 import com.oldbook.entity.shipping.VanChuyen;
+import com.oldbook.entity.system.DanhGia;
 import com.oldbook.repository.shipping.LichSuVanChuyenRepository;
 import com.oldbook.repository.order.ChiTietDonHangRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
+import com.oldbook.repository.system.DanhGiaRepository;
+import com.oldbook.service.catalog.DanhGiaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +31,7 @@ public class OrderMapper {
     private final ChiTietDonHangRepository chiTietDonHangRepository;
     private final VanChuyenRepository vanChuyenRepository;
     private final LichSuVanChuyenRepository lichSuVanChuyenRepository;
+    private final DanhGiaRepository danhGiaRepository;
 
     public List<StoreOrderResponse> toStoreOrderResponses(List<DonHangCuaHang> stores) {
         if (stores.isEmpty()) {
@@ -45,16 +49,27 @@ public class OrderMapper {
                 ));
 
         Map<Integer, List<LichSuVanChuyen>> history = loadHistory(shipments.values());
+        Map<Integer, DanhGia> reviews = loadReviews(ids);
 
         return stores.stream()
-                .map(store -> toStoreOrderResponse(store, shipments.get(store.getMaDHCH()), history, false))
+                .map(store -> toStoreOrderResponse(store, shipments.get(store.getMaDHCH()), history, reviews, false))
                 .toList();
     }
 
     /** Dành cho chủ cửa hàng: kèm hoa hồng và doanh thu. Phản hồi cho người mua không có hai khoản này. */
     public StoreOrderResponse toStoreOrderResponse(DonHangCuaHang store, VanChuyen vanChuyen) {
         return toStoreOrderResponse(
-                store, vanChuyen, vanChuyen == null ? Map.of() : loadHistory(List.of(vanChuyen)), true);
+                store, vanChuyen, vanChuyen == null ? Map.of() : loadHistory(List.of(vanChuyen)),
+                loadReviews(List.of(store.getMaDHCH())), true);
+    }
+
+    private Map<Integer, DanhGia> loadReviews(List<Integer> storeOrderIds) {
+        return danhGiaRepository.findAllByChiTietDonHang_DonHangCuaHang_MaDHCHIn(storeOrderIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        review -> review.getChiTietDonHang().getMaCTDH(),
+                        Function.identity()
+                ));
     }
 
     private Map<Integer, List<LichSuVanChuyen>> loadHistory(java.util.Collection<VanChuyen> shipments) {
@@ -70,6 +85,7 @@ public class OrderMapper {
 
     private StoreOrderResponse toStoreOrderResponse(
             DonHangCuaHang store, VanChuyen vanChuyen, Map<Integer, List<LichSuVanChuyen>> history,
+            Map<Integer, DanhGia> reviews,
             boolean includeFinance
     ) {
         List<OrderItemResponse> items = chiTietDonHangRepository
@@ -79,9 +95,15 @@ public class OrderMapper {
                         .maCTDH(ct.getMaCTDH())
                         .maSach(ct.getSach().getMaSach())
                         .tenSach(ct.getSach().getTenSach())
+                        .hinhAnhUrl(ct.getSach().getHinhAnhUrl())
                         .soLuong(ct.getSoLuong())
                         .donGia(ct.getDonGia())
                         .thanhTien(ct.getThanhTien())
+                        .coTheDanhGia(!includeFinance
+                                && TrangThaiDonHang.DA_GIAO.name().equals(store.getTrangThaiDonHang())
+                                && !reviews.containsKey(ct.getMaCTDH()))
+                        .danhGia(reviews.containsKey(ct.getMaCTDH())
+                                ? DanhGiaService.toResponse(reviews.get(ct.getMaCTDH())) : null)
                         .build())
                 .toList();
 
@@ -100,6 +122,7 @@ public class OrderMapper {
                 .ghiChu(store.getGhiChu())
                 .maDVVC(carrier == null ? null : carrier.getMaDVVC())
                 .tenDonViVanChuyen(carrier == null ? null : carrier.getTenDonVi())
+                .ngayTao(store.getDonHang() == null ? null : store.getDonHang().getNgayTao())
                 .ngayXacNhan(store.getNgayXacNhan())
                 .ngayGiao(store.getNgayGiao())
                 .ngayHoanTra(store.getNgayHoanTra())
