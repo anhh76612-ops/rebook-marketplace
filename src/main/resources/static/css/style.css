@@ -411,6 +411,7 @@ video.review-media-item { object-fit: contain; background: #171717; }
   .order-card { padding: 1rem; }
 }
 
+
 .order-timeline ul li { display: grid; grid-template-columns: 12.5rem 1fr; gap: .25rem 1rem; align-items: baseline; }
 .order-timeline .tl-time { color: var(--muted); white-space: nowrap; }
 .order-timeline .tl-note { color: inherit; }
@@ -418,3 +419,24 @@ video.review-media-item { object-fit: contain; background: #171717; }
 @media (max-width: 576px) {
   .order-timeline ul li { grid-template-columns: 1fr; }
 }
+
+.carrier-stat { display: flex; align-items: center; gap: .9rem; height: 100%; }
+.carrier-stat-icon { width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--lime-100); color: var(--brown-700); font-size: 1.35rem; }
+.carrier-stat-icon.is-active { background: #DCE6C3; color: var(--olive-grove); }
+.carrier-stat-icon.is-paused { background: #E8CFC9; color: var(--deep-mahogany); }
+.carrier-stat-value { font-size: 1.45rem; font-weight: 700; color: var(--brown-900); line-height: 1.1; }
+.carrier-stat-label { font-size: .85rem; color: var(--muted); }
+.carrier-badge-active { background: #DCE6C3; color: var(--olive-grove); }
+.carrier-badge-paused { background: #E8CFC9; color: var(--deep-mahogany); }
+.carrier-code { display: inline-block; padding: .2rem .55rem; border-radius: 6px; background: var(--lime-100); border: 1px solid var(--line); color: var(--brown-900); font-weight: 700; font-size: .85rem; letter-spacing: .03em; }
+.carrier-form-section { font-size: .8rem; font-weight: 700; color: var(--brown-900); text-transform: uppercase; letter-spacing: .06em; padding-bottom: .4rem; margin-bottom: .9rem; border-bottom: 1px solid var(--line); }
+.carrier-link-input { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: .88rem; background: var(--lime-100) !important; }
+.carrier-link-mail { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .9rem 1rem; border: 1px dashed var(--dull-chestnut); border-radius: 12px; background: #fff; }
+.carrier-link-mail .btn.disabled { opacity: .55; }
+.carrier-pre { white-space: pre-wrap; }
+
+@media (max-width: 575px) {
+  .carrier-stat { flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .carrier-stat-value { font-size: 1.25rem; }
+}
+

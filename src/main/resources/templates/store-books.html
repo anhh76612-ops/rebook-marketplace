@@ -10,7 +10,7 @@
   <link th:href="@{/css/style.css}" rel="stylesheet">
 </head>
 <body data-page-requires-login>
-<div th:replace="~{fragments/header :: header}"></div>
+<div th:replace="~{fragments/store/header :: header}"></div>
 <main class="container py-4" id="sellerPage">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
@@ -19,7 +19,7 @@
     </div>
     <button type="button" class="btn btn-outline-secondary" id="refreshStore"><i class="bi bi-arrow-clockwise me-1"></i>Làm mới</button>
   </div>
-  <div id="sellerAccessError" class="alert alert-warning d-none" role="alert">Trang này dành cho tài khoản chủ cửa hàng. Hãy đăng nhập bằng vai trò chủ cửa hàng để tiếp tục. <a th:href="@{/login(redirect='/vendor/books')}" class="alert-link">Đăng nhập</a></div>
+  <div id="sellerAccessError" class="alert alert-warning d-none" role="alert">Trang này dành cho tài khoản chủ cửa hàng. Hãy đăng nhập bằng vai trò chủ cửa hàng để tiếp tục. <a th:href="@{/login(redirect='/store/books')}" class="alert-link">Đăng nhập</a></div>
 
   <section id="sellerWorkspace">
     <div id="storeLoading" class="panel p-4 text-muted" role="status"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải cửa hàng...</div>
@@ -123,7 +123,7 @@
     <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button><button type="submit" class="btn btn-accent" form="sellerStockForm" id="saveStock">Lưu tồn kho</button></div>
   </div></div>
 </div>
-<div th:replace="~{fragments/footer :: footer}"></div>
+<div th:replace="~{fragments/store/footer :: footer}"></div>
 <script th:src="@{/js/store.js}"></script>
 </body>
 </html>

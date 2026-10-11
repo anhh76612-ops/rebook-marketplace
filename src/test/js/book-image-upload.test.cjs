@@ -14,7 +14,7 @@ const existingBook = {
 };
 
 async function seller(handler, book = null) {
-  const app = boot('vendor-books.html', ['store.js'], async call => {
+  const app = boot('store-books.html', ['store.js'], async call => {
     if (call.url === '/api/profile') { return { hoTen: 'Chủ cửa hàng' }; }
     if (call.url === '/api/store/me') { return { maCH: 7, tenCuaHang: 'Cửa hàng', trangThaiDuyet: 'DA_DUYET' }; }
     if (call.url.startsWith(BASE + '?')) { return page(book ? [book] : []); }

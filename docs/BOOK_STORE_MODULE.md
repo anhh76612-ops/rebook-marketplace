@@ -25,14 +25,14 @@ Trang công khai:
 
 Quản lý shop và kiểm duyệt có giao diện gọi REST API:
 
-- `/vendor/books` hoặc `/store`: chủ cửa hàng đăng ký/sửa cửa hàng, xem trạng thái duyệt, quản lý sách, tồn kho và trạng thái bán.
+- `/store/books` hoặc `/store`: chủ cửa hàng đăng ký/sửa cửa hàng, xem trạng thái duyệt, quản lý sách, tồn kho và trạng thái bán.
 - `/store-moderation`: quản lý/quản trị viên lọc, xem chi tiết và duyệt/từ chối cửa hàng hoặc sách.
 - `/admin/accounts`: quản trị viên quản lý tài khoản và cấp vai trò.
 
 Menu và trang đích sau đăng nhập phụ thuộc vai trò trong JWT. Các trang HTML tải JWT từ trình duyệt khi gọi API; quyền truy cập dữ liệu vẫn được kiểm tra ở backend.
 Quản lý shop và kiểm duyệt đã có giao diện gọi REST API:
 
-- `/vendor/books` (hoặc `/store`): chủ cửa hàng đăng ký/sửa cửa hàng, xem trạng thái duyệt và lý do từ chối; xem chi tiết sách ở mọi trạng thái, thêm/sửa sách, cập nhật tồn kho, bật/ngừng bán, lọc và phân trang sách của mình.
+- `/store/books` (hoặc `/store`): chủ cửa hàng đăng ký/sửa cửa hàng, xem trạng thái duyệt và lý do từ chối; xem chi tiết sách ở mọi trạng thái, thêm/sửa sách, cập nhật tồn kho, bật/ngừng bán, lọc và phân trang sách của mình.
 - `/store-moderation`: quản lý/quản trị viên lọc và phân trang cửa hàng/sách, xem đầy đủ chi tiết, duyệt hoặc từ chối kèm lý do.
 
 Menu hiển thị chức năng theo vai trò đăng nhập. Các trang này tải JWT từ trình duyệt và gửi `Authorization: Bearer <JWT>` khi gọi API; quyền truy cập dữ liệu vẫn được kiểm tra tại backend. Thông tin cửa hàng và sách lấy từ API, không dùng dữ liệu mẫu. Thao tác ghi sách chỉ được bật khi cửa hàng `DA_DUYET`. Ảnh sách nhập bằng URL vì API hiện tại chưa hỗ trợ tải tệp.

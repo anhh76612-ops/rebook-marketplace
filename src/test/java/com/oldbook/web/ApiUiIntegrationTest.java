@@ -42,7 +42,7 @@ class ApiUiIntegrationTest {
     void htmlShellsRenderWithoutJwtAndTheirApisStillRequirePermissions() throws Exception {
         var pages = Map.of(
                 "/store", "store.js",
-                "/vendor/books", "store.js",
+                "/store/books", "store.js",
                 "/store-moderation", "store-moderation.js",
                 "/admin/accounts", "admin/accounts-roles.js",
                 "/profile", "profile.js",

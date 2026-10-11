@@ -6,13 +6,13 @@ const { boot, settle, sessionToken } = require('./dom-harness.cjs');
 const page = items => ({ content: items, page: 0, size: 20, totalElements: items.length, totalPages: items.length ? 1 : 0 });
 const profile = { hoTen: 'Người dùng dùng chung' };
 const roleHomes = {
-  KHACH_HANG: '/', CHU_CUA_HANG: '/vendor/books', QUAN_LY: '/store-moderation',
+  KHACH_HANG: '/', CHU_CUA_HANG: '/store/books', QUAN_LY: '/store-moderation',
   QUAN_TRI_VIEN: '/admin/dashboard', DON_VI_VAN_CHUYEN: '/'
 };
 const managementLinks = {
-  CHU_CUA_HANG: [['/vendor/books', 'Cửa hàng của tôi']],
-  QUAN_LY: [['/store-moderation', 'Kiểm duyệt cửa hàng và sách']],
-  QUAN_TRI_VIEN: [['/admin/accounts', 'Quản lý tài khoản'], ['/store-moderation', 'Kiểm duyệt cửa hàng và sách']]
+  CHU_CUA_HANG: [['/store/books', 'Cửa hàng của tôi']],
+  QUAN_LY: [['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển']],
+  QUAN_TRI_VIEN: [['/admin/accounts', 'Quản lý tài khoản'], ['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển']]
 };
 const purchaseLinks = [['/wishlist', 'Sản phẩm yêu thích'], ['/cart', 'Giỏ hàng'], ['/orders', 'Theo dõi đơn hàng']];
 const accountPurchaseLinks = [['/orders', 'Đơn hàng của tôi'], ['/wishlist', 'Sản phẩm yêu thích'], ['/cart', 'Giỏ hàng']];
@@ -206,7 +206,7 @@ test('actual multi-role picker selects the exact account using the selection tok
 });
 
 test('already authenticated login page uses its role home or a safe explicit redirect without posting credentials', async () => {
-  for (const [search, target] of [['', '/vendor/books'], ['?redirect=%2Fbooks', '/books'], ['?redirect=%2F%2Fevil.example', '/vendor/books']]) {
+  for (const [search, target] of [['', '/store/books'], ['?redirect=%2Fbooks', '/books'], ['?redirect=%2F%2Fevil.example', '/store/books']]) {
     const app = boot('auth/login.html', [], async () => profile, 'CHU_CUA_HANG', { pathname: '/login', search, runInline: true });
     await settle();
     assert.deepEqual(app.redirects, [target]);
@@ -286,7 +286,7 @@ test('seller edits preserve optional content, omit stock, and update stock/sale 
     giaBia: 150000, giaBanCu: 75000, doMoiPercent: 92.5, tinhTrangVatLy: 'Không rách trang', moTaChiTiet: 'Mô tả giữ lại',
     hinhAnhUrl: '/images/existing.jpg', soLuongTon: 12, trangThaiDuyet: 'DA_DUYET', trangThaiBan: 'DANG_BAN'
   };
-  const app = boot('vendor-books.html', ['store.js'], async call => {
+  const app = boot('store-books.html', ['store.js'], async call => {
     if (call.url === '/api/profile') { return profile; }
     if (call.url === '/api/store/me') { return { maCH: 7, tenCuaHang: 'Cửa hàng', trangThaiDuyet: 'DA_DUYET' }; }
     if (call.url.startsWith('/api/store/me/sach?')) { return page([book]); }
@@ -336,7 +336,7 @@ test('seller edits preserve optional content, omit stock, and update stock/sale 
 });
 
 test('seller preserves visibility of pending store books while preventing writes', async () => {
-  const app = boot('vendor-books.html', ['store.js'], async call => {
+  const app = boot('store-books.html', ['store.js'], async call => {
     if (call.url === '/api/profile') { return profile; }
     if (call.url === '/api/store/me') { return { maCH: 7, tenCuaHang: 'Chờ duyệt', trangThaiDuyet: 'CHO_DUYET' }; }
     if (call.url.startsWith('/api/store/me/sach?')) { return page([{ maSach: 41, tenSach: 'Sách hiện có', soLuongTon: 4 }]); }
@@ -358,7 +358,7 @@ test('pending and rejected stores can read full private book details without ena
       giaBia: 150000, giaBanCu: 75000, doMoiPercent: 92.5, tinhTrangVatLy: 'Không rách trang', moTaChiTiet: 'Mô tả đầy đủ của sách riêng',
       hinhAnhUrl: '/images/existing.jpg', soLuongTon: 4, trangThaiDuyet: 'TU_CHOI', trangThaiBan: 'NGUNG_BAN', lyDoTuChoi: '<script>Thiếu mô tả</script>'
     };
-    const app = boot('vendor-books.html', ['store.js'], async call => {
+    const app = boot('store-books.html', ['store.js'], async call => {
       if (call.url === '/api/profile') { return profile; }
       if (call.url === '/api/store/me') { return { maCH: 7, tenCuaHang: 'Cửa hàng', trangThaiDuyet: storeStatus }; }
       if (call.url.startsWith('/api/store/me/sach?')) { return page([book]); }
@@ -400,7 +400,7 @@ test('seller blocks another stock mutation until the successful write finishes r
   let listRequests = 0;
   let releaseRefresh;
   const refreshPending = new Promise(resolve => { releaseRefresh = resolve; });
-  const app = boot('vendor-books.html', ['store.js'], async call => {
+  const app = boot('store-books.html', ['store.js'], async call => {
     if (call.url === '/api/profile') { return profile; }
     if (call.url === '/api/store/me') { return { maCH: 7, tenCuaHang: 'Cửa hàng', trangThaiDuyet: 'DA_DUYET' }; }
     if (call.url.startsWith('/api/store/me/sach?')) {
@@ -539,4 +539,3 @@ test('admin role guard blocks API access and self-role changes force reauthentic
   assert.equal(app.redirects.at(-1), '/login?redirect=%2F');
   assert.equal(app.calls.filter(call => call.method === 'GET' && call.url.startsWith('/api/admin/tai-khoan')).length, 1);
 });
-
