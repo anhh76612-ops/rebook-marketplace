@@ -126,6 +126,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/recently-viewed", "/api/recently-viewed/**")
                         .hasRole("KHACH_HANG")
 
+                        .requestMatchers("/api/reviews/**")
+                        .hasRole("KHACH_HANG")
+
                         .anyRequest().authenticated()
                 )
 

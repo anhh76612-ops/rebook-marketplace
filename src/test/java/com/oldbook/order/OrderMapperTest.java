@@ -8,6 +8,7 @@ import com.oldbook.entity.order.DonHangCuaHang;
 import com.oldbook.repository.order.ChiTietDonHangRepository;
 import com.oldbook.repository.shipping.LichSuVanChuyenRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
+import com.oldbook.repository.system.DanhGiaRepository;
 import com.oldbook.service.order.OrderMapper;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,6 +28,7 @@ class OrderMapperTest {
     @Mock ChiTietDonHangRepository items;
     @Mock VanChuyenRepository shipments;
     @Mock LichSuVanChuyenRepository history;
+    @Mock DanhGiaRepository reviews;
     @InjectMocks OrderMapper mapper;
 
     @ParameterizedTest
@@ -35,6 +37,7 @@ class OrderMapperTest {
     void includesBookCoverInCustomerAndSellerOrderItems(String imageUrl) {
         Sach book = Sach.builder().maSach(3).tenSach("Book").hinhAnhUrl(imageUrl).build();
         DonHangCuaHang store = DonHangCuaHang.builder().maDHCH(2)
+                .trangThaiDonHang("DA_GIAO")
                 .cuaHang(CuaHang.builder().maCH(1).tenCuaHang("Store").build()).build();
         when(items.findAllByDonHangCuaHang_MaDHCHOrderByMaCTDHAsc(2))
                 .thenReturn(List.of(ChiTietDonHang.builder().maCTDH(4).sach(book).soLuong(1).build()));
@@ -42,6 +45,9 @@ class OrderMapperTest {
 
         StoreOrderResponse customer = mapper.toStoreOrderResponses(List.of(store)).getFirst();
         StoreOrderResponse seller = mapper.toStoreOrderResponse(store, null);
+
+        assertThat(customer.getItems().getFirst().isCoTheDanhGia()).isTrue();
+        assertThat(seller.getItems().getFirst().isCoTheDanhGia()).isFalse();
 
         for (StoreOrderResponse response : List.of(customer, seller)) {
             assertThat(response.getItems()).hasSize(1);
