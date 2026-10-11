@@ -4,7 +4,10 @@ import com.oldbook.constant.catalog.TrangThaiBan;
 import com.oldbook.constant.catalog.TrangThaiDuyet;
 import com.oldbook.dto.catalog.SachSearchRequest;
 import com.oldbook.entity.catalog.Sach;
+import com.oldbook.entity.system.DanhGia;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -55,6 +58,18 @@ public final class SachSpecifications {
         if (request.getDoMoiDen() != null) {
             specification = specification.and((root, query, cb) ->
                     cb.lessThanOrEqualTo(root.get("doMoiPercent"), request.getDoMoiDen()));
+        }
+        if (request.getSoSaoTu() != null) {
+            specification = specification.and((root, query, cb) -> {
+                Subquery<Double> averageRating = query.subquery(Double.class);
+                Root<DanhGia> review = averageRating.from(DanhGia.class);
+                // Cast in SQL before averaging: SQL Server AVG(int) truncates fractions.
+                averageRating.select(cb.avg(review.<Integer>get("soSao").cast(Double.class)));
+                averageRating.where(
+                        cb.equal(review.get("chiTietDonHang").get("sach").get("maSach"), root.get("maSach")),
+                        cb.between(review.get("soSao"), 1, 5));
+                return cb.greaterThanOrEqualTo(averageRating, request.getSoSaoTu().doubleValue());
+            });
         }
         if (request.getTinhTrang() != null && !request.getTinhTrang().isEmpty()) {
             specification = specification.and((root, query, cb) -> cb.or(

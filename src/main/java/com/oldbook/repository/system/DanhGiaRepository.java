@@ -11,7 +11,7 @@ import java.util.List;
 
 @Repository
 public interface DanhGiaRepository extends JpaRepository<DanhGia, Integer> {
-    @EntityGraph(attributePaths = "nguoiDung")
+    @EntityGraph(attributePaths = {"nguoiDung", "media"})
     @Query("""
             select dg from DanhGia dg
             where dg.chiTietDonHang.sach.maSach = :maSach
@@ -19,4 +19,9 @@ public interface DanhGiaRepository extends JpaRepository<DanhGia, Integer> {
             order by dg.ngayDanhGia desc, dg.maDanhGia desc
             """)
     List<DanhGia> findBySach(@Param("maSach") Integer maSach);
+
+    boolean existsByChiTietDonHang_MaCTDH(Integer maCTDH);
+
+    @EntityGraph(attributePaths = {"chiTietDonHang", "nguoiDung", "media"})
+    List<DanhGia> findAllByChiTietDonHang_DonHangCuaHang_MaDHCHIn(List<Integer> maDHCH);
 }

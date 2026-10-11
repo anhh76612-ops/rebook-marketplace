@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.oldbook.entity.identity.NguoiDung;
 import com.oldbook.entity.order.ChiTietDonHang;
@@ -38,6 +40,11 @@ public class DanhGia {
 
     @Column(name = "ngay_danh_gia", updatable = false)
     private LocalDateTime ngayDanhGia;
+
+    @OneToMany(mappedBy = "danhGia", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("maMedia ASC")
+    @Builder.Default
+    private List<DanhGiaMedia> media = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
