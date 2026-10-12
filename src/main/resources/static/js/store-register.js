@@ -17,13 +17,18 @@
   var PANELS = ['registerLoading', 'registerFormPanel', 'alreadySellerPanel', 'wrongRolePanel', 'registerLoadError'];
   var ACCOUNT_ACTIVE = 'HOAT_DONG';
   var PHONE_PATTERN = /^[0-9+ ().-]{8,20}$/;
+  var ACCOUNT_PATTERN = /^[0-9A-Za-z]{4,30}$/;
 
   var fields = {
     name: document.getElementById('registerStoreName'),
     phone: document.getElementById('registerStorePhone'),
     address: document.getElementById('registerStoreAddress'),
-    description: document.getElementById('registerStoreDescription')
+    description: document.getElementById('registerStoreDescription'),
+    bank: document.getElementById('registerBank'),
+    bankAccount: document.getElementById('registerBankAccount'),
+    bankOwner: document.getElementById('registerBankOwner')
   };
+  window.OldBookBanks.fill(fields.bank, '');
   var button = document.getElementById('registerBtn');
   var errorBox = document.getElementById('registerError');
 
@@ -96,6 +101,14 @@
       : (PHONE_PATTERN.test(phone) ? '' : 'Số điện thoại gồm 8 đến 20 chữ số.'));
     setFieldError(fields.address, address ? '' : 'Nhập địa chỉ lấy hàng.');
 
+    var bank = fields.bank.value;
+    var bankAccount = fields.bankAccount.value.trim();
+    var bankOwner = fields.bankOwner.value.trim();
+    setFieldError(fields.bank, bank ? '' : 'Chọn ngân hàng.');
+    setFieldError(fields.bankAccount, !bankAccount ? 'Nhập số tài khoản.'
+      : (ACCOUNT_PATTERN.test(bankAccount) ? '' : 'Số tài khoản chỉ gồm chữ và số, từ 4 đến 30 ký tự.'));
+    setFieldError(fields.bankOwner, bankOwner ? '' : 'Nhập tên chủ tài khoản.');
+
     var firstInvalid = form.querySelector('.is-invalid');
     if (firstInvalid) {
       firstInvalid.focus();
@@ -106,7 +119,10 @@
       tenCuaHang: name,
       soDienThoaiCH: phone,
       diaChiCH: address,
-      moTa: fields.description.value.trim() || null
+      moTa: fields.description.value.trim() || null,
+      maNganHang: bank,
+      soTaiKhoan: bankAccount,
+      tenChuTaiKhoan: bankOwner
     };
   }
 

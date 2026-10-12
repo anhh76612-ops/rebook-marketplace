@@ -9,6 +9,7 @@ import com.oldbook.entity.identity.NguoiDung;
 import com.oldbook.entity.identity.TaiKhoan;
 import com.oldbook.repository.identity.NguoiDungRepository;
 import com.oldbook.repository.identity.TaiKhoanRepository;
+import com.oldbook.dto.payment.TaiKhoanNhanRequest;
 import com.oldbook.dto.store.CreateCuaHangRequest;
 import com.oldbook.dto.store.CuaHangResponse;
 import com.oldbook.dto.store.DangKyGianHangResponse;
@@ -91,9 +92,32 @@ public class StoreService {
                 .soDienThoaiCH(requireText(request.soDienThoaiCH(), "Số điện thoại cửa hàng", 20))
                 .trangThaiDuyet(TrangThaiDuyet.CHO_DUYET.name())
                 .build();
+        if (request.maNganHang() != null || request.soTaiKhoan() != null || request.tenChuTaiKhoan() != null) {
+            ganTaiKhoanNhanTien(cuaHang, request.maNganHang(), request.soTaiKhoan(), request.tenChuTaiKhoan());
+        }
         CuaHang daLuu = cuaHangRepository.save(cuaHang);
         nghiepVuThongBaoService.gianHangChoDuyet(daLuu, false);
         return daLuu;
+    }
+
+    /**
+     * Đổi tài khoản nhận tiền sàn chi. Khác với sửa thông tin cửa hàng, việc này không đưa cửa hàng
+     * về trạng thái chờ duyệt: tài khoản ngân hàng không phải nội dung cần kiểm duyệt.
+     */
+    @Transactional
+    public CuaHangResponse capNhatTaiKhoanNhanTien(TaiKhoanNhanRequest request) {
+        Integer maND = storeAccess.requireOwner();
+        CuaHang cuaHang = cuaHangRepository.findByChuShopMaNDForUpdate(maND)
+                .orElseThrow(() -> new BusinessException("Bạn chưa đăng ký cửa hàng"));
+        ganTaiKhoanNhanTien(cuaHang, request.maNganHang(), request.soTaiKhoan(), request.tenChuTaiKhoan());
+        return CuaHangResponse.from(cuaHangRepository.save(cuaHang));
+    }
+
+    // Ba trường đi cùng nhau: thiếu một trường thì không chuyển khoản được.
+    private void ganTaiKhoanNhanTien(CuaHang cuaHang, String maNganHang, String soTaiKhoan, String tenChuTaiKhoan) {
+        cuaHang.setMaNganHang(requireText(maNganHang, "Ngân hàng", 20));
+        cuaHang.setSoTaiKhoan(requireText(soTaiKhoan, "Số tài khoản", 50));
+        cuaHang.setTenChuTaiKhoan(requireText(tenChuTaiKhoan, "Tên chủ tài khoản", 255));
     }
 
     @Transactional

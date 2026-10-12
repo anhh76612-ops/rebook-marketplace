@@ -11,13 +11,13 @@ const roleHomes = {
 };
 const managementLinks = {
   CHU_CUA_HANG: [['/store/books', 'Cửa hàng của tôi']],
-  QUAN_LY: [['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển']],
-  QUAN_TRI_VIEN: [['/admin/accounts', 'Quản lý tài khoản'], ['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển']]
+  QUAN_LY: [['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển'], ['/management/payments', 'Quản lý thanh toán']],
+  QUAN_TRI_VIEN: [['/admin/accounts', 'Quản lý tài khoản'], ['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển'], ['/management/payments', 'Quản lý thanh toán']]
 };
-// Header khách hàng: topbar có "Theo dõi đơn hàng", dropdown tài khoản có "Đơn hàng của tôi", mainbar có "Yêu thích".
+// Header khách hàng: topbar có "Theo dõi đơn hàng", dropdown tài khoản có "Đơn hàng của tôi" và "Hoàn tiền của tôi", mainbar có "Yêu thích".
 // Giỏ hàng không còn trên header: nó là nút nổi trong fragments/cart-drawer.html.
 const headerGuestLinks = [['/orders', 'Theo dõi đơn hàng'], ['/wishlist', 'Yêu thích']];
-const headerCustomerLinks = [['/orders', 'Theo dõi đơn hàng'], ['/orders', 'Đơn hàng của tôi'], ['/wishlist', 'Yêu thích']];
+const headerCustomerLinks = [['/orders', 'Theo dõi đơn hàng'], ['/orders', 'Đơn hàng của tôi'], ['/payment/refunds', 'Hoàn tiền của tôi'], ['/wishlist', 'Yêu thích']];
 const footerPurchaseLinks = [['/wishlist', 'Sản phẩm yêu thích'], ['/orders', 'Đơn hàng của tôi'], ['/cart', 'Giỏ hàng']];
 const ACTIVE = 'HOAT_DONG';
 

@@ -2,6 +2,7 @@ package com.oldbook.entity.catalog;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 
@@ -39,6 +40,17 @@ public class CuaHang {
 
     @Column(name = "trang_thai_duyet", length = 50)
     private String trangThaiDuyet;
+
+    // Tài khoản nhận tiền sàn chi cho các đơn khách đã chuyển khoản trước. Cửa hàng tạo từ trước có thể chưa khai.
+    @Column(name = "ma_ngan_hang", length = 20)
+    private String maNganHang;
+
+    @Column(name = "so_tai_khoan", length = 50)
+    private String soTaiKhoan;
+
+    @Nationalized
+    @Column(name = "ten_chu_tai_khoan", length = 255)
+    private String tenChuTaiKhoan;
 
     @Column(name = "ngay_tao", updatable = false)
     private LocalDateTime ngayTao;

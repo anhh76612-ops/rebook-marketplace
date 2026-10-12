@@ -14,6 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.util.Locale;
+
 /**
  * Quyết định sự kiện nghiệp vụ nào thì báo cho ai, với khách hàng, chủ cửa hàng và quản lý.
  * (Thông báo cho quản trị viên có quy tắc riêng trong AdminThongBaoService.)
@@ -23,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
  *   cửa hàng, sách được duyệt / bị từ chối | chủ cửa hàng đó
  *   đơn được xác nhận, đổi trạng thái giao | khách mua
  *   được thêm vai trò                     | các tài khoản đang có của người đó
+ *   thanh toán xong, có khoản hoàn, đã hoàn | khách mua
+ *   có khoản cần hoàn hoặc cần chi         | mọi Quản lý
+ *   sàn đã chi tiền, thiếu tài khoản nhận  | chủ cửa hàng đó
  *
  * Các service khác chỉ gọi một dòng vào đây, không tự soạn nội dung thông báo.
  * Thông báo gắn với tài khoản: người có nhiều vai trò thấy thông báo của tài khoản đang dùng.
@@ -34,6 +41,9 @@ public class NghiepVuThongBaoService {
     private static final String TRANG_KIEM_DUYET = "/store-moderation";
     private static final String TRANG_CUA_HANG = "/store/books";
     private static final String TRANG_DON_HANG = "/orders";
+    private static final String TRANG_DON_CUA_HANG = "/store/orders";
+    private static final String TRANG_HOAN_TIEN = "/payment/refunds";
+    private static final String TRANG_QUAN_LY_THANH_TOAN = "/management/payments";
 
     private final ThongBaoService thongBaoService;
     private final TaiKhoanRepository taiKhoanRepository;
@@ -140,6 +150,78 @@ public class NghiepVuThongBaoService {
                 .stream()
                 .filter(taiKhoan -> !taiKhoan.getMaTK().equals(taiKhoanMoi.getMaTK()))
                 .forEach(taiKhoan -> thongBaoService.guiChoTaiKhoan(taiKhoan, noiDung));
+    }
+
+    @Transactional
+    public void thanhToanThanhCong(NguoiDung khach, Integer maDH, BigDecimal soTien) {
+        guiChoTaiKhoanCua(khach, VaiTro.KHACH_HANG, new NoiDungThongBao(
+                "THANH_TOAN_THANH_CONG",
+                MucDoThongBao.THONG_TIN,
+                "Thanh toán thành công",
+                "Đã nhận " + tien(soTien) + ". Đơn hàng #" + maDH + " đã được tạo và chuyển cho cửa hàng.",
+                TRANG_DON_HANG
+        ));
+    }
+
+    @Transactional
+    public void canTaiKhoanHoanTien(NguoiDung khach, BigDecimal soTien, String lyDo) {
+        guiChoTaiKhoanCua(khach, VaiTro.KHACH_HANG, new NoiDungThongBao(
+                "CAN_TAI_KHOAN_HOAN_TIEN",
+                MucDoThongBao.QUAN_TRONG,
+                "Bạn có khoản hoàn tiền " + tien(soTien),
+                lyDo + " Vui lòng nhập tài khoản ngân hàng để nhận lại tiền.",
+                TRANG_HOAN_TIEN
+        ));
+    }
+
+    @Transactional
+    public void daHoanTien(NguoiDung khach, BigDecimal soTien) {
+        guiChoTaiKhoanCua(khach, VaiTro.KHACH_HANG, new NoiDungThongBao(
+                "DA_HOAN_TIEN",
+                MucDoThongBao.THONG_TIN,
+                "Đã hoàn " + tien(soTien),
+                "Sàn đã chuyển khoản hoàn tiền vào tài khoản bạn cung cấp.",
+                TRANG_HOAN_TIEN
+        ));
+    }
+
+    @Transactional
+    public void coKhoanCanChuyen(boolean hoanTien, BigDecimal soTien, String moTa) {
+        thongBaoService.guiChoVaiTro(VaiTro.QUAN_LY, null, new NoiDungThongBao(
+                hoanTien ? "CAN_HOAN_TIEN" : "CAN_CHI_CUA_HANG",
+                MucDoThongBao.QUAN_TRONG,
+                (hoanTien ? "Cần hoàn tiền " : "Cần chi cho cửa hàng ") + tien(soTien),
+                moTa,
+                TRANG_QUAN_LY_THANH_TOAN
+        ));
+    }
+
+    @Transactional
+    public void daChiChoCuaHang(CuaHang cuaHang, Integer maDHCH, BigDecimal soTien) {
+        guiChoChuCuaHang(cuaHang, new NoiDungThongBao(
+                "DA_CHI_CUA_HANG",
+                MucDoThongBao.THONG_TIN,
+                "Sàn đã chi " + tien(soTien),
+                "Tiền của đơn #" + maDHCH + " (đã trừ hoa hồng) đã được chuyển vào tài khoản của cửa hàng.",
+                TRANG_DON_CUA_HANG
+        ));
+    }
+
+    @Transactional
+    public void canTaiKhoanNhanTien(CuaHang cuaHang, Integer maDHCH) {
+        guiChoChuCuaHang(cuaHang, new NoiDungThongBao(
+                "CAN_TAI_KHOAN_NHAN_TIEN",
+                MucDoThongBao.QUAN_TRONG,
+                "Cần tài khoản ngân hàng để nhận tiền",
+                "Đơn #" + maDHCH + " đã giao xong nhưng cửa hàng chưa khai tài khoản nhận tiền. "
+                        + "Vui lòng bổ sung trong thông tin cửa hàng.",
+                TRANG_CUA_HANG
+        ));
+    }
+
+    private static String tien(BigDecimal soTien) {
+        return NumberFormat.getIntegerInstance(Locale.forLanguageTag("vi-VN"))
+                .format(soTien == null ? BigDecimal.ZERO : soTien) + " đ";
     }
 
     private void guiChoChuCuaHang(CuaHang cuaHang, NoiDungThongBao noiDung) {
