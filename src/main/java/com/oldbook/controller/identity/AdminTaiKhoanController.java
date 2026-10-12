@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.oldbook.dto.common.ApiResponse;
 import com.oldbook.dto.identity.AdminTaiKhoanResponse;
-import com.oldbook.dto.identity.ChangeRoleRequest;
+import com.oldbook.dto.identity.AddRoleRequest;
 import com.oldbook.dto.identity.CreateTaiKhoanRequest;
 import com.oldbook.dto.identity.LockTaiKhoanRequest;
 import com.oldbook.filter.auth.JwtAuthenticationFilter.AuthenticatedUserDetails;
@@ -94,16 +94,17 @@ public class AdminTaiKhoanController {
         );
     }
 
-    @PutMapping("/{maTK}/vai-tro")
-    public ApiResponse<AdminTaiKhoanResponse> changeRole(
+    // Trả về tài khoản mới được tạo cho vai trò vừa thêm, không phải tài khoản {maTK}.
+    @PostMapping("/{maTK}/vai-tro")
+    public ApiResponse<AdminTaiKhoanResponse> addRole(
             @PathVariable Integer maTK,
-            @Valid @RequestBody ChangeRoleRequest request
+            @Valid @RequestBody AddRoleRequest request
     ) {
         AuthenticatedUserDetails currentUser =
                 getCurrentUser();
 
         AdminTaiKhoanResponse response =
-                adminTaiKhoanService.changeRole(
+                adminTaiKhoanService.addRole(
                         maTK,
                         request,
                         currentUser.maTK(),

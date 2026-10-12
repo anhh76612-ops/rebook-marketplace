@@ -15,6 +15,7 @@ import com.oldbook.dto.store.KiemDuyetSearchRequest;
 import com.oldbook.dto.store.TuChoiRequest;
 import com.oldbook.repository.store.CuaHangRepository;
 import com.oldbook.security.store.StoreAccess;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import com.oldbook.entity.system.NhatKyHeThong;
 import com.oldbook.repository.system.NhatKyHeThongRepository;
 import jakarta.persistence.EntityManager;
@@ -41,6 +42,7 @@ public class KiemDuyetService {
     private final NhatKyHeThongRepository nhatKyHeThongRepository;
     private final StoreAccess storeAccess;
     private final EntityManager entityManager;
+    private final NghiepVuThongBaoService nghiepVuThongBaoService;
 
     public PageResponse<CuaHangResponse> timCuaHang(KiemDuyetSearchRequest request) {
         storeAccess.requireModerator();
@@ -103,6 +105,7 @@ public class KiemDuyetService {
         cuaHang.setTrangThaiDuyet(TrangThaiDuyet.DA_DUYET.name());
         cuaHangRepository.save(cuaHang);
         audit(actor, "DUYET_CUA_HANG", "CUA_HANG", maCH, "Phê duyệt cửa hàng");
+        nghiepVuThongBaoService.cuaHangDuocDuyet(cuaHang);
         return CuaHangResponse.from(cuaHang);
     }
 
@@ -116,6 +119,7 @@ public class KiemDuyetService {
         cuaHangRepository.save(cuaHang);
         // Cửa hàng chưa có cột lý do; nhật ký lưu lý do trong cùng giao dịch.
         audit(actor, "TU_CHOI_CUA_HANG", "CUA_HANG", maCH, lyDo);
+        nghiepVuThongBaoService.cuaHangBiTuChoi(cuaHang, lyDo);
         return CuaHangResponse.from(cuaHang).withLyDoTuChoi(lyDo);
     }
 
@@ -131,6 +135,7 @@ public class KiemDuyetService {
         sach.setLyDoTuChoi(null);
         sachRepository.save(sach);
         audit(actor, "DUYET_SACH", "SACH", maSach, "Phê duyệt sách");
+        nghiepVuThongBaoService.sachDuocDuyet(sach);
         return SachMapper.toResponse(sach);
     }
 
@@ -144,6 +149,7 @@ public class KiemDuyetService {
         sach.setLyDoTuChoi(lyDo);
         sachRepository.save(sach);
         audit(actor, "TU_CHOI_SACH", "SACH", maSach, lyDo);
+        nghiepVuThongBaoService.sachBiTuChoi(sach, lyDo);
         return SachMapper.toResponse(sach);
     }
 

@@ -26,6 +26,7 @@ import com.oldbook.service.shipping.ShippingCarrierClient;
 import com.oldbook.service.shipping.ShippingCarrierClient.CarrierShipment;
 import com.oldbook.service.shipping.ShippingCarrierClient.CarrierShipmentRequest;
 import com.oldbook.repository.store.CuaHangRepository;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,7 @@ public class StoreOrderService {
     private final LichSuVanChuyenRepository lichSuVanChuyenRepository;
     private final ShippingCarrierClient carrierClient;
     private final OrderMapper orderMapper;
+    private final NghiepVuThongBaoService nghiepVuThongBaoService;
     private final YeuCauHuyDonRepository yeuCauHuyDonRepository;
     private final OrderSettlementService settlementService;
 
@@ -200,6 +202,7 @@ public class StoreOrderService {
         order.setTrangThaiDonHang(TrangThaiDonHang.DA_XAC_NHAN.name());
         order.setNgayXacNhan(LocalDateTime.now());
         donHangCuaHangRepository.save(order);
+        nghiepVuThongBaoService.donHangDuocXacNhan(order);
 
         VanChuyen vanChuyen = vanChuyenRepository.save(
                 VanChuyen.builder()

@@ -3,6 +3,7 @@ package com.oldbook.controller.store;
 import com.oldbook.dto.common.ApiResponse;
 import com.oldbook.dto.store.CreateCuaHangRequest;
 import com.oldbook.dto.store.CuaHangResponse;
+import com.oldbook.dto.store.DangKyGianHangResponse;
 import com.oldbook.dto.store.UpdateCuaHangRequest;
 import com.oldbook.service.store.StoreService;
 import jakarta.validation.Valid;
@@ -23,6 +24,11 @@ public class StoreController {
     @PostMapping
     public ApiResponse<CuaHangResponse> create(@Valid @RequestBody CreateCuaHangRequest request) {
         return ApiResponse.success(storeService.create(request));
+    }
+
+    @PostMapping("/register")
+    public ApiResponse<DangKyGianHangResponse> register(@Valid @RequestBody CreateCuaHangRequest request) {
+        return ApiResponse.success(storeService.registerAsCustomer(request));
     }
 
     @PutMapping("/me")

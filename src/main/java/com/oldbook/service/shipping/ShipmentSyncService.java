@@ -10,6 +10,7 @@ import com.oldbook.repository.order.DonHangCuaHangRepository;
 import com.oldbook.repository.shipping.LichSuVanChuyenRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
 import com.oldbook.service.order.OrderSettlementService;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,7 @@ public class ShipmentSyncService {
     private final CarrierStatusMapper statusMapper;
     private final OrderSettlementService settlementService;
     private final ShippingProperties properties;
+    private final NghiepVuThongBaoService nghiepVuThongBaoService;
 
     /**
      * @param expectedMaCode mã đơn vị vận chuyển phải sở hữu vận đơn; null = không kiểm tra
@@ -164,6 +166,7 @@ public class ShipmentSyncService {
 
         order.setTrangThaiDonHang(next.toTrangThaiDonHang().name());
         donHangCuaHangRepository.save(order);
+        nghiepVuThongBaoService.donHangDoiTrangThaiGiao(order, next.getTenHienThi());
 
         lichSuVanChuyenRepository.save(LichSuVanChuyen.builder()
                 .vanChuyen(vanChuyen)
