@@ -9,12 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link th:href="@{/css/style.css}" rel="stylesheet">
 </head>
-<body class="bg-light">
+<body>
 <div th:replace="~{fragments/header :: header}"></div>
 <main class="container py-5 text-center">
     <h1 class="h3">Không tìm thấy sách</h1>
     <p class="text-muted">Sách không còn được bán hoặc chưa được công khai.</p>
-    <a th:href="@{/books}" class="btn btn-primary">Quay lại danh sách sách</a>
+    <a th:href="@{/books}" class="btn btn-accent">Quay lại danh sách sách</a>
 </main>
 <div th:replace="~{fragments/footer :: footer}"></div>
 </body>
