@@ -6,6 +6,8 @@ import com.oldbook.entity.catalog.CuaHang;
 import com.oldbook.exception.common.BusinessException;
 import com.oldbook.entity.identity.NguoiDung;
 import com.oldbook.repository.identity.NguoiDungRepository;
+import com.oldbook.repository.identity.TaiKhoanRepository;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import com.oldbook.dto.store.CreateCuaHangRequest;
 import com.oldbook.dto.store.UpdateCuaHangRequest;
 import com.oldbook.repository.store.CuaHangRepository;
@@ -32,6 +34,8 @@ class StoreServiceTest {
     @Mock NguoiDungRepository nguoiDungRepository;
     @Mock StoreAccess storeAccess;
     @Mock NhatKyHeThongRepository nhatKyHeThongRepository;
+    @Mock TaiKhoanRepository taiKhoanRepository;
+    @Mock NghiepVuThongBaoService nghiepVuThongBaoService;
     @InjectMocks StoreService service;
 
     @Test

@@ -4,6 +4,9 @@
 
 <th:block th:fragment="header">
 
+  <!-- Đặt theme lên thẻ <html> trước khi nội dung trang được vẽ -->
+  <script th:src="@{/js/theme.js}"></script>
+
   <div id="roleHeaderSlot"></div>
 
   <!-- Khách hàng (và khách vãng lai) -->

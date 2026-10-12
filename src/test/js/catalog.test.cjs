@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { boot, settle } = require('./dom-harness.cjs');
 
 function catalogApp(books, options = {}, role = null) {
-  return boot('books/catalog.html', ['catalog.js', 'cart.js'], async call => {
+  return boot('books/catalog.html', ['book-cards.js', 'catalog.js', 'cart.js'], async call => {
     if (call.url === '/api/profile') { return { hoTen: 'Người mua' }; }
     if (call.url === '/api/order/cart' && call.method === 'GET') { return { soMuc: 0 }; }
     if (call.url === '/api/order/cart/items') { return { soMuc: 1 }; }
@@ -47,6 +47,66 @@ test('home shows the index sections with affordable, newest and book-set grids',
   assert.equal(app.get('bookSetGrid').children[0].className, 'col-6 col-md-4 col-lg-2');
   assert.equal(app.get('catalogLoading').classList.contains('d-none'), true);
   assert.equal(app.calls.filter(call => call.url.startsWith('/api/sach')).length, 1);
+  for (const id of ['cheapBooksSection', 'bookSetsSection']) {
+    assert.equal(app.get(id).classList.contains('d-none'), false);
+  }
+});
+
+test('home figures, shop list and quick category filter come from the loaded books', async () => {
+  const books = [
+    book(1, { tenCuaHang: 'Tiệm A', tenDanhMuc: 'Văn học', ngayTao: '2026-10-01T10:00:00' }),
+    book(2, { tenCuaHang: 'Tiệm A', tenDanhMuc: 'Kinh tế', ngayTao: '2026-10-02T10:00:00' }),
+    book(3, { tenCuaHang: 'Tiệm B', tenDanhMuc: 'Văn học', ngayTao: '2026-10-03T10:00:00' }),
+    book(4, { tenCuaHang: '<b>Tiệm C</b>', tenDanhMuc: 'Văn học', ngayTao: '2026-10-04T10:00:00' })
+  ];
+  const app = catalogApp(books);
+  await settle();
+
+  assert.equal(app.get('homeStatBooks').textContent, '4');
+  assert.equal(app.get('homeStatShops').textContent, '3');
+  assert.equal(app.get('homeStats').classList.contains('d-none'), false);
+  assert.equal(app.get('shopCount').textContent, '3 cửa hàng');
+  const shops = app.get('shopList').querySelectorAll('.shop-network-item').map(item => item.textContent);
+  assert.deepEqual(shops, ['Tiệm A2 đầu sách', '<b>Tiệm C</b>1 đầu sách', 'Tiệm B1 đầu sách']);
+  assert.equal(app.get('shopList').querySelector('b'), null);
+
+  const chips = app.get('newBooksFilter').querySelectorAll('[data-new-category]');
+  assert.deepEqual(chips.map(chip => chip.textContent), ['Tất cả', 'Văn học', 'Kinh tế']);
+  assert.equal(app.get('newBooksFilter').classList.contains('d-none'), false);
+  assert.deepEqual(ids(app, 'bookGrid'), [4, 3, 2, 1]);
+
+  app.trigger(chips[1]);
+  assert.deepEqual(ids(app, 'bookGrid'), [4, 3, 1]);
+  assert.deepEqual(chips.map(chip => chip.classList.contains('active')), [false, true, false]);
+  assert.deepEqual(chips.map(chip => chip.getAttribute('aria-pressed')), ['false', 'true', 'false']);
+  assert.equal(app.calls.filter(call => call.url.startsWith('/api/sach')).length, 1, 'filtering does not hit the server again');
+
+  app.trigger(chips[0]);
+  assert.deepEqual(ids(app, 'bookGrid'), [4, 3, 2, 1]);
+});
+
+test('cards show the discount against the cover price and warn when stock is low', async () => {
+  const app = catalogApp([
+    book(1, { giaBia: 100000, giaBanCu: 60000, soLuongTon: 2, doMoiPercent: 91.6, tenDanhMuc: 'Văn học' }),
+    book(2, { giaBia: 50000, giaBanCu: 50000, soLuongTon: 9 }),
+    book(3, { giaBia: null, giaBanCu: 30000, soLuongTon: 0 })
+  ], { pathname: '/books' });
+  await settle();
+
+  const cards = app.get('bookGrid').querySelectorAll('.book-card');
+  assert.equal(cards[0].querySelector('.price-off').textContent, '-40%');
+  assert.equal(cards[0].querySelector('.price-old').textContent, '100,000 đ');
+  assert.equal(cards[0].querySelector('.book-stock-note').textContent, 'Chỉ còn 2 cuốn');
+  assert.equal(cards[0].querySelector('.condition-badge').textContent, 'Độ mới 92%');
+  assert.equal(cards[0].querySelector('.book-category-tag').textContent, 'Văn học');
+  assert.ok(cards[0].querySelector('[data-add-to-cart]'));
+
+  // Giá bán không thấp hơn giá bìa, hoặc không có giá bìa: không hiện mức giảm.
+  assert.equal(cards[1].querySelector('.price-off'), null);
+  assert.equal(cards[1].querySelector('.book-stock-note'), null);
+  assert.equal(cards[2].querySelector('.price-off'), null);
+  assert.equal(cards[2].querySelector('.book-stock-note').textContent, 'Hết hàng');
+  assert.equal(cards[2].querySelector('[data-add-to-cart]'), null);
 });
 
 test('all-books and filtered routes retain the complete catalog and API query', async () => {
@@ -72,11 +132,13 @@ test('all-books and filtered routes retain the complete catalog and API query', 
   }
 });
 
-test('empty sections and catalog failures finish loading and show their messages', async () => {
+test('empty sections are hidden entirely and catalog failures finish loading with their messages', async () => {
   const empty = catalogApp([]);
   await settle();
-  for (const id of ['catalogEmpty', 'cheapBooksEmpty', 'bookSetsEmpty']) {
-    assert.equal(empty.get(id).classList.contains('d-none'), false);
+  assert.equal(empty.get('catalogEmpty').classList.contains('d-none'), false);
+  // Khối không có sách thì ẩn cả tiêu đề, không để lại một khối rỗng.
+  for (const id of ['cheapBooksSection', 'bookSetsSection', 'homeStats', 'newBooksFilter']) {
+    assert.equal(empty.get(id).classList.contains('d-none'), true, id);
   }
   assert.equal(empty.get('catalogLoading').classList.contains('d-none'), true);
 

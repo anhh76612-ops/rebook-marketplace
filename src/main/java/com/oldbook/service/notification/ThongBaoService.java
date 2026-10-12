@@ -10,6 +10,7 @@ import com.oldbook.entity.notification.ThongBao;
 import com.oldbook.exception.common.BusinessException;
 import com.oldbook.repository.notification.ThongBaoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class ThongBaoService {
     private static final int NOI_DUNG_MAX = 1000;
 
     private final ThongBaoRepository thongBaoRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public record NoiDungThongBao(
             String loai,
@@ -53,6 +55,19 @@ public class ThongBaoService {
                 TrangThaiTaiKhoan.HOAT_DONG.name()
         );
 
+        luu(nguoiNhan, maTKThucHien, noiDung);
+    }
+
+    /**
+     * Gửi cho đúng một tài khoản, ví dụ báo cho chủ cửa hàng rằng cửa hàng của họ đã được duyệt.
+     */
+    @Transactional
+    public void guiChoTaiKhoan(TaiKhoan taiKhoanNhan, NoiDungThongBao noiDung) {
+        luu(List.of(taiKhoanNhan), null, noiDung);
+    }
+
+    private void luu(List<TaiKhoan> nguoiNhan, Integer maTKThucHien, NoiDungThongBao noiDung) {
+
         LocalDateTime now = LocalDateTime.now();
 
         List<ThongBao> thongBaos = nguoiNhan.stream()
@@ -72,7 +87,18 @@ public class ThongBaoService {
                 })
                 .toList();
 
-        thongBaoRepository.saveAll(thongBaos);
+        List<ThongBao> daLuu = thongBaoRepository.saveAll(thongBaos);
+
+        // Kênh đẩy (ThongBaoPusher) nghe sự kiện này sau khi giao dịch commit.
+        eventPublisher.publishEvent(new ThongBaoDaGuiEvent(
+                daLuu.stream()
+                        .filter(thongBao -> !thongBao.isDaDoc())
+                        .map(thongBao -> new ThongBaoDaGuiEvent.BanGhi(
+                                thongBao.getTaiKhoanNhan().getMaTK(),
+                                ThongBaoResponse.from(thongBao)
+                        ))
+                        .toList()
+        ));
     }
 
     @Transactional(readOnly = true)

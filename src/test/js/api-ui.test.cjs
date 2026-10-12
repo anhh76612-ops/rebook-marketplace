@@ -14,8 +14,12 @@ const managementLinks = {
   QUAN_LY: [['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển']],
   QUAN_TRI_VIEN: [['/admin/accounts', 'Quản lý tài khoản'], ['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển']]
 };
-const purchaseLinks = [['/wishlist', 'Sản phẩm yêu thích'], ['/cart', 'Giỏ hàng'], ['/orders', 'Theo dõi đơn hàng']];
-const accountPurchaseLinks = [['/orders', 'Đơn hàng của tôi'], ['/wishlist', 'Sản phẩm yêu thích'], ['/cart', 'Giỏ hàng']];
+// Header khách hàng: topbar có "Theo dõi đơn hàng", dropdown tài khoản có "Đơn hàng của tôi", mainbar có "Yêu thích".
+// Giỏ hàng không còn trên header: nó là nút nổi trong fragments/cart-drawer.html.
+const headerGuestLinks = [['/orders', 'Theo dõi đơn hàng'], ['/wishlist', 'Yêu thích']];
+const headerCustomerLinks = [['/orders', 'Theo dõi đơn hàng'], ['/orders', 'Đơn hàng của tôi'], ['/wishlist', 'Yêu thích']];
+const footerPurchaseLinks = [['/wishlist', 'Sản phẩm yêu thích'], ['/orders', 'Đơn hàng của tôi'], ['/cart', 'Giỏ hàng']];
+const ACTIVE = 'HOAT_DONG';
 
 function shown(element) {
   for (let current = element; current; current = current.parentNode) {
@@ -51,10 +55,8 @@ test('header and footer expose actual destinations and labels for every role and
     const footer = boot('fragments/footer.html', [], async () => profile, role);
     await settle();
     const management = managementLinks[role] || [];
-    const headerExpected = role === null ? purchaseLinks : role === 'KHACH_HANG'
-      ? [...accountPurchaseLinks, ...purchaseLinks] : [...management, ...management];
-    const footerExpected = role === null || role === 'KHACH_HANG'
-      ? [purchaseLinks[0], accountPurchaseLinks[0], purchaseLinks[1]] : management;
+    const headerExpected = role === null ? headerGuestLinks : role === 'KHACH_HANG' ? headerCustomerLinks : management;
+    const footerExpected = role === null || role === 'KHACH_HANG' ? footerPurchaseLinks : management;
     assert.deepEqual(visibleRoleLinks(header), headerExpected, 'header for ' + role);
     assert.deepEqual(visibleRoleLinks(footer), footerExpected, 'footer for ' + role);
     for (const app of [header, footer]) {
@@ -83,7 +85,7 @@ test('saving a different role updates navigation and role labels immediately, an
   for (const role of ['QUAN_TRI_VIEN', 'CHU_CUA_HANG', 'QUAN_LY', 'DON_VI_VAN_CHUYEN', 'KHACH_HANG']) {
     auth.saveSession({ token: sessionToken(role) });
     const management = managementLinks[role] || [];
-    assert.deepEqual(visibleRoleLinks(app), role === 'KHACH_HANG' ? [...accountPurchaseLinks, ...purchaseLinks] : [...management, ...management]);
+    assert.deepEqual(visibleRoleLinks(app), role === 'KHACH_HANG' ? headerCustomerLinks : management);
     assert.equal(app.document.querySelector('[data-user-role]').textContent, app.window.OldBook.roleLabels[role]);
     assert.equal(app.document.querySelector('[data-user-name]').textContent, app.window.OldBook.roleLabels[role]);
     assert.equal(auth.homeUrl(), roleHomes[role]);
@@ -95,25 +97,119 @@ test('saving a different role updates navigation and role labels immediately, an
   assert.deepEqual(app.redirects, ['/']);
   assert.equal(app.calls.find(call => call.url === '/api/auth/logout').headers.Authorization, 'Bearer ' + token);
   app.window.OldBook.renderHeader();
-  assert.deepEqual(visibleRoleLinks(app), purchaseLinks);
+  assert.deepEqual(visibleRoleLinks(app), headerGuestLinks);
   assert.equal(app.document.querySelector('[data-user-role]').textContent, '');
 });
 
-test('switch role revokes the current session and returns to login for a new role selection', async () => {
-  const app = boot('fragments/header.html', [], async call => call.url === '/api/profile' ? { ...profile, avatarUrl: '/images/avatar.jpg' } : null, 'QUAN_TRI_VIEN');
+// Header cửa hàng và quản lý dùng cùng cơ chế: chủ cửa hàng quay về tài khoản khách hàng bằng một lần bấm.
+test('store and manager headers switch accounts the same way and no longer log the user out to do it', async () => {
+  for (const [fragment, role, home] of [['fragments/store/header.html', 'CHU_CUA_HANG', '/'], ['fragments/manager/header.html', 'QUAN_LY', '/']]) {
+    const app = boot(fragment, [], async call => {
+      if (call.url === '/api/profile') {
+        return { ...profile, taiKhoans: [{ maTK: 2, vaiTro: role, trangThai: ACTIVE }, { maTK: 5, vaiTro: 'KHACH_HANG', trangThai: ACTIVE }] };
+      }
+      if (call.url === '/api/auth/switch-account') { return { token: sessionToken('KHACH_HANG', { maTK: 5 }) }; }
+      return null;
+    }, role);
+    await settle();
+
+    assert.equal(app.document.querySelector('[data-action="switch-role"]'), null, fragment);
+    assert.deepEqual(shownSwitches(app), ['KHACH_HANG'], fragment);
+    app.trigger(app.document.querySelector('[data-switch-to="KHACH_HANG"] i'));
+    await settle();
+
+    assert.deepEqual(app.calls.find(call => call.url === '/api/auth/switch-account').body, { maTK: 5 });
+    assert.equal(app.calls.some(call => call.url === '/api/auth/logout'), false, fragment);
+    assert.equal(app.window.OldBook.auth.getUser().vaiTro, 'KHACH_HANG');
+    assert.deepEqual(app.redirects, [home]);
+    assert.ok(app.document.querySelector('[data-notify]'), fragment + ' carries the notification bell');
+  }
+});
+
+function shownSwitches(app) {
+  return app.document.querySelectorAll('[data-switch-to]').filter(shown).map(element => element.getAttribute('data-switch-to'));
+}
+
+test('account switch offers only the other active accounts and switches without logging in again', async () => {
+  const accounts = [
+    { maTK: 2, vaiTro: 'KHACH_HANG', trangThai: ACTIVE },
+    { maTK: 9, vaiTro: 'CHU_CUA_HANG', trangThai: ACTIVE },
+    { maTK: 11, vaiTro: 'QUAN_LY', trangThai: 'BI_KHOA' }
+  ];
+  const app = boot('fragments/header.html', [], async call => {
+    if (call.url === '/api/profile') { return { ...profile, taiKhoans: accounts }; }
+    if (call.url === '/api/auth/switch-account') { return { token: sessionToken('CHU_CUA_HANG', { maTK: 9 }) }; }
+    return null;
+  }, 'KHACH_HANG');
+  const auth = app.window.OldBook.auth;
+
+  // Chưa tải xong hồ sơ thì chưa biết có tài khoản nào khác: không hiện gì.
+  assert.deepEqual(shownSwitches(app), []);
+  await settle();
+
+  // Tài khoản đang dùng và tài khoản bị khóa không nằm trong danh sách; còn lại xuất hiện ở topbar và dropdown.
+  assert.deepEqual(shownSwitches(app), ['CHU_CUA_HANG', 'CHU_CUA_HANG']);
+  // Đã có tài khoản Chủ cửa hàng nên không mời đăng ký gian hàng nữa.
+  assert.ok(app.document.querySelectorAll('[data-seller-cta]').every(element => !shown(element)));
+
+  const oldToken = auth.getToken();
+  app.trigger(app.document.querySelector('.account-dropdown-menu [data-switch-to="CHU_CUA_HANG"] i'));
+  await settle();
+
+  const switched = app.calls.find(call => call.url === '/api/auth/switch-account');
+  assert.equal(switched.method, 'POST');
+  assert.deepEqual(switched.body, { maTK: 9 });
+  assert.equal(switched.headers.Authorization, 'Bearer ' + oldToken);
+  assert.equal(auth.getUser().vaiTro, 'CHU_CUA_HANG');
+  assert.equal(auth.getUser().maTK, 9);
+  assert.deepEqual(app.redirects, ['/store/books']);
+  assert.equal(app.calls.some(call => call.url === '/api/auth/logout'), false);
+  // Sau khi chuyển, lối quay về tài khoản Khách hàng xuất hiện thay cho lối vừa dùng.
+  assert.deepEqual(shownSwitches(app), ['KHACH_HANG']);
+});
+
+test('a rejected account switch keeps the current session and reports the reason', async () => {
+  const app = boot('fragments/header.html', [], async call => {
+    if (call.url === '/api/profile') {
+      return { ...profile, taiKhoans: [{ maTK: 2, vaiTro: 'KHACH_HANG', trangThai: ACTIVE }, { maTK: 9, vaiTro: 'CHU_CUA_HANG', trangThai: ACTIVE }] };
+    }
+    if (call.url === '/api/auth/switch-account') { return { httpStatus: 400, data: null, message: 'Tài khoản đang bị khóa hoặc không hoạt động' }; }
+    return null;
+  }, 'KHACH_HANG');
   await settle();
   const token = app.window.OldBook.auth.getToken();
-  const switchRole = app.document.querySelector('[data-action="switch-role"]');
-  assert.ok(shown(switchRole));
-  app.trigger(switchRole.querySelector('i'));
+
+  app.trigger(app.document.querySelector('.account-dropdown-menu [data-switch-to="CHU_CUA_HANG"]'));
   await settle();
-  assert.deepEqual(app.redirects, ['/login']);
-  assert.equal(app.window.OldBook.auth.getToken(), null);
-  assert.equal(app.window.localStorage.getItem('oldbook_name'), null);
-  assert.equal(app.window.localStorage.getItem('oldbook_avatar'), null);
-  const logout = app.calls.find(call => call.url === '/api/auth/logout');
-  assert.equal(logout.method, 'POST');
-  assert.equal(logout.headers.Authorization, 'Bearer ' + token);
+
+  assert.equal(app.window.OldBook.auth.getToken(), token);
+  assert.deepEqual(app.redirects, []);
+  assert.match(app.get('ob-toast-holder').textContent, /Tài khoản đang bị khóa/);
+});
+
+test('seller invitation is shown to guests and to customers without a seller account only', async () => {
+  const invitations = app => app.document.querySelectorAll('[data-seller-cta]');
+  const withAccounts = accounts => boot('fragments/header.html', [], async call => call.url === '/api/profile' ? { ...profile, taiKhoans: accounts } : null, 'KHACH_HANG');
+
+  const guest = boot('fragments/header.html', [], async () => null, null);
+  await settle();
+  assert.ok(invitations(guest).length >= 2, 'topbar and account menu both carry the invitation');
+  assert.ok(invitations(guest).every(element => shown(element) === !element.closest('[data-auth="user"]')));
+
+  const customer = withAccounts([{ maTK: 2, vaiTro: 'KHACH_HANG', trangThai: ACTIVE }]);
+  assert.ok(invitations(customer).every(element => !shown(element)), 'hidden until the account list is known');
+  await settle();
+  assert.ok(invitations(customer).every(shown));
+
+  // Tài khoản Chủ cửa hàng đang bị khóa vẫn tính là đã có: không mời đăng ký lần nữa.
+  const lockedSeller = withAccounts([{ maTK: 2, vaiTro: 'KHACH_HANG', trangThai: ACTIVE }, { maTK: 9, vaiTro: 'CHU_CUA_HANG', trangThai: 'BI_KHOA' }]);
+  await settle();
+  assert.ok(invitations(lockedSeller).every(element => !shown(element)));
+  assert.deepEqual(shownSwitches(lockedSeller), []);
+
+  const manager = boot('fragments/header.html', [], async call => call.url === '/api/profile' ? { ...profile, taiKhoans: [{ maTK: 2, vaiTro: 'QUAN_LY', trangThai: ACTIVE }] } : null, 'QUAN_LY');
+  await settle();
+  assert.ok(invitations(manager).every(element => !shown(element)));
 });
 
 test('real admin API rejection preserves a forbidden session while unauthorized rejection forces login', { todo: 'Trang admin-accounts cũ đã bị thay bằng admin/accounts-roles: cần viết lại bài test này cho trang mới' }, async () => {

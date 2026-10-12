@@ -1,15 +1,21 @@
 package com.oldbook.service.store;
 
+import com.oldbook.constant.auth.TrangThaiTaiKhoan;
+import com.oldbook.constant.auth.VaiTro;
 import com.oldbook.constant.catalog.TrangThaiDuyet;
 import com.oldbook.entity.catalog.CuaHang;
 import com.oldbook.exception.common.BusinessException;
 import com.oldbook.entity.identity.NguoiDung;
+import com.oldbook.entity.identity.TaiKhoan;
 import com.oldbook.repository.identity.NguoiDungRepository;
+import com.oldbook.repository.identity.TaiKhoanRepository;
 import com.oldbook.dto.store.CreateCuaHangRequest;
 import com.oldbook.dto.store.CuaHangResponse;
+import com.oldbook.dto.store.DangKyGianHangResponse;
 import com.oldbook.dto.store.UpdateCuaHangRequest;
 import com.oldbook.repository.store.CuaHangRepository;
 import com.oldbook.security.store.StoreAccess;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import com.oldbook.repository.system.NhatKyHeThongRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,8 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class StoreService {
     private final CuaHangRepository cuaHangRepository;
     private final NguoiDungRepository nguoiDungRepository;
+    private final TaiKhoanRepository taiKhoanRepository;
     private final StoreAccess storeAccess;
     private final NhatKyHeThongRepository nhatKyHeThongRepository;
+    private final NghiepVuThongBaoService nghiepVuThongBaoService;
 
     @Transactional(readOnly = true)
     public CuaHangResponse getMyStore() {
@@ -42,6 +50,30 @@ public class StoreService {
     @Transactional
     public CuaHangResponse create(CreateCuaHangRequest request) {
         Integer maND = storeAccess.requireOwner();
+        return CuaHangResponse.from(taoCuaHang(maND, request));
+    }
+
+    /**
+     * Khách hàng tự đăng ký gian hàng: tạo thêm tài khoản Chủ cửa hàng cho chính người đó
+     * và một cửa hàng chờ duyệt, trong cùng một giao dịch.
+     * Tài khoản mới dùng được ngay để theo dõi trạng thái; việc đăng sách vẫn phải chờ quản lý duyệt cửa hàng.
+     */
+    @Transactional
+    public DangKyGianHangResponse registerAsCustomer(CreateCuaHangRequest request) {
+        Integer maND = storeAccess.requireCustomer();
+        if (taiKhoanRepository.existsByNguoiDung_MaNDAndVaiTro(maND, VaiTro.CHU_CUA_HANG.name())) {
+            throw new BusinessException("Bạn đã có tài khoản chủ cửa hàng. Hãy chuyển sang tài khoản đó để quản lý gian hàng.");
+        }
+        CuaHang cuaHang = taoCuaHang(maND, request);
+        TaiKhoan taiKhoan = taiKhoanRepository.save(TaiKhoan.builder()
+                .nguoiDung(cuaHang.getChuShop())
+                .vaiTro(VaiTro.CHU_CUA_HANG.name())
+                .trangThai(TrangThaiTaiKhoan.HOAT_DONG.name())
+                .build());
+        return new DangKyGianHangResponse(taiKhoan.getMaTK(), CuaHangResponse.from(cuaHang));
+    }
+
+    private CuaHang taoCuaHang(Integer maND, CreateCuaHangRequest request) {
         if (cuaHangRepository.findByChuShop_MaND(maND).isPresent()) {
             throw new BusinessException("Bạn đã có cửa hàng");
         }
@@ -59,7 +91,9 @@ public class StoreService {
                 .soDienThoaiCH(requireText(request.soDienThoaiCH(), "Số điện thoại cửa hàng", 20))
                 .trangThaiDuyet(TrangThaiDuyet.CHO_DUYET.name())
                 .build();
-        return CuaHangResponse.from(cuaHangRepository.save(cuaHang));
+        CuaHang daLuu = cuaHangRepository.save(cuaHang);
+        nghiepVuThongBaoService.gianHangChoDuyet(daLuu, false);
+        return daLuu;
     }
 
     @Transactional
@@ -76,7 +110,9 @@ public class StoreService {
         cuaHang.setDiaChiCH(requireText(request.diaChiCH(), "Địa chỉ cửa hàng", 500));
         cuaHang.setSoDienThoaiCH(requireText(request.soDienThoaiCH(), "Số điện thoại cửa hàng", 20));
         cuaHang.setTrangThaiDuyet(TrangThaiDuyet.CHO_DUYET.name());
-        return CuaHangResponse.from(cuaHangRepository.save(cuaHang));
+        CuaHang daLuu = cuaHangRepository.save(cuaHang);
+        nghiepVuThongBaoService.gianHangChoDuyet(daLuu, true);
+        return CuaHangResponse.from(daLuu);
     }
 
     private String requireText(String value, String field, int maxLength) {
