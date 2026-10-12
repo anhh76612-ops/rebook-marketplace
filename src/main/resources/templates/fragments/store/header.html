@@ -4,6 +4,9 @@
 
 <header th:fragment="header">
 
+  <!-- Đặt theme lên thẻ <html> trước khi nội dung trang được vẽ -->
+  <script th:src="@{/js/theme.js}"></script>
+
   <div class="topbar">
     <div class="container d-flex justify-content-between align-items-center gap-2 py-1">
 
@@ -149,9 +152,25 @@
             </li>
 
             <!-- Đăng xuất -->
-            <li>
-              <a href="#" class="dropdown-item" data-action="switch-role">
-                <i class="bi bi-arrow-repeat me-2"></i>Đăng nhập bằng vai trò khác
+            <!-- Chuyển tài khoản: auth.js chỉ hiện những vai trò người dùng đang có -->
+            <li class="d-none" data-switch-to="KHACH_HANG">
+              <a href="#" class="dropdown-item">
+                <i class="bi bi-bag me-2"></i>Chuyển sang Khách hàng
+              </a>
+            </li>
+            <li class="d-none" data-switch-to="CHU_CUA_HANG">
+              <a href="#" class="dropdown-item">
+                <i class="bi bi-shop me-2"></i>Chuyển sang Chủ cửa hàng
+              </a>
+            </li>
+            <li class="d-none" data-switch-to="QUAN_LY">
+              <a href="#" class="dropdown-item">
+                <i class="bi bi-clipboard-check me-2"></i>Chuyển sang Quản lý
+              </a>
+            </li>
+            <li class="d-none" data-switch-to="QUAN_TRI_VIEN">
+              <a href="#" class="dropdown-item">
+                <i class="bi bi-shield-lock me-2"></i>Chuyển sang Quản trị viên
               </a>
             </li>
             <li>
@@ -203,6 +222,72 @@
           <span class="d-none d-sm-inline ms-1">Tìm sách</span>
         </button>
       </form>
+
+      <!-- Thông báo: notifications.js điền danh sách và số chưa đọc -->
+      <div class="header-actions d-flex align-items-center gap-1 ms-auto">
+
+        <!-- Đổi giao diện: theme.js đánh dấu lựa chọn đang dùng và lưu lựa chọn mới -->
+        <div class="dropdown" data-theme-picker>
+          <button
+              type="button"
+              class="header-icon-btn"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              aria-label="Đổi giao diện"
+              title="Đổi giao diện">
+            <i class="bi bi-palette"></i>
+          </button>
+
+          <ul class="dropdown-menu dropdown-menu-end theme-menu">
+            <li>
+              <button type="button" class="dropdown-item theme-option" role="menuitemradio" aria-checked="true" data-theme-option="default">
+                <span class="theme-swatch theme-swatch-default" aria-hidden="true"></span>
+                Mặc định
+                <i class="bi bi-check2 theme-check" aria-hidden="true"></i>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="dropdown-item theme-option" role="menuitemradio" aria-checked="false" data-theme-option="dark">
+                <span class="theme-swatch theme-swatch-dark" aria-hidden="true"></span>
+                Tối
+                <i class="bi bi-check2 theme-check" aria-hidden="true"></i>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="dropdown-item theme-option" role="menuitemradio" aria-checked="false" data-theme-option="magazine">
+                <span class="theme-swatch theme-swatch-magazine" aria-hidden="true"></span>
+                Tạp chí
+                <i class="bi bi-check2 theme-check" aria-hidden="true"></i>
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="dropdown d-none" data-auth="user" data-notify>
+          <button
+              type="button"
+              class="header-icon-btn"
+              data-bs-toggle="dropdown"
+              data-bs-auto-close="outside"
+              aria-expanded="false"
+              aria-label="Thông báo"
+              title="Thông báo"
+              data-notify-bell>
+            <i class="bi bi-bell"></i>
+            <span class="header-badge d-none" data-notify-badge>0</span>
+          </button>
+
+          <div class="dropdown-menu dropdown-menu-end notify-panel">
+            <div class="notify-head">
+              <span class="notify-title">Thông báo</span>
+              <button type="button" class="notify-read-all" data-notify-read-all disabled>
+                Đánh dấu tất cả đã đọc
+              </button>
+            </div>
+            <div class="notify-list" data-notify-list></div>
+            <button type="button" class="notify-more d-none" data-notify-more>Xem thêm</button>
+          </div>
+        </div>
+      </div>
 
       <span data-roles="KHACH_HANG" data-allow-guest>
       <a

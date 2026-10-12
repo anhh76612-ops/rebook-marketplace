@@ -11,6 +11,7 @@ import com.oldbook.entity.identity.NguoiDung;
 import com.oldbook.entity.identity.TaiKhoan;
 import com.oldbook.repository.identity.NguoiDungRepository;
 import com.oldbook.repository.identity.TaiKhoanRepository;
+import com.oldbook.repository.notification.ThongBaoRepository;
 import com.oldbook.repository.order.ChiTietGioHangRepository;
 import com.oldbook.repository.order.GioHangRepository;
 import com.oldbook.repository.store.CuaHangRepository;
@@ -60,6 +61,7 @@ class StoreApiIntegrationTest {
     @Autowired private DanhMucRepository danhMucRepository;
     @Autowired private SachRepository sachRepository;
     @Autowired private NhatKyHeThongRepository nhatKyRepository;
+    @Autowired private ThongBaoRepository thongBaoRepository;
     @Autowired private ChiTietGioHangRepository chiTietGioHangRepository;
     @Autowired private GioHangRepository gioHangRepository;
     @Autowired private TransactionTemplate transactions;
@@ -79,6 +81,8 @@ class StoreApiIntegrationTest {
         chiTietGioHangRepository.deleteAllInBatch();
         gioHangRepository.deleteAllInBatch();
         nhatKyRepository.deleteAllInBatch();
+        // Duyệt cửa hàng, duyệt sách đều sinh thông báo trỏ tới tài khoản: xóa trước khi xóa tài khoản.
+        thongBaoRepository.deleteAllInBatch();
         sachRepository.deleteAllInBatch();
         cuaHangRepository.deleteAllInBatch();
         taiKhoanRepository.deleteAllInBatch();

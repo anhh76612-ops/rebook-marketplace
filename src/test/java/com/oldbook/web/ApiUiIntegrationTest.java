@@ -64,7 +64,7 @@ class ApiUiIntegrationTest {
     }
 
     @Test
-    void adminFormContractsValidateCreateChangeRoleAndLockUnlock() throws Exception {
+    void adminFormContractsValidateCreateAddRoleAndLockUnlock() throws Exception {
         String adminToken = actor("QUAN_TRI_VIEN");
         assertCode(request("POST", "/api/admin/tai-khoan", adminToken, Map.of()), 400);
         String email = "owner-" + UUID.randomUUID() + "@test.local";
@@ -73,8 +73,19 @@ class ApiUiIntegrationTest {
         int id = created.get("maTK").asInt();
         String path = "/api/admin/tai-khoan/" + id;
         assertThat(data(request("GET", "/api/admin/tai-khoan?tuKhoa=" + email + "&vaiTro=CHU_CUA_HANG", adminToken, null)).size()).isEqualTo(1);
-        assertCode(request("PUT", path + "/vai-tro", adminToken, Map.of()), 400);
-        assertThat(data(request("PUT", path + "/vai-tro", adminToken, Map.of("vaiTro", "QUAN_LY"))).get("vaiTro").asText()).isEqualTo("QUAN_LY");
+        assertCode(request("POST", path + "/vai-tro", adminToken, Map.of()), 400);
+        // Thêm vai trò tạo một tài khoản mới cho cùng người dùng, tài khoản cũ giữ nguyên vai trò.
+        var added = data(request("POST", path + "/vai-tro", adminToken, Map.of("vaiTro", "QUAN_LY")));
+        assertThat(added.get("vaiTro").asText()).isEqualTo("QUAN_LY");
+        assertThat(added.get("maTK").asInt()).isNotEqualTo(id);
+        assertThat(added.get("maND").asInt()).isEqualTo(created.get("maND").asInt());
+        assertThat(accounts.findById(id).orElseThrow().getVaiTro()).isEqualTo("CHU_CUA_HANG");
+        assertCode(request("POST", path + "/vai-tro", adminToken, Map.of("vaiTro", "QUAN_LY")), 400);
+        assertCode(request("POST", path + "/vai-tro", adminToken, Map.of("vaiTro", "CHU_CUA_HANG")), 400);
+        assertCode(request("POST", path + "/vai-tro", adminToken, Map.of("vaiTro", "DON_VI_VAN_CHUYEN")), 400);
+        // API đổi vai trò cũ (PUT) đã bỏ: gọi lại không được và không làm đổi vai trò.
+        assertThat(request("PUT", path + "/vai-tro", adminToken, Map.of("vaiTro", "KHACH_HANG")).statusCode()).isNotEqualTo(200);
+        assertThat(accounts.findById(id).orElseThrow().getVaiTro()).isEqualTo("CHU_CUA_HANG");
         assertCode(request("PUT", path + "/khoa", adminToken, Map.of("lyDo", " ")), 400);
         assertCode(request("PUT", path + "/khoa", adminToken, Map.of("lyDo", "Kiểm tra tài khoản")), 200);
         assertThat(accounts.findById(id).orElseThrow().getTrangThai()).isEqualTo("BI_KHOA");

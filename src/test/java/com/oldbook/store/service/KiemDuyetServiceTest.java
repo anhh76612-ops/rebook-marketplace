@@ -14,6 +14,7 @@ import com.oldbook.dto.store.KiemDuyetSearchRequest;
 import com.oldbook.dto.store.TuChoiRequest;
 import com.oldbook.repository.store.CuaHangRepository;
 import com.oldbook.security.store.StoreAccess;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import com.oldbook.entity.system.NhatKyHeThong;
 import com.oldbook.repository.system.NhatKyHeThongRepository;
 import jakarta.persistence.EntityManager;
@@ -54,6 +55,7 @@ class KiemDuyetServiceTest {
     @Mock private NhatKyHeThongRepository nhatKyHeThongRepository;
     @Mock private StoreAccess storeAccess;
     @Mock private EntityManager entityManager;
+    @Mock private NghiepVuThongBaoService nghiepVuThongBaoService;
 
     private KiemDuyetService service;
     private final AuthenticatedUserDetails actor = new AuthenticatedUserDetails(25, 40, "QUAN_LY");
@@ -61,7 +63,7 @@ class KiemDuyetServiceTest {
     @BeforeEach
     void setUp() {
         service = new KiemDuyetService(cuaHangRepository, sachRepository, taiKhoanRepository,
-                nhatKyHeThongRepository, storeAccess, entityManager);
+                nhatKyHeThongRepository, storeAccess, entityManager, nghiepVuThongBaoService);
         when(storeAccess.requireModerator()).thenReturn(actor);
     }
 

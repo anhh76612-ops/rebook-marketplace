@@ -27,7 +27,8 @@ Quản lý shop và kiểm duyệt có giao diện gọi REST API:
 
 - `/store/books` hoặc `/store`: chủ cửa hàng đăng ký/sửa cửa hàng, xem trạng thái duyệt, quản lý sách, tồn kho và trạng thái bán.
 - `/store-moderation`: quản lý/quản trị viên lọc, xem chi tiết và duyệt/từ chối cửa hàng hoặc sách.
-- `/admin/accounts`: quản trị viên quản lý tài khoản và cấp vai trò.
+- `/admin/accounts`: quản trị viên quản lý tài khoản và thêm vai trò.
+- `/store/register`: khách hàng tự đăng ký gian hàng.
 
 Menu và trang đích sau đăng nhập phụ thuộc vai trò trong JWT. Các trang HTML tải JWT từ trình duyệt khi gọi API; quyền truy cập dữ liệu vẫn được kiểm tra ở backend.
 Quản lý shop và kiểm duyệt đã có giao diện gọi REST API:
@@ -108,7 +109,8 @@ Tất cả request cần `Authorization: Bearer <JWT>` của `CHU_CUA_HANG`. Dan
 
 | Method | Endpoint | Nội dung |
 |---|---|---|
-| POST | `/api/store` | Đăng ký cửa hàng |
+| POST | `/api/store/register` | Riêng endpoint này dành cho JWT `KHACH_HANG`: tự đăng ký gian hàng, tạo tài khoản Chủ cửa hàng và cửa hàng chờ duyệt, trả `maTK` của tài khoản mới |
+| POST | `/api/store` | Đăng ký cửa hàng (khi đã có tài khoản Chủ cửa hàng nhưng chưa có cửa hàng) |
 | GET | `/api/store/me` | Cửa hàng của mình; gồm lý do từ chối nếu có |
 | PUT | `/api/store/me` | Sửa và gửi lại cửa hàng để duyệt |
 | GET | `/api/store/me/sach` | Sách của shop, phân trang/lọc trạng thái duyệt |

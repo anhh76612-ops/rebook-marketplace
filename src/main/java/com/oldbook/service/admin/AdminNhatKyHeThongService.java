@@ -246,8 +246,14 @@ public class AdminNhatKyHeThongService {
                         );
 
 
+        // THAY_DOI_VAI_TRO là hành động cũ (trước khi chuyển sang thêm vai trò), vẫn tính để số liệu cũ không lệch.
         long roleChangesToday =
                 nhatKyHeThongRepository
+                        .countByHanhDongAndThoiGianGreaterThanEqual(
+                                "THEM_VAI_TRO",
+                                startOfToday
+                        )
+                        + nhatKyHeThongRepository
                         .countByHanhDongAndThoiGianGreaterThanEqual(
                                 "THAY_DOI_VAI_TRO",
                                 startOfToday

@@ -770,7 +770,49 @@ public class AuthService {
                 roleSelectionToken
         );
 
-        // 4. Tìm TaiKhoan
+        // 4. Phát JWT chính thức cho tài khoản được chọn
+        return dangNhapVaoTaiKhoan(maND, maTK);
+    }
+
+    /**
+     * Người đang đăng nhập chuyển sang một tài khoản khác của chính mình (ví dụ từ Khách hàng sang Chủ cửa hàng)
+     * mà không phải nhập lại mật khẩu: mật khẩu thuộc về người dùng, không thuộc về từng tài khoản.
+     */
+    @Transactional
+    public LoginResponse switchAccount(
+            Integer maND,
+            Integer maTKDich,
+            String tokenHienTai
+    ) {
+
+        if (maTKDich.equals(jwtService.extractMaTK(tokenHienTai))) {
+            throw new BusinessException(
+                    "Bạn đang dùng tài khoản này"
+            );
+        }
+
+        LoginResponse response = dangNhapVaoTaiKhoan(maND, maTKDich);
+
+        // Token của tài khoản cũ không còn dùng nữa, thu hồi như khi đăng xuất.
+        String jti = jwtService.extractJti(tokenHienTai);
+
+        if (jti != null) {
+            revokedTokenService.revokeToken(
+                    jti,
+                    jwtService.extractExpiration(tokenHienTai).toInstant()
+            );
+        }
+
+        return response;
+    }
+
+    // Dùng chung cho chọn vai trò lúc đăng nhập và chuyển tài khoản:
+    // chỉ phát JWT khi tài khoản thuộc đúng người dùng và đang hoạt động.
+    private LoginResponse dangNhapVaoTaiKhoan(
+            Integer maND,
+            Integer maTK
+    ) {
+
         TaiKhoan taiKhoan = taiKhoanRepository.findById(maTK)
                 .orElseThrow(() ->
                         new BusinessException(
@@ -778,7 +820,6 @@ public class AuthService {
                         )
                 );
 
-        // 5. Kiểm tra TaiKhoan có thuộc NguoiDung này không
         if (!taiKhoan.getNguoiDung()
                 .getMaND()
                 .equals(maND)) {
@@ -788,7 +829,6 @@ public class AuthService {
             );
         }
 
-        // 6. Kiểm tra trạng thái
         if (!TrangThaiTaiKhoan.HOAT_DONG.name().equals(
                 taiKhoan.getTrangThai()
         )) {
@@ -798,7 +838,6 @@ public class AuthService {
             );
         }
 
-        // 7. Tạo JWT chính thức
         String token = jwtService.generateToken(
                 maND,
                 taiKhoan.getMaTK(),

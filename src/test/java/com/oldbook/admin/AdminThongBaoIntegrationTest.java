@@ -94,17 +94,24 @@ class AdminThongBaoIntegrationTest {
         assertThat(latest(otherAdmin).get("loai").asText()).isEqualTo("MO_KHOA_TAI_KHOAN");
         assertThat(latest(otherAdmin).get("mucDo").asText()).isEqualTo("QUAN_TRONG");
 
-        // Đổi vai trò liên quan tới Quản lý: chỉ là thông tin.
-        assertCode(put(actor, ACCOUNTS + "/" + customer + "/vai-tro", Map.of("vaiTro", "QUAN_LY")), 200);
-        JsonNode promoted = latest(otherAdmin);
-        assertThat(promoted.get("loai").asText()).isEqualTo("THAY_DOI_VAI_TRO");
-        assertThat(promoted.get("mucDo").asText()).isEqualTo("THONG_TIN");
-        assertThat(promoted.get("tieuDe").asText()).isEqualTo("Đổi vai trò: Khách hàng sang Quản lý");
+        // Thêm vai trò Chủ cửa hàng cho một khách hàng là vận hành thường ngày: không báo.
+        assertCode(send("POST", ACCOUNTS + "/" + customer + "/vai-tro", actor, Map.of("vaiTro", "CHU_CUA_HANG")), 200);
+        assertThat(unread(otherAdmin)).isEqualTo(3);
 
-        // Cấp quyền quản trị viên: quan trọng, dù vai trò cũ chỉ là Quản lý.
-        assertCode(put(actor, ACCOUNTS + "/" + customer + "/vai-tro", Map.of("vaiTro", "QUAN_TRI_VIEN")), 200);
+        // Thêm vai trò Quản lý: chỉ là thông tin.
+        assertCode(send("POST", ACCOUNTS + "/" + customer + "/vai-tro", actor, Map.of("vaiTro", "QUAN_LY")), 200);
+        JsonNode promoted = latest(otherAdmin);
+        assertThat(promoted.get("loai").asText()).isEqualTo("THEM_VAI_TRO");
+        assertThat(promoted.get("mucDo").asText()).isEqualTo("THONG_TIN");
+        assertThat(promoted.get("tieuDe").asText()).isEqualTo("Thêm vai trò Quản lý");
+
+        // Cấp quyền quản trị viên: quan trọng.
+        assertCode(send("POST", ACCOUNTS + "/" + customer + "/vai-tro", actor, Map.of("vaiTro", "QUAN_TRI_VIEN")), 200);
         assertThat(latest(otherAdmin).get("mucDo").asText()).isEqualTo("QUAN_TRONG");
-        assertThat(latest(otherAdmin).get("tieuDe").asText()).isEqualTo("Đổi vai trò: Quản lý sang Quản trị viên");
+        assertThat(latest(otherAdmin).get("tieuDe").asText()).isEqualTo("Thêm vai trò Quản trị viên");
+
+        // Tài khoản khách hàng ban đầu vẫn là khách hàng.
+        assertThat(accounts.findById(customer).orElseThrow().getVaiTro()).isEqualTo("KHACH_HANG");
 
         assertThat(unread(otherAdmin)).isEqualTo(5);
     }
