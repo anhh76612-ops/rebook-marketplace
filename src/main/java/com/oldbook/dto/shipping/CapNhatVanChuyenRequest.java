@@ -12,7 +12,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CapNhatVanChuyenRequest {
-    /** Một giá trị của TrangThaiVanChuyen, ví dụ DA_LAY_HANG, DANG_GIAO, DA_GIAO, GIAO_THAT_BAI, DA_HOAN_TRA. */
+    /** Một giá trị của TrangThaiVanChuyen, ví dụ DA_LAY_HANG, DANG_GIAO, DA_GIAO, GIAO_THAT_BAI. DA_HOAN_TRA do hệ thống tự chuyển. */
     @NotBlank
     @Size(max = 50)
     private String trangThai;

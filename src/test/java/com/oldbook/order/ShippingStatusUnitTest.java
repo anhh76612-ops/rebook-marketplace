@@ -48,7 +48,10 @@ class ShippingStatusUnitTest {
         assertThat(TrangThaiVanChuyen.CHO_LAY_HANG.canMoveTo(TrangThaiVanChuyen.DANG_GIAO)).isTrue();
         assertThat(TrangThaiVanChuyen.DANG_GIAO.canMoveTo(TrangThaiVanChuyen.DA_LAY_HANG)).isFalse();
         assertThat(TrangThaiVanChuyen.DANG_GIAO.canMoveTo(TrangThaiVanChuyen.GIAO_THAT_BAI)).isTrue();
-        assertThat(TrangThaiVanChuyen.GIAO_THAT_BAI.canMoveTo(TrangThaiVanChuyen.DA_HOAN_TRA)).isTrue();
+        // Giao thất bại chỉ có thể giao lại; hoàn trả do hệ thống tự chuyển khi hết lượt.
+        assertThat(TrangThaiVanChuyen.GIAO_THAT_BAI.canMoveTo(TrangThaiVanChuyen.DANG_GIAO)).isTrue();
+        assertThat(TrangThaiVanChuyen.GIAO_THAT_BAI.canMoveTo(TrangThaiVanChuyen.DA_HOAN_TRA)).isFalse();
+        assertThat(TrangThaiVanChuyen.DANG_GIAO.canMoveTo(TrangThaiVanChuyen.DA_HOAN_TRA)).isFalse();
         assertThat(TrangThaiVanChuyen.CHO_LAY_HANG.canMoveTo(TrangThaiVanChuyen.DA_GIAO)).isFalse();
         for (TrangThaiVanChuyen next : TrangThaiVanChuyen.values()) {
             assertThat(TrangThaiVanChuyen.DA_GIAO.canMoveTo(next)).isFalse();

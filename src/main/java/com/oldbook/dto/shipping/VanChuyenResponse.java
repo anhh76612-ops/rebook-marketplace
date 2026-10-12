@@ -23,6 +23,8 @@ public class VanChuyenResponse {
     private String tenTrangThai;
     private String trangThaiDonHang;
     private Integer soLanGiaoThatBai;
+    /** Số lần giao thất bại tối đa; đạt tới số này thì hệ thống tự hoàn hàng. */
+    private Integer soLanGiaoToiDa;
     private String ghiChuGiaoHang;
     private LocalDateTime ngayCapNhat;
     private String lyDoHuy;
@@ -31,6 +33,10 @@ public class VanChuyenResponse {
     private List<String> trangThaiTiepTheo;
 
     public static VanChuyenResponse from(VanChuyen e) {
+        return from(e, null);
+    }
+
+    public static VanChuyenResponse from(VanChuyen e, Integer soLanGiaoToiDa) {
         TrangThaiVanChuyen st = TrangThaiVanChuyen.fromName(e.getTrangThaiVanChuyen());
         return VanChuyenResponse.builder()
                 .maVanChuyen(e.getMaVanChuyen())
@@ -43,7 +49,8 @@ public class VanChuyenResponse {
                 .trangThaiVanChuyen(e.getTrangThaiVanChuyen())
                 .tenTrangThai(st == null ? e.getTrangThaiVanChuyen() : st.getTenHienThi())
                 .trangThaiDonHang(e.getDonHangCuaHang().getTrangThaiDonHang())
-                .soLanGiaoThatBai(e.getSoLanGiaoThatBai())
+                .soLanGiaoThatBai(e.getSoLanGiaoThatBai() == null ? 0 : e.getSoLanGiaoThatBai())
+                .soLanGiaoToiDa(soLanGiaoToiDa)
                 .ghiChuGiaoHang(e.getGhiChuGiaoHang())
                 .ngayCapNhat(e.getNgayCapNhat())
                 .lyDoHuy(e.getDonHangCuaHang().getLyDoHuy())

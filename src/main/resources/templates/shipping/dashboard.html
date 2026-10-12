@@ -17,18 +17,17 @@
 
 <main class="container py-4" data-shipping-page th:attr="data-ma-code=${maCode}">
   <div class="mb-4">
-    <div class="text-muted small">TRUNG TÂM ĐƠN VỊ VẬN CHUYỂN · MÃ <span th:text="${maCode}">GHN</span></div>
+    <div class="text-muted medium">TRUNG TÂM ĐƠN VỊ VẬN CHUYỂN · MÃ <span th:text="${maCode}">GHN</span></div>
     <h1 class="h3 fw-bold mb-1" th:text="${tenDonVi}">Đơn vị vận chuyển</h1>
-    <p class="text-muted mb-0">Chỉ hiển thị các đơn khách đã chọn <strong th:text="${tenDonVi}"></strong> và đã được cửa hàng xác nhận. Danh sách tự làm mới mỗi 30 giây.</p>
   </div>
 
   <div id="accessAlert" class="alert alert-warning d-none"></div>
 
   <div class="row g-3 mb-4">
-    <div class="col-6 col-md"><div class="panel stat-card"><div class="text-muted small">Yêu cầu chờ tiếp nhận</div><div class="display-6 fw-bold" id="statPending">0</div></div></div>
-    <div class="col-6 col-md"><div class="panel stat-card"><div class="text-muted small">Đang vận chuyển</div><div class="display-6 fw-bold" id="statShipping">0</div></div></div>
-    <div class="col-6 col-md"><div class="panel stat-card"><div class="text-muted small">Đã giao</div><div class="display-6 fw-bold" id="statDelivered">0</div></div></div>
-    <div class="col-6 col-md"><div class="panel stat-card"><div class="text-muted small">Đã hoàn</div><div class="display-6 fw-bold" id="statReturned">0</div></div></div>
+    <div class="col-5 col-md"><div class="panel stat-card"><div class="text-muted medium">Yêu cầu chờ tiếp nhận</div><div class="display-6 fw-bold" id="statPending">0</div></div></div>
+    <div class="col-5 col-md"><div class="panel stat-card"><div class="text-muted medium">Đang vận chuyển</div><div class="display-6 fw-bold" id="statShipping">0</div></div></div>
+    <div class="col-5 col-md"><div class="panel stat-card"><div class="text-muted medium">Đã giao</div><div class="display-6 fw-bold" id="statDelivered">0</div></div></div>
+    <div class="col-5 col-md"><div class="panel stat-card"><div class="text-muted medium">Đã hoàn</div><div class="display-6 fw-bold" id="statReturned">0</div></div></div>
   </div>
 
   <ul class="nav nav-pills mb-3" id="shippingTabs">

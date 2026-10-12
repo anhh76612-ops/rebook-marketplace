@@ -117,10 +117,10 @@ public class SecurityConfig {
 
                         // Quản lý thêm/sửa đối tác vận chuyển
                         .requestMatchers("/api/management/**")
-                        .hasAnyRole("QUAN_LY", "QUAN_TRI_VIEN")
+                        .hasAnyRole("QUAN_LY")
 
                         .requestMatchers("/api/store/kiem-duyet/**")
-                        .hasAnyRole("QUAN_LY", "QUAN_TRI_VIEN")
+                        .hasAnyRole("QUAN_LY")
 
                         // Khách hàng tự đăng ký gian hàng: phải đứng trước luật /api/store/** của chủ cửa hàng.
                         .requestMatchers(HttpMethod.POST, "/api/store/register")
