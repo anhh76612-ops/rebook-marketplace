@@ -1,6 +1,7 @@
 package com.oldbook.service.order;
 
 import com.oldbook.constant.auth.VaiTro;
+import com.oldbook.constant.order.PhuongThucThanhToan;
 import com.oldbook.constant.order.TrangThaiDonHang;
 import com.oldbook.constant.order.TrangThaiYeuCauHuy;
 import com.oldbook.constant.shipping.TrangThaiVanChuyen;
@@ -31,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -195,7 +197,10 @@ public class StoreOrderService {
                 donHang.getTenNguoiNhan(),
                 donHang.getSoDienThoaiNhan(),
                 formatAddress(donHang),
-                order.getTongTienShopOrder(),
+                // Đơn đã chuyển khoản trước thì hãng không thu thêm gì của khách khi giao.
+                PhuongThucThanhToan.laTraTruoc(donHang.getPhuongThucTT())
+                        ? BigDecimal.ZERO
+                        : order.getTongTienShopOrder(),
                 order.getGhiChu()
         ));
 

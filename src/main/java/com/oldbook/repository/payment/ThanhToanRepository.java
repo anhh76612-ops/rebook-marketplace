@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository;
 public interface ThanhToanRepository extends JpaRepository<ThanhToan, Integer> {
 
     boolean existsByDonHangCuaHang_MaDHCHAndLoaiGiaoDich(Integer maDHCH, String loaiGiaoDich);
+
+    boolean existsByMaGiaoDichCongAndLoaiGiaoDich(String maGiaoDichCong, String loaiGiaoDich);
 }

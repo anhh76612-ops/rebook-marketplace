@@ -70,6 +70,8 @@ public class SecurityConfig {
 
                                 "/checkout",
                                 "/order-success",
+                                // Trang quét mã và trang hoàn tiền: HTML công khai, dữ liệu lấy qua /api/payment/**
+                                "/payment/**",
 
                                 "/store/orders",
 
@@ -115,6 +117,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/shipping/**")
                         .permitAll()
 
+                        // Casso gọi vào không kèm JWT; controller tự kiểm chữ ký X-Casso-Signature.
+                        .requestMatchers(HttpMethod.POST, "/api/payment/casso/webhook")
+                        .permitAll()
+                        .requestMatchers("/api/payment/**")
+                        .hasRole("KHACH_HANG")
                         // Quản lý thêm/sửa đối tác vận chuyển
                         .requestMatchers("/api/management/**")
                         .hasAnyRole("QUAN_LY")

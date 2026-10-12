@@ -113,7 +113,7 @@ const TEXT_PAIRS = [
   ['text-main', 'surface-page'], ['text-main', 'surface-card'], ['text-main', 'surface-soft'],
   ['text-soft', 'surface-page'], ['text-soft', 'surface-card'],
   ['text-heading', 'surface-page'], ['text-heading', 'surface-card'], ['text-strong', 'surface-card'],
-  ['text-accent', 'surface-page'], ['price', 'surface-card'], ['danger', 'surface-card'],
+  ['text-accent', 'surface-page'], ['text-accent', 'surface-card'], ['price', 'surface-card'], ['danger', 'surface-card'],
   ['cta-strong-text', 'surface-card'], ['cta-strong-text', 'surface-soft'],
   ['text-on-brand', 'surface-brand'], ['text-on-inverse', 'surface-inverse'], ['text-on-inverse', 'surface-inverse-strong'],
   ['text-on-inverse', 'surface-ink'], ['text-on-inverse-soft', 'surface-inverse-strong'], ['text-on-inverse', 'danger-fill'],
