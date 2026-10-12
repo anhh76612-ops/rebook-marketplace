@@ -78,7 +78,7 @@ test('the floating button opens the drawer, which lists the cart grouped by shop
 
   // Dòng không mua được không được chọn nên không tính vào tạm tính.
   assert.equal(app.text('[data-cart-selected]'), '2 sản phẩm');
-  assert.equal(app.text('[data-cart-total]'), '130,000 đ');
+  assert.equal(app.text('[data-cart-total]'), '130.000 đ');
   assert.equal(app.document.querySelector('[data-cart-checkout]').disabled, false);
   assert.ok(visible(app.document.querySelector('[data-cart-foot]')));
   assert.ok(app.document.querySelectorAll('.cart-count').every(badge => badge.textContent === '3'));
@@ -122,7 +122,7 @@ test('quantity and remove buttons call the cart API and redraw from the cart the
   assert.equal(update.url, '/api/order/cart/items/1');
   assert.deepEqual(update.body, { soLuong: 3 });
   assert.equal(app.lines()[0].querySelector('.cart-qty-value').textContent, '3');
-  assert.equal(app.text('[data-cart-total]'), '180,000 đ');
+  assert.equal(app.text('[data-cart-total]'), '180.000 đ');
 
   app.trigger(app.lines()[2].querySelector('[data-cart-remove]'));
   await settle();
@@ -167,7 +167,7 @@ test('checkout hands only the selected lines to the checkout page under the key 
   second.checked = false;
   app.trigger(second, 'change');
   assert.equal(app.text('[data-cart-selected]'), '1 sản phẩm');
-  assert.equal(app.text('[data-cart-total]'), '100,000 đ');
+  assert.equal(app.text('[data-cart-total]'), '100.000 đ');
 
   app.trigger(app.document.querySelector('[data-cart-checkout]'));
   assert.deepEqual(JSON.parse(app.session.get(SELECTED_KEY)), [1]);

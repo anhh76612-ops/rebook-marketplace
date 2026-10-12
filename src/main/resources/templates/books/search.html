@@ -124,43 +124,9 @@
                 </div>
 
                 <div class="row g-3" th:if="${!books.content.isEmpty()}">
-                    <article th:each="book : ${books.content}" class="col-6 col-md-4 col-xl-3">
-                        <div class="book-card"
-                             th:with="safeCover=${book.hinhAnhUrl != null and (#strings.startsWith(#strings.toLowerCase(book.hinhAnhUrl), 'http://') or #strings.startsWith(#strings.toLowerCase(book.hinhAnhUrl), 'https://') or (#strings.startsWith(book.hinhAnhUrl, '/') and !#strings.startsWith(book.hinhAnhUrl, '//')))}">
-                            <a th:href="@{/books/{id}(id=${book.maSach})}" class="cover text-decoration-none"
-                               th:classappend="${!safeCover} ? |c${book.maSach % 6}|" th:style="${safeCover} ? 'padding:0'">
-                                <img th:if="${safeCover}" th:src="${book.hinhAnhUrl}" th:alt="${book.tenSach}" loading="lazy"
-                                     style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
-                                <span th:unless="${safeCover}" class="cover-title" th:text="${book.tenSach}"></span>
-                            </a>
-                            <div class="book-info">
-                                <span th:if="${book.doMoiPercent != null}" class="condition-badge mb-1 align-self-start"
-                                      th:title="${book.tinhTrangVatLy}"
-                                      th:text="|✓ ${#numbers.formatDecimal(book.doMoiPercent, 1, 0)}% mới|"></span>
-                                <h3 class="book-title">
-                                    <a th:href="@{/books/{id}(id=${book.maSach})}" class="text-reset text-decoration-none" th:text="${book.tenSach}"></a>
-                                </h3>
-                                <p class="book-author" th:text="|Tác giả: ${#strings.isEmpty(book.tacGia) ? 'Đang cập nhật' : book.tacGia}|"></p>
-                                <p class="shop-line mb-1"><i class="bi bi-shop" aria-hidden="true"></i> <span th:text="${book.tenCuaHang}"></span></p>
-                                <p th:if="${book.giaBia != null}" class="price-line">Giá bìa:
-                                    <span th:text="|${#numbers.formatDecimal(book.giaBia, 1, 'POINT', 0, 'COMMA')} đ|"></span>
-                                </p>
-                                <p th:if="${book.giaBanCu != null}" class="price-line">Giá bán:
-                                    <strong class="price" th:text="|${#numbers.formatDecimal(book.giaBanCu, 1, 'POINT', 0, 'COMMA')} đ|"></strong>
-                                </p>
-                                <p th:if="${book.soLuongTon == null or book.soLuongTon <= 0}" class="small text-danger mb-0">Hết hàng</p>
-                                <p th:if="${book.soLuongTon != null and book.soLuongTon > 0 and book.soLuongTon <= 3}"
-                                   class="small text-danger mb-0" th:text="|Chỉ còn ${book.soLuongTon} cuốn|"></p>
-                                <a th:href="@{/books/{id}(id=${book.maSach})}" class="btn btn-outline-brown btn-sm w-100 mt-2">Xem chi tiết</a>
-                                <button th:if="${book.soLuongTon != null and book.soLuongTon > 0 and book.giaBanCu != null}"
-                                        type="button" class="btn btn-accent btn-sm w-100 mt-2"
-                                        data-add-to-cart data-requires-login data-so-luong="1"
-                                        th:attr="data-ma-sach=${book.maSach}">
-                                    <i class="bi bi-cart-plus me-1" aria-hidden="true"></i>Thêm vào giỏ
-                                </button>
-                            </div>
-                        </div>
-                    </article>
+                    <th:block th:each="book : ${books.content}">
+                        <article th:replace="~{fragments/book-card :: card(${book}, 'col-6 col-md-4 col-xl-3')}"></article>
+                    </th:block>
                 </div>
 
                 <div class="panel text-center py-5" th:if="${books.content.isEmpty()}" role="status">

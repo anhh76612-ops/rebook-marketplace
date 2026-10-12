@@ -87,7 +87,10 @@ class BooksDetailRenderTest {
                         "href=\"/books/" + fixture.relatedId() + "\"",
                         "href=\"/books/" + fixture.unsafeRelatedId() + "\"",
                         "data-add-to-cart", "data-toggle-wishlist", "aria-pressed=\"false\"",
-                        "aria-label=\"4 trên 5 sao\"", "50.000 đ", "Mua ngay", "data-buy-now")
+                        "aria-label=\"4 trên 5 sao\"", "50.000 đ", "Mua ngay", "data-buy-now",
+                        // Thẻ "Sách cùng danh mục" dùng mẫu chung fragments/book-card: giá bìa gạch, mức giảm, độ mới, tồn kho.
+                        "book-card-top", "class=\"price-old\">100.000 đ<", "class=\"price-off\">-50%<",
+                        ">Độ mới 90%<", ">Chỉ còn 2 cuốn<", "book-card-image")
                 .doesNotContain("<script>alert(1)</script>", "<script>alert(2)</script>",
                         "src=\"//example.test/unsafe.jpg\"", "Sách chưa duyệt không được gợi ý",
                         "Sách khác danh mục không được gợi ý", "th:replace", "th:each");

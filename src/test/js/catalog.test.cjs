@@ -95,7 +95,7 @@ test('cards show the discount against the cover price and warn when stock is low
 
   const cards = app.get('bookGrid').querySelectorAll('.book-card');
   assert.equal(cards[0].querySelector('.price-off').textContent, '-40%');
-  assert.equal(cards[0].querySelector('.price-old').textContent, '100,000 đ');
+  assert.equal(cards[0].querySelector('.price-old').textContent, '100.000 đ');
   assert.equal(cards[0].querySelector('.book-stock-note').textContent, 'Chỉ còn 2 cuốn');
   assert.equal(cards[0].querySelector('.condition-badge').textContent, 'Độ mới 92%');
   assert.equal(cards[0].querySelector('.book-category-tag').textContent, 'Văn học');

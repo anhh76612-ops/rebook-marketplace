@@ -56,8 +56,10 @@
       .replace(/'/g, '&#39;');
   }
 
+  // Tiền Việt: nhóm ba chữ số bằng dấu chấm (45.000 đ), giống các trang do máy chủ dựng.
+  // Tự chèn dấu chấm thay cho toLocaleString để kết quả không phụ thuộc bộ dữ liệu ngôn ngữ của trình duyệt.
   function formatMoney(value) {
-    return Number(value || 0).toLocaleString('en-US') + ' đ';
+    return String(Math.round(Number(value) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' đ';
   }
 
   function safeRedirect(target, fallback) {
@@ -432,8 +434,10 @@
       dialog.setAttribute('aria-modal', 'true');
       dialog.setAttribute('aria-labelledby', 'ob-confirm-title');
       dialog.setAttribute('aria-describedby', 'ob-confirm-message');
-      dialog.style.cssText = 'background:#fff;border-radius:14px;width:100%;max-width:440px;padding:1.5rem;' +
-        'box-shadow:0 12px 40px rgba(0,0,0,.25)';
+      // Màu, bo góc và bóng lấy từ biến của theme; giá trị sau dấu phẩy dùng cho trang không nạp style.css.
+      dialog.style.cssText = 'background:var(--surface-card,#fff);color:var(--text-main,inherit);' +
+        'border-radius:var(--radius-panel,14px);width:100%;max-width:440px;padding:1.5rem;' +
+        'box-shadow:0 12px 40px color-mix(in srgb,var(--shadow-color,#000) 25%,transparent)';
 
       var title = document.createElement('h2');
       title.id = 'ob-confirm-title';
