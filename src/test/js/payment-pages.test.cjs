@@ -205,8 +205,8 @@ function management(role, handler) {
   return boot('payment/management.html', ['banks.js', 'management/payments.js'], handler, role, { pathname: '/management/payments' });
 }
 
-test('payment management is closed to customers and shop owners', async () => {
-  for (const role of ['KHACH_HANG', 'CHU_CUA_HANG']) {
+test('payment management is open to managers only', async () => {
+  for (const role of ['KHACH_HANG', 'CHU_CUA_HANG', 'QUAN_TRI_VIEN']) {
     const app = management(role, async () => pageOf([]));
     await settle();
 
@@ -276,7 +276,7 @@ test('manager switches to shop payouts and to the bank ledger', async () => {
     maGiaoDich: 1, maGiaoDichCong: '700001', soTien: 125000, noiDung: 'MBVCB.1. OB7K2M9QXA <script>', thoiGianGiaoDich: '2026-10-12T15:36:21',
     tenNguoiChuyen: 'NGUYEN VAN KHACH', soTaiKhoanChuyen: '8888888888', maThanhToan: 'OB7K2M9QXA', ketQua: 'KHOP', ghiChu: null, ngayNhan: '2026-10-12T15:36:25'
   };
-  const app = management('QUAN_TRI_VIEN', async call => {
+  const app = management('QUAN_LY', async call => {
     if (call.url.includes('/transactions')) { return pageOf([transaction]); }
     return pageOf(call.url.includes('CHI_CUA_HANG') ? [payout] : []);
   });

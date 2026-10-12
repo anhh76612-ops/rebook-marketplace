@@ -7,7 +7,8 @@
 
   var Auth = OB.auth;
   var Banks = window.OldBookBanks;
-  var ROLES = ['QUAN_LY', 'QUAN_TRI_VIEN'];
+  // Hoàn tiền và chi tiền là việc vận hành của Quản lý; quản trị viên lo hệ thống nên không vào trang này.
+  var ROLES = ['QUAN_LY'];
   var BASE = '/api/management/payments';
   var SIZE = 20;
   var TRANSACTIONS = 'GIAO_DICH';

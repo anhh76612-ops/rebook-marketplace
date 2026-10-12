@@ -467,10 +467,16 @@ class PaymentFlowIntegrationTest {
         DonHangCuaHang child = paidOrder(buyer, book);
         String tracking = confirm(child);
 
-        deliver(child, tracking, "picked", "delivering", "delivery_fail");
+        deliver(child, tracking, "picked", "delivering");
+        // Số lần giao lại trước khi hoàn hàng là cấu hình của phần vận chuyển, nên cứ báo thất bại cho tới khi đơn bị hoàn.
+        for (int lan = 0; lan < 10 && !"DA_HOAN_TRA".equals(orderStatus(child)); lan++) {
+            deliver(child, tracking, "delivery_fail");
+            if (!"DA_HOAN_TRA".equals(orderStatus(child))) {
+                deliver(child, tracking, "delivering");
+            }
+        }
 
-        assertThat(donHangCuaHangRepository.findById(child.getMaDHCH()).orElseThrow().getTrangThaiDonHang())
-                .isEqualTo("DA_HOAN_TRA");
+        assertThat(orderStatus(child)).isEqualTo("DA_HOAN_TRA");
         assertThat(refunds(buyer)).hasSize(1);
         assertThat(refunds(buyer).get(0).getSoTien()).isEqualByComparingTo("125000");
         assertThat(parentStatus(child)).isEqualTo("KHONG_THANH_TOAN");
@@ -679,6 +685,10 @@ class PaymentFlowIntegrationTest {
 
     private List<DonHangCuaHang> children(DonHang order) {
         return donHangCuaHangRepository.findAllByDonHang_MaDHOrderByMaDHCHAsc(order.getMaDH());
+    }
+
+    private String orderStatus(DonHangCuaHang child) {
+        return donHangCuaHangRepository.findById(child.getMaDHCH()).orElseThrow().getTrangThaiDonHang();
     }
 
     private String parentStatus(DonHangCuaHang child) {
