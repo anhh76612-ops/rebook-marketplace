@@ -2,9 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!--
-  Trang mô phỏng đối tác vận chuyển (Sandbox).
--->
+
 <header th:fragment="header" class="shipping-header">
 
   <!-- ========================= -->
@@ -12,10 +10,6 @@
   <!-- ========================= -->
   <div class="topbar d-none d-md-block">
     <div class="container d-flex justify-content-between py-1">
-      <span>
-        <i class="bi bi-box-seam me-1"></i>
-        OldBook - Mô phỏng đối tác vận chuyển
-      </span>
     </div>
   </div>
 
@@ -23,7 +17,7 @@
   <!-- MAINBAR -->
   <!-- ========================= -->
   <div class="mainbardark">
-    <div class="container d-flex align-items-center justify-content-between gap-5 py-5">
+    <div class="container d-flex align-items-center justify-content-between gap-5 py-4">
 
       <!-- Logo / quay lại trang Sandbox của đối tác -->
       <a
@@ -45,10 +39,10 @@
       <div class="d-flex align-items-center gap-2">
 
         <span
-                class="badge badge-role-don-vi-van-chuyen px-3 py-2"
+                class="badge badge-role-don-vi-van-chuyen px-3 py-2 fs-6	"
                 th:if="${tenDonVi != null}">
 
-          <i class="bi bi-truck me-1"></i>
+          <i class="bi bi-truck me-2"></i>
           Đối tác:
           <span th:text="${tenDonVi}">
             Đơn vị vận chuyển

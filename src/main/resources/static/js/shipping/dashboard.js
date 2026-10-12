@@ -42,11 +42,37 @@
     DANG_GIAO: 'Đang giao', DA_GIAO: 'Đã giao', DA_HOAN_TRA: 'Đã hoàn trả', DA_HUY: 'Đã hủy' };
   var PAYMENT_LABELS = { CHO_THANH_TOAN: 'Thu hộ (COD)', DA_THANH_TOAN: 'Đã thanh toán',
     THANH_TOAN_MOT_PHAN: 'Thanh toán một phần', KHONG_THANH_TOAN: 'Không thanh toán' };
-  var HINTS = {
-    DA_GIAO: 'Xác nhận đã giao và thu tiền COD. Hệ thống sẽ chốt doanh thu cho cửa hàng.',
-    GIAO_THAT_BAI: 'Hết số lần giao cho phép thì đơn tự chuyển sang Đã hoàn trả.',
-    DA_HOAN_TRA: 'Hàng trả về cửa hàng, tồn kho được cộng lại, không thu tiền khách.'
-  };
+  var DEFAULT_MAX_ATTEMPTS = 3;
+
+  function maxAttempts(x) { return (x && x.soLanGiaoToiDa) || DEFAULT_MAX_ATTEMPTS; }
+  function failCount(x) { return (x && x.soLanGiaoThatBai) || 0; }
+
+  // Gợi ý theo trạng thái được chọn, tính theo số lần giao thất bại của vận đơn đang mở.
+  function hintFor(status, x) {
+    var max = maxAttempts(x);
+    var fails = failCount(x);
+    if (status === 'DA_GIAO') {
+      return 'Xác nhận đã giao và thu tiền COD. Hệ thống sẽ chốt doanh thu cho cửa hàng.';
+    }
+    if (status === 'GIAO_THAT_BAI') {
+      var lan = fails + 1;
+      return lan >= max
+        ? 'Đây là lần giao thất bại thứ ' + lan + '/' + max + ': hệ thống sẽ TỰ ĐỘNG HOÀN TRẢ hàng về cửa hàng (cộng lại tồn kho, không thu tiền khách).'
+        : 'Ghi nhận giao thất bại lần ' + lan + '/' + max + '. Sau đó chọn "Giao lại" để giao tiếp; thất bại lần thứ ' + max + ' sẽ tự động hoàn trả.';
+    }
+    if (status === 'DANG_GIAO' && x && x.trangThaiVanChuyen === 'GIAO_THAT_BAI') {
+      return 'Giao lại lần ' + (fails + 1) + '/' + max + ' (đã thất bại ' + fails + ' lần).';
+    }
+    return '';
+  }
+
+  // Tên lựa chọn trong hộp thoại: DANG_GIAO sau khi giao thất bại hiển thị là "Giao lại".
+  function optionLabel(status, x) {
+    if (status === 'DANG_GIAO' && x && x.trangThaiVanChuyen === 'GIAO_THAT_BAI') {
+      return 'Giao lại (lần ' + (failCount(x) + 1) + '/' + maxAttempts(x) + ')';
+    }
+    return LABELS[status] || status;
+  }
   var IN_TRANSIT = ['DANG_LAY_HANG', 'DA_LAY_HANG', 'DANG_GIAO', 'GIAO_THAT_BAI'];
 
   function statusBadge(status) {
@@ -136,7 +162,7 @@
         '<td><strong>' + esc(x.maVanDon || ('VC-' + x.maVanChuyen)) + '</strong></td>' +
         '<td>#DHCH' + esc(x.maDHCH) + '<div class="small text-muted">Đơn #' + esc(x.maDH) + '</div></td>' +
         '<td>' + statusBadge(x.trangThaiVanChuyen) + '</td>' +
-        '<td>' + esc(x.soLanGiaoThatBai || 0) + '</td>' +
+        '<td>' + esc(failCount(x) + '/' + maxAttempts(x)) + '</td>' +
         '<td class="small">' + date(x.ngayCapNhat) + '</td>' +
         '<td class="text-end">' + (canUpdate
           ? '<button class="btn btn-outline-secondary btn-sm" onclick="Shipping.openStatus(' + x.maVanChuyen + ')"><i class="bi bi-pencil-square me-1"></i>Cập nhật</button>'
@@ -168,11 +194,17 @@
     }).catch(function (e) { OldBook.toast(e.message, 'danger'); });
   }
 
+  function currentShipment() {
+    var id = Number(document.getElementById('statusId').value);
+    return shipments.find(function (s) { return s.maVanChuyen === id; });
+  }
+
   function onStatusChange() {
     var v = document.getElementById('statusValue').value;
     var hint = document.getElementById('statusHint');
-    hint.textContent = HINTS[v] || '';
-    hint.classList.toggle('d-none', !HINTS[v]);
+    var text = hintFor(v, currentShipment());
+    hint.textContent = text;
+    hint.classList.toggle('d-none', !text);
   }
 
   function openStatus(id) {
@@ -185,7 +217,7 @@
     }
     document.getElementById('statusId').value = id;
     document.getElementById('statusValue').innerHTML = allowed.map(function (st) {
-      return '<option value="' + st + '">' + esc(LABELS[st]) + '</option>';
+      return '<option value="' + st + '">' + esc(optionLabel(st, x)) + '</option>';
     }).join('');
     document.getElementById('statusNote').value = '';
     onStatusChange();
@@ -200,7 +232,13 @@
       bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
       // Server có thể tự chuyển tiếp (ví dụ giao thất bại hết lượt -> hoàn trả), nên báo theo kết quả thật.
       var now = res && res.trangThaiVanChuyen ? res.trangThaiVanChuyen : status;
-      OldBook.toast('Đã cập nhật: ' + (LABELS[now] || now) + '.', 'success');
+      if (now === 'DA_HOAN_TRA' && status === 'GIAO_THAT_BAI') {
+        OldBook.toast('Giao thất bại lần ' + failCount(res) + '/' + maxAttempts(res) + ': đơn đã tự động chuyển hoàn trả về cửa hàng.', 'warning');
+      } else if (now === 'GIAO_THAT_BAI') {
+        OldBook.toast('Đã ghi nhận giao thất bại lần ' + failCount(res) + '/' + maxAttempts(res) + '. Hãy cập nhật "Giao lại" khi đi giao tiếp.', 'warning');
+      } else {
+        OldBook.toast('Đã cập nhật: ' + (LABELS[now] || now) + '.', 'success');
+      }
       loadAll();
     }).catch(function (e) { OldBook.toast(e.message, 'danger'); });
   }

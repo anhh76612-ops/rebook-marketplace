@@ -198,10 +198,25 @@ main { min-height: 60vh; }
 .cart-link i { font-size: 1.5rem; vertical-align: middle; }
 .cart-count { position: absolute; top: -8px; left: 16px; background: var(--danger-fill); color: var(--text-on-inverse);
   border-radius: var(--radius-pill); font-size: .7rem; padding: 1px 6px; }
-.menu { background: var(--surface-bar); padding: 0; }
-.menu .nav-link { color: var(--text-on-bar) !important; padding: .8rem 1rem; font-weight: 500; }
-.menu .nav-link:hover, .menu .nav-link:active, .menu .nav-link.active { background: var(--surface-brand); color: var(--text-on-brand) !important; }
-
+.menu { background: var(--surface-bar); padding: .55rem 0; }
+.menu .navbar-nav { gap: .45rem; }
+.menu .navbar-nav .nav-link {
+  display: inline-flex; align-items: center;
+  padding: .38rem .95rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--text-on-bar) 30%, transparent);
+  color: var(--text-on-bar) !important;
+  font-size: .9rem; font-weight: 500; white-space: nowrap;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.menu .navbar-nav .nav-link:hover {
+  background: color-mix(in srgb, var(--text-on-bar) 14%, transparent);
+}
+.menu .navbar-nav .nav-link.active {
+  background: var(--surface-brand); border-color: var(--surface-brand);
+  color: var(--text-on-brand) !important; font-weight: 600;
+}
+.menu .navbar-nav .nav-link:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
 .btn-accent { background: var(--cta); border-color: var(--cta); color: var(--cta-text); font-weight: 600; }
 .btn-outline-brown { border: 2px solid var(--text-heading); color: var(--text-heading); font-weight: 600; background: transparent; }
 .btn-outline-secondary { --bs-btn-color: var(--text-heading); --bs-btn-border-color: var(--border-strong);
