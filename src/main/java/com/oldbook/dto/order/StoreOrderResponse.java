@@ -36,6 +36,12 @@ public class StoreOrderResponse {
     // Chỉ có khi đã giao thành công / đã hoàn trả
     private LocalDateTime ngayGiao;
     private LocalDateTime ngayHoanTra;
+    private LocalDateTime ngayHuy;
+    private String huyBoi;
+    private String lyDoHuy;
+
+    // Yêu cầu hủy mới nhất của khách (null nếu chưa có)
+    private CancelRequestResponse yeuCauHuy;
 
     // Chỉ có khi đã giao thành công
     private BigDecimal commissionTien;

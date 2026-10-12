@@ -7,6 +7,7 @@ import com.oldbook.entity.identity.NguoiDung;
 import com.oldbook.exception.common.BusinessException;
 import com.oldbook.repository.identity.DiaChiRepository;
 import com.oldbook.repository.identity.NguoiDungRepository;
+import com.oldbook.repository.order.DonHangRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ public class DiaChiService {
 
     private final DiaChiRepository diaChiRepository;
     private final NguoiDungRepository nguoiDungRepository;
+    private final DonHangRepository donHangRepository;
 
     @Transactional(readOnly = true)
     public List<DiaChiResponse> getAll(Integer maND) {
@@ -96,6 +98,8 @@ public class DiaChiService {
         DiaChi diaChi = getAddress(maND, maDiaChi);
         boolean wasDefault = Boolean.TRUE.equals(diaChi.getLaMacDinh());
 
+        // Đơn cũ giữ snapshot địa chỉ nên chỉ cần gỡ khóa ngoại, tránh lỗi ràng buộc khi xóa
+        donHangRepository.clearDiaChiGiao(maDiaChi);
         diaChiRepository.delete(diaChi);
 
         if (wasDefault) {

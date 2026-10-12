@@ -1,10 +1,12 @@
 package com.oldbook.controller.order;
 
 import com.oldbook.dto.common.ApiResponse;
+import com.oldbook.dto.order.CancelOrderRequest;
 import com.oldbook.dto.order.SellerOrderResponse;
+import com.oldbook.dto.order.StoreOrderProductOption;
 import com.oldbook.security.store.StoreAccess;
 import com.oldbook.service.order.StoreOrderService;
-import com.oldbook.service.shipping.ShipmentTrackingService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,15 +18,23 @@ import java.util.List;
 public class StoreOrderController {
 
     private final StoreOrderService storeOrderService;
-    private final ShipmentTrackingService shipmentTrackingService;
     private final StoreAccess storeAccess;
 
     @GetMapping
     public ApiResponse<List<SellerOrderResponse>> getMyStoreOrders(
-            @RequestParam(required = false) String trangThai
+            @RequestParam(required = false) String trangThai,
+            @RequestParam(required = false) String maDonHang,
+            @RequestParam(required = false) Integer maSach,
+            @RequestParam(required = false) String danhGia
     ) {
         Integer maND = storeAccess.requireOwner();
-        return ApiResponse.success(storeOrderService.getMyStoreOrders(maND, trangThai));
+        return ApiResponse.success(storeOrderService.getMyStoreOrders(maND, trangThai, maDonHang, maSach, danhGia));
+    }
+
+    @GetMapping("/products")
+    public ApiResponse<List<StoreOrderProductOption>> getOrderedProducts() {
+        Integer maND = storeAccess.requireOwner();
+        return ApiResponse.success(storeOrderService.getMyStoreOrderProducts(maND));
     }
 
     @PostMapping("/{maDHCH}/confirm")
@@ -33,12 +43,24 @@ public class StoreOrderController {
         return ApiResponse.success(storeOrderService.confirmOrder(maND, maDHCH));
     }
 
-    /** Kéo trạng thái mới nhất từ đơn vị vận chuyển (không cần chờ chu kỳ đồng bộ). */
-    @PostMapping("/{maDHCH}/sync-shipping")
-    public ApiResponse<SellerOrderResponse> syncShipping(@PathVariable Integer maDHCH) {
+    @PostMapping("/{maDHCH}/cancel")
+    public ApiResponse<SellerOrderResponse> cancel(
+            @PathVariable Integer maDHCH, @Valid @RequestBody CancelOrderRequest request) {
         Integer maND = storeAccess.requireOwner();
-        storeOrderService.getMyStoreOrder(maND, maDHCH); // kiểm tra quyền sở hữu
-        shipmentTrackingService.pullLatest(maDHCH);
-        return ApiResponse.success(storeOrderService.getMyStoreOrder(maND, maDHCH));
+        return ApiResponse.success(storeOrderService.cancelOrder(maND, maDHCH, request.lyDo()));
     }
+
+    @PostMapping("/{maDHCH}/cancel-request/approve")
+    public ApiResponse<SellerOrderResponse> approveCancelRequest(@PathVariable Integer maDHCH) {
+        Integer maND = storeAccess.requireOwner();
+        return ApiResponse.success(storeOrderService.approveCancelRequest(maND, maDHCH));
+    }
+
+    @PostMapping("/{maDHCH}/cancel-request/reject")
+    public ApiResponse<SellerOrderResponse> rejectCancelRequest(
+            @PathVariable Integer maDHCH, @Valid @RequestBody CancelOrderRequest request) {
+        Integer maND = storeAccess.requireOwner();
+        return ApiResponse.success(storeOrderService.rejectCancelRequest(maND, maDHCH, request.lyDo()));
+    }
+
 }

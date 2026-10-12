@@ -761,9 +761,14 @@
         }
 
 
-        if (!window.confirm(message)) {
-            return;
-        }
+        OB.confirm(message, {
+            title: 'Xóa địa chỉ', confirmText: 'Xóa'
+        }).then(function (confirmed) {
+            if (confirmed) { removeAddress(id); }
+        });
+    }
+
+    function removeAddress(id) {
 
 
         OB.request(

@@ -2,6 +2,7 @@ package com.oldbook.entity.order;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -95,6 +96,17 @@ public class DonHangCuaHang {
     // Thời điểm chủ cửa hàng xác nhận đơn
     @Column(name = "ngay_xac_nhan")
     private LocalDateTime ngayXacNhan;
+
+    @Column(name = "ngay_huy")
+    private LocalDateTime ngayHuy;
+
+    // Vai trò thực hiện hủy (KHACH_HANG / CHU_CUA_HANG) và lý do hủy
+    @Column(name = "huy_boi", length = 30)
+    private String huyBoi;
+
+    @Nationalized
+    @Column(name = "ly_do_huy", length = 1000)
+    private String lyDoHuy;
 
     // Ghi chú của khách gửi riêng cho cửa hàng này
     @Column(name = "ghi_chu", columnDefinition = "TEXT")
