@@ -128,6 +128,35 @@ public class OrderSettlementService {
         refreshParentPaymentStatus(order.getDonHang().getMaDH());
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void settleCancelled(DonHangCuaHang order, String huyBoi, String lyDo) {
+        if (TrangThaiDonHang.DA_HUY.name().equals(order.getTrangThaiDonHang())) {
+            return; // đã hủy, tránh cộng tồn hai lần
+        }
+
+        List<ChiTietDonHang> lines = chiTietDonHangRepository
+                .findAllByDonHangCuaHang_MaDHCHOrderByMaCTDHAsc(order.getMaDHCH());
+
+        for (ChiTietDonHang line : lines) {
+            Sach sach = sachRepository.findByIdForUpdate(line.getSach().getMaSach())
+                    .orElseThrow(() -> new BusinessException("Sách không tồn tại khi hoàn kho"));
+            sach.setSoLuongTon(nz(sach.getSoLuongTon()) + line.getSoLuong());
+            sachRepository.save(sach);
+        }
+
+        order.setTrangThaiDonHang(TrangThaiDonHang.DA_HUY.name());
+        order.setCommissionTien(BigDecimal.ZERO);
+        order.setDoanhThuShop(BigDecimal.ZERO);
+        order.setTienHoanTra(BigDecimal.ZERO);
+        order.setTrangThaiThanhToanShop(TrangThaiThanhToan.KHONG_THANH_TOAN.name());
+        order.setNgayHuy(LocalDateTime.now());
+        order.setHuyBoi(huyBoi);
+        order.setLyDoHuy(lyDo);
+        donHangCuaHangRepository.save(order);
+
+        refreshParentPaymentStatus(order.getDonHang().getMaDH());
+    }
+
     private BigDecimal commissionRate(Integer maDM, LocalDateTime now) {
         Optional<CauHinhChietKhau> cfg = cauHinhChietKhauRepository
                 .findEffective(maDM, CHIET_KHAU_HOAT_DONG, now)

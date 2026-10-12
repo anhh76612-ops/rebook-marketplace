@@ -7,6 +7,8 @@ import com.oldbook.entity.order.DonHangCuaHang;
 import com.oldbook.entity.shipping.DonViVanChuyen;
 import com.oldbook.entity.shipping.VanChuyen;
 import com.oldbook.exception.common.BusinessException;
+import com.oldbook.constant.order.TrangThaiYeuCauHuy;
+import com.oldbook.repository.order.YeuCauHuyDonRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ public class VanChuyenService {
     private final VanChuyenRepository vanChuyenRepository;
     private final ShipmentSyncService syncService;
     private final DonViVanChuyenResolver donViResolver;
+    private final YeuCauHuyDonRepository yeuCauHuyDonRepository;
 
     /** Thông tin hãng để trang /shipping/{maCode} hiển thị tiêu đề. */
     @Transactional(readOnly = true)
@@ -60,6 +63,11 @@ public class VanChuyenService {
 
         if (TrangThaiVanChuyen.fromName(vc.getTrangThaiVanChuyen()) != TrangThaiVanChuyen.CHO_LAY_HANG) {
             throw new BusinessException("Đơn đã được tiếp nhận hoặc không còn ở trạng thái chờ lấy hàng");
+        }
+
+        if (yeuCauHuyDonRepository.existsByDonHangCuaHang_MaDHCHAndTrangThaiYeuCau(
+                req.getMaDHCH(), TrangThaiYeuCauHuy.CHO_DUYET.name())) {
+            throw new BusinessException("Khách hàng đang yêu cầu hủy đơn này, vui lòng chờ cửa hàng xử lý");
         }
 
         VanChuyen updated = syncService.applyPartnerUpdate(
@@ -96,6 +104,8 @@ public class VanChuyenService {
         return vanChuyenRepository.findAllByDonViVanChuyen_MaDVVCOrderByMaVanChuyenDesc(dvvc.getMaDVVC()).stream()
                 .filter(v -> TrangThaiVanChuyen.fromName(v.getTrangThaiVanChuyen()) == TrangThaiVanChuyen.CHO_LAY_HANG)
                 .filter(v -> TrangThaiDonHang.DA_XAC_NHAN.name().equals(v.getDonHangCuaHang().getTrangThaiDonHang()))
+                .filter(v -> !yeuCauHuyDonRepository.existsByDonHangCuaHang_MaDHCHAndTrangThaiYeuCau(
+                        v.getDonHangCuaHang().getMaDHCH(), TrangThaiYeuCauHuy.CHO_DUYET.name()))
                 .map(v -> {
                     DonHangCuaHang d = v.getDonHangCuaHang();
                     return YeuCauVanChuyenResponse.builder()

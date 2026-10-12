@@ -30,7 +30,8 @@ public class QuanLyDonViVanChuyenService {
 
     private static final List<String> TRANG_THAI_KET_THUC = List.of(
             TrangThaiVanChuyen.DA_GIAO.name(),
-            TrangThaiVanChuyen.DA_HOAN_TRA.name()
+            TrangThaiVanChuyen.DA_HOAN_TRA.name(),
+            TrangThaiVanChuyen.DA_HUY.name()
     );
 
     private final DonViVanChuyenRepository donViRepository;

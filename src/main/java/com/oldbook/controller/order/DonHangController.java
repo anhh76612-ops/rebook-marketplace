@@ -2,6 +2,7 @@ package com.oldbook.controller.order;
 
 import com.oldbook.constant.auth.VaiTro;
 import com.oldbook.dto.common.ApiResponse;
+import com.oldbook.dto.order.CancelOrderRequest;
 import com.oldbook.dto.order.CreateOrderRequest;
 import com.oldbook.dto.order.OrderResponse;
 import com.oldbook.filter.auth.JwtAuthenticationFilter.AuthenticatedUserDetails;
@@ -55,6 +56,18 @@ public class DonHangController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(donHangService.getMyOrder(maND, maDH))
+        );
+    }
+
+    @PostMapping("/store-orders/{maDHCH}/cancel")
+    public ResponseEntity<ApiResponse<OrderResponse>> cancelStoreOrder(
+            @PathVariable Integer maDHCH,
+            @Valid @RequestBody CancelOrderRequest request
+    ) {
+        Integer maND = getMaNDKhachHang();
+
+        return ResponseEntity.ok(
+                ApiResponse.success(donHangService.cancelStoreOrder(maND, maDHCH, request.lyDo()))
         );
     }
 

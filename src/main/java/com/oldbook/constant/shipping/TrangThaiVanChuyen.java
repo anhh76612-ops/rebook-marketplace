@@ -16,7 +16,9 @@ public enum TrangThaiVanChuyen {
     DA_GIAO("Đã giao", TrangThaiDonHang.DA_GIAO),
     /** Một lần giao không thành công; đơn hàng con vẫn ở trạng thái "Đang giao" cho tới khi hoàn trả. */
     GIAO_THAT_BAI("Giao thất bại", TrangThaiDonHang.DANG_GIAO),
-    DA_HOAN_TRA("Đã hoàn trả", TrangThaiDonHang.DA_HOAN_TRA);
+    DA_HOAN_TRA("Đã hoàn trả", TrangThaiDonHang.DA_HOAN_TRA),
+    /** Chỉ do hệ thống đặt khi cửa hàng đồng ý hủy đơn trước lúc hãng lấy hàng; hãng không tự chuyển sang trạng thái này. */
+    DA_HUY("Đã hủy", TrangThaiDonHang.DA_HUY);
 
     private final String tenHienThi;
     private final TrangThaiDonHang trangThaiDonHang;
@@ -36,7 +38,7 @@ public enum TrangThaiVanChuyen {
     }
 
     public boolean isFinal() {
-        return this == DA_GIAO || this == DA_HOAN_TRA;
+        return this == DA_GIAO || this == DA_HOAN_TRA || this == DA_HUY;
     }
 
     public boolean canMoveTo(TrangThaiVanChuyen next) {
@@ -46,7 +48,7 @@ public enum TrangThaiVanChuyen {
             case DA_LAY_HANG -> next == DANG_GIAO;
             case DANG_GIAO -> next == DA_GIAO || next == GIAO_THAT_BAI || next == DA_HOAN_TRA;
             case GIAO_THAT_BAI -> next == DANG_GIAO || next == DA_HOAN_TRA;
-            case DA_GIAO, DA_HOAN_TRA -> false;
+            case DA_GIAO, DA_HOAN_TRA, DA_HUY -> false;
         };
     }
 

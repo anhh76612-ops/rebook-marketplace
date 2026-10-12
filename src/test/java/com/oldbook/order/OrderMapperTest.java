@@ -9,6 +9,7 @@ import com.oldbook.repository.order.ChiTietDonHangRepository;
 import com.oldbook.repository.shipping.LichSuVanChuyenRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
 import com.oldbook.repository.system.DanhGiaRepository;
+import com.oldbook.repository.order.YeuCauHuyDonRepository;
 import com.oldbook.service.order.OrderMapper;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,6 +30,7 @@ class OrderMapperTest {
     @Mock VanChuyenRepository shipments;
     @Mock LichSuVanChuyenRepository history;
     @Mock DanhGiaRepository reviews;
+    @Mock YeuCauHuyDonRepository cancelRequests;
     @InjectMocks OrderMapper mapper;
 
     @ParameterizedTest
