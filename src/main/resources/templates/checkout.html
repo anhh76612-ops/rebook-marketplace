@@ -66,13 +66,8 @@
 
         <div class="row g-4">
 
-            <!-- ========================= -->
-            <!-- THÔNG TIN ĐẶT HÀNG -->
-            <!-- ========================= -->
-
             <div class="col-lg-7">
 
-                <!-- ĐỊA CHỈ -->
                 <div class="panel mb-3">
 
                     <h2 class="h5 fw-bold mb-3">
@@ -83,179 +78,112 @@
 
                     <div id="noAddress"
                          class="alert alert-warning d-none mb-3">
-
                         Tài khoản chưa có địa chỉ giao hàng.
                         Hãy thêm địa chỉ trước khi đặt hàng.
-
                     </div>
 
                     <button type="button"
                             class="btn btn-outline-brown"
                             data-bs-toggle="modal"
                             data-bs-target="#addAddressModal">
-
                         <i class="bi bi-plus-circle me-1"></i>
-
                         Thêm địa chỉ mới
-
                     </button>
 
                 </div>
 
+                <div class="panel">
 
-                <!-- VẬN CHUYỂN & GHI CHÚ THEO TỪNG CỬA HÀNG -->
-                <div class="panel mb-3">
-
-                    <h2 class="h5 fw-bold mb-1">
-                        Vận chuyển &amp; ghi chú theo cửa hàng
+                    <h2 class="h5 fw-bold mb-3">
+                        Sản phẩm &amp; vận chuyển
                     </h2>
-
-                    <p class="small text-muted mb-3">
-                        Mỗi cửa hàng giao hàng riêng. Hãy chọn đơn vị vận chuyển
-                        và để lại ghi chú (nếu cần) cho từng cửa hàng.
-                    </p>
 
                     <div id="noCarrier"
                          class="alert alert-warning d-none">
                         Hiện chưa có đơn vị vận chuyển nào khả dụng.
                     </div>
 
-                    <div id="storeOptions"></div>
+                    <div id="checkoutItems"></div>
 
                 </div>
 
+            </div>
 
-                <!-- THANH TOÁN -->
-                <div class="panel">
+            <div class="col-lg-5">
+
+                <div class="panel mb-3">
 
                     <h2 class="h5 fw-bold mb-3">
                         Phương thức thanh toán
                     </h2>
 
                     <div class="form-check">
-
                         <input class="form-check-input"
                                type="radio"
                                name="payment"
                                id="payCod"
                                value="COD"
                                checked>
-
                         <label class="form-check-label"
                                for="payCod">
-
                             <i class="bi bi-cash-coin me-1"></i>
-
                             Thanh toán khi nhận hàng (COD)
-
                         </label>
-
                     </div>
 
                     <div class="small text-muted mt-2">
-
                         Hiện hệ thống chỉ hỗ trợ COD.
-                        Voucher chưa được áp dụng.
-
                     </div>
 
                 </div>
 
-            </div>
-
-
-            <!-- ========================= -->
-            <!-- TÓM TẮT ĐƠN -->
-            <!-- ========================= -->
-
-            <div class="col-lg-5">
-
                 <div class="panel">
 
                     <h2 class="h5 fw-bold mb-3">
-                        Đơn hàng của bạn
+                        Tóm tắt đơn hàng
                     </h2>
 
-                    <div id="checkoutItems"></div>
-
-                    <hr>
-
-                    <!-- MÃ GIẢM GIÁ (chưa xử lý) -->
                     <div class="input-group mb-3">
                         <input type="text" class="form-control" placeholder="Mã giảm giá (sắp có)" disabled>
                         <button type="button" class="btn btn-outline-brown" disabled>Áp dụng</button>
                     </div>
 
                     <div class="d-flex justify-content-between mb-2">
-
                         <span>Số lượng sách</span>
-
-                        <span id="checkoutQty">
-                            0
-                        </span>
-
+                        <span id="checkoutQty">0</span>
                     </div>
 
                     <div class="d-flex justify-content-between mb-2">
-
                         <span>Tiền hàng</span>
-
-                        <span id="checkoutSubtotal">
-                            0 đ
-                        </span>
-
+                        <span id="checkoutSubtotal">0 đ</span>
                     </div>
 
                     <div class="d-flex justify-content-between mb-2">
-
                         <span>Phí vận chuyển</span>
-
-                        <span id="checkoutShipping">
-                            0 đ
-                        </span>
-
+                        <span id="checkoutShipping">0 đ</span>
                     </div>
 
                     <div class="d-flex justify-content-between mb-2">
-
                         <span>Giảm giá</span>
-
-                        <span>
-                            0 đ
-                        </span>
-
+                        <span>0 đ</span>
                     </div>
 
                     <hr>
 
                     <div class="d-flex justify-content-between fs-5 fw-bold mb-3">
-
-                        <span>
-                            Tổng thanh toán
-                        </span>
-
-                        <span id="checkoutGrand"
-                              class="price">
-
-                            0 đ
-
-                        </span>
-
+                        <span>Tổng thanh toán</span>
+                        <span id="checkoutGrand" class="price">0 đ</span>
                     </div>
 
                     <button id="placeOrder"
                             type="submit"
                             class="btn btn-accent btn-lg w-100">
-
                         Đặt hàng
-
                     </button>
 
                     <a href="/cart"
                        class="btn btn-outline-brown w-100 mt-2">
-
                         Quay lại giỏ hàng
-
                     </a>
 
                 </div>
@@ -268,11 +196,6 @@
 
 </main>
 
-
-<!-- ================================================= -->
-<!-- MODAL THÊM ĐỊA CHỈ -->
-<!-- ================================================= -->
-
 <div class="modal fade"
      id="addAddressModal"
      tabindex="-1"
@@ -282,8 +205,6 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
 
         <div class="modal-content">
-
-            <!-- HEADER -->
 
             <div class="modal-header">
 
@@ -302,9 +223,6 @@
 
             </div>
 
-
-            <!-- FORM -->
-
             <form id="addAddressForm">
 
                 <div class="modal-body">
@@ -314,10 +232,7 @@
                          role="alert">
                     </div>
 
-
                     <div class="row g-3">
-
-                        <!-- HỌ TÊN -->
 
                         <div class="col-md-6">
 
@@ -337,9 +252,6 @@
                                    required>
 
                         </div>
-
-
-                        <!-- SĐT -->
 
                         <div class="col-md-6">
 
@@ -362,9 +274,6 @@
 
                         </div>
 
-
-                        <!-- TỈNH -->
-
                         <div class="col-md-4">
 
                             <label for="addressProvince"
@@ -384,9 +293,6 @@
                                    required>
 
                         </div>
-
-
-                        <!-- QUẬN -->
 
                         <div class="col-md-4">
 
@@ -408,9 +314,6 @@
 
                         </div>
 
-
-                        <!-- PHƯỜNG -->
-
                         <div class="col-md-4">
 
                             <label for="addressWard"
@@ -431,9 +334,6 @@
 
                         </div>
 
-
-                        <!-- ĐỊA CHỈ CHI TIẾT -->
-
                         <div class="col-12">
 
                             <label for="addressDetail"
@@ -453,9 +353,6 @@
                                    required>
 
                         </div>
-
-
-                        <!-- MẶC ĐỊNH -->
 
                         <div class="col-12">
 
@@ -480,9 +377,6 @@
                     </div>
 
                 </div>
-
-
-                <!-- FOOTER -->
 
                 <div class="modal-footer">
 
@@ -514,16 +408,13 @@
 
 </div>
 
-
 <div th:replace="~{fragments/footer :: footer}"></div>
-
 
 <script th:inline="none">
 
 (function () {
 
     'use strict';
-
 
     var OB = window.OldBook;
 
@@ -539,12 +430,11 @@
 
     var carriers = [];
 
+    var addressList = [];
+
+    var editingAddressId = null;
+
     var SELECTED_KEY = 'ob_checkout_items';
-
-
-    /* ========================= */
-    /* SẢN PHẨM ĐƯỢC CHỌN TỪ GIỎ */
-    /* ========================= */
 
     function getSelectedIds() {
 
@@ -564,7 +454,6 @@
 
     }
 
-
     function clearSelectedIds() {
 
         try {
@@ -574,7 +463,6 @@
         } catch (e) { }
 
     }
-
 
     function filterSelected(data) {
 
@@ -608,24 +496,17 @@
 
     }
 
-
-    /* ========================= */
-    /* HIỂN THỊ */
-    /* ========================= */
-
     function show(id) {
 
         $(id).classList.remove('d-none');
 
     }
 
-
     function hide(id) {
 
         $(id).classList.add('d-none');
 
     }
-
 
     function alertBox(message, type) {
 
@@ -637,11 +518,6 @@
         box.textContent = message;
 
     }
-
-
-    /* ========================= */
-    /* GROUP SẢN PHẨM THEO SHOP */
-    /* ========================= */
 
     function groupItems(items) {
 
@@ -673,11 +549,6 @@
 
     }
 
-
-    /* ========================= */
-    /* HIỂN THỊ GIỎ HÀNG */
-    /* ========================= */
-
     function renderCart(data) {
 
         cart = data;
@@ -692,66 +563,48 @@
 
         }
 
-
         var groups = groupItems(data.items);
-
 
         $('checkoutItems').innerHTML =
             groups.map(function (g) {
 
+                var storeTotal = 0;
+
+                g.items.forEach(function (it) {
+                    storeTotal += Number(it.thanhTien || 0);
+                });
+
                 return (
 
-                    '<div class="mb-3">' +
+                    '<div class="store-group border rounded mb-3 overflow-hidden" data-store="' + g.maCH + '">' +
 
-                        '<div class="fw-bold mb-2">' +
-
-                            '<i class="bi bi-shop me-1"></i>' +
-
-                            OB.escapeHtml(
-                                g.name || 'Cửa hàng'
-                            ) +
-
+                        '<div class="d-flex justify-content-between align-items-center px-3 py-2 fw-bold" ' +
+                             'style="background:#F7F3EA;border-bottom:1px solid var(--line)">' +
+                            '<span><i class="bi bi-shop me-1"></i>' +
+                                OB.escapeHtml(g.name || 'Cửa hàng') +
+                            '</span>' +
+                            '<span class="text-muted">' + OB.formatMoney(storeTotal) + '</span>' +
                         '</div>' +
 
-                        '<div class="small text-muted mb-2" data-ship-label="' +
-                            g.maCH +
-                        '">Chưa chọn đơn vị vận chuyển</div>' +
+                        '<div class="px-3 pt-2">' +
 
                         g.items.map(function (it) {
 
                             return (
 
-                                '<div class="d-flex justify-content-between gap-3 mb-2">' +
+                                '<div class="d-flex justify-content-between gap-3 py-2 border-bottom">' +
 
                                     '<div>' +
-
                                         '<div class="fw-semibold">' +
-
-                                            OB.escapeHtml(
-                                                it.tenSach
-                                            ) +
-
+                                            OB.escapeHtml(it.tenSach) +
                                         '</div>' +
-
                                         '<div class="small text-muted">' +
-
-                                            'SL: ' +
-                                            it.soLuong +
-                                            ' × ' +
-                                            OB.formatMoney(
-                                                it.donGia
-                                            ) +
-
+                                            OB.formatMoney(it.donGia) + ' × ' + it.soLuong +
                                         '</div>' +
-
                                     '</div>' +
 
                                     '<span class="fw-semibold">' +
-
-                                        OB.formatMoney(
-                                            it.thanhTien
-                                        ) +
-
+                                        OB.formatMoney(it.thanhTien) +
                                     '</span>' +
 
                                 '</div>'
@@ -760,12 +613,36 @@
 
                         }).join('') +
 
+                        '</div>' +
+
+                        '<div class="px-3 py-3">' +
+
+                            '<label class="form-label small fw-semibold mb-1" for="carrier-' + g.maCH + '">' +
+                                'Đơn vị vận chuyển' +
+                            '</label>' +
+
+                            '<select id="carrier-' + g.maCH + '" ' +
+                                    'class="form-select mb-2 store-carrier" ' +
+                                    'data-ch="' + g.maCH + '">' +
+                                carrierOptions() +
+                            '</select>' +
+
+                            '<div class="small text-muted mb-2" data-ship-label="' + g.maCH + '"></div>' +
+
+                            '<input id="note-' + g.maCH + '" ' +
+                                   'type="text" ' +
+                                   'class="form-control store-note" ' +
+                                   'data-ch="' + g.maCH + '" ' +
+                                   'maxlength="1000" ' +
+                                   'placeholder="Ghi chú cho cửa hàng (không bắt buộc)">' +
+
+                        '</div>' +
+
                     '</div>'
 
                 );
 
             }).join('');
-
 
         $('checkoutQty').textContent =
             data.tongSoLuong;
@@ -773,20 +650,13 @@
         $('checkoutSubtotal').textContent =
             OB.formatMoney(data.tongTien);
 
-        renderStoreOptions(groups);
+        renderStoreOptions();
 
         updateTotals();
-
 
         return true;
 
     }
-
-
-    /* ========================= */
-    /* VẬN CHUYỂN + GHI CHÚ      */
-    /* THEO TỪNG CỬA HÀNG        */
-    /* ========================= */
 
     function carrierLabel(c) {
 
@@ -802,7 +672,6 @@
 
     }
 
-
     function findCarrier(id) {
 
         return carriers.find(function (c) {
@@ -813,8 +682,20 @@
 
     }
 
+    function carrierOptions() {
 
-    function renderStoreOptions(groups) {
+        return carriers.map(function (c, index) {
+
+            return '<option value="' + c.maDVVC + '"' +
+                (index === 0 ? ' selected' : '') + '>' +
+                OB.escapeHtml(carrierLabel(c)) +
+                '</option>';
+
+        }).join('');
+
+    }
+
+    function renderStoreOptions() {
 
         if (!carriers.length) {
 
@@ -826,66 +707,6 @@
 
         }
 
-
-        var options =
-            '<option value="">-- Chọn đơn vị vận chuyển --</option>' +
-            carriers.map(function (c) {
-
-                return '<option value="' + c.maDVVC + '">' +
-                    OB.escapeHtml(carrierLabel(c)) +
-                    '</option>';
-
-            }).join('');
-
-
-        $('storeOptions').innerHTML =
-            groups.map(function (g) {
-
-                return (
-
-                    '<div class="border rounded p-3 mb-3">' +
-
-                        '<div class="fw-bold mb-2">' +
-
-                            '<i class="bi bi-shop me-1"></i>' +
-
-                            OB.escapeHtml(g.name || 'Cửa hàng') +
-
-                            '<span class="small text-muted fw-normal ms-2">' +
-                                g.items.length + ' sản phẩm' +
-                            '</span>' +
-
-                        '</div>' +
-
-                        '<label class="form-label fw-semibold" for="carrier-' + g.maCH + '">' +
-                            'Đơn vị vận chuyển ' +
-                            '<span class="text-danger">*</span>' +
-                        '</label>' +
-
-                        '<select id="carrier-' + g.maCH + '" ' +
-                                'class="form-select mb-3 store-carrier" ' +
-                                'data-ch="' + g.maCH + '">' +
-                            options +
-                        '</select>' +
-
-                        '<label class="form-label fw-semibold" for="note-' + g.maCH + '">' +
-                            'Ghi chú cho cửa hàng' +
-                        '</label>' +
-
-                        '<textarea id="note-' + g.maCH + '" ' +
-                                  'class="form-control store-note" ' +
-                                  'data-ch="' + g.maCH + '" ' +
-                                  'rows="2" ' +
-                                  'maxlength="1000" ' +
-                                  'placeholder="Ví dụ: Giao giờ hành chính, gói kỹ giúp mình..."></textarea>' +
-
-                    '</div>'
-
-                );
-
-            }).join('');
-
-
         Array.prototype.forEach.call(
             document.querySelectorAll('.store-carrier'),
             function (select) {
@@ -896,7 +717,6 @@
         );
 
     }
-
 
     function updateTotals() {
 
@@ -919,14 +739,14 @@
                     if (label) {
 
                         label.textContent =
-                            carrier.tenDonVi + ' · Phí: ' +
+                            'Phí vận chuyển: ' +
                             OB.formatMoney(carrier.phiVanChuyen || 0);
 
                     }
 
                 } else if (label) {
 
-                    label.textContent = 'Chưa chọn đơn vị vận chuyển';
+                    label.textContent = '';
 
                 }
 
@@ -940,12 +760,9 @@
 
     }
 
-
-    /* ========================= */
-    /* HIỂN THỊ ĐỊA CHỈ */
-    /* ========================= */
-
     function renderAddresses(addresses, selectedId) {
+
+        addressList = addresses || [];
 
         if (!addresses || !addresses.length) {
 
@@ -957,9 +774,7 @@
 
         }
 
-
         hide('noAddress');
-
 
         var defaultAddress =
             addresses.find(function (a) {
@@ -968,10 +783,8 @@
 
             }) || addresses[0];
 
-
         var preferredId =
             selectedId || defaultAddress.maDiaChi;
-
 
         $('addressList').innerHTML =
             addresses.map(function (a) {
@@ -981,7 +794,6 @@
                     Number(preferredId)
                         ? ' checked'
                         : '';
-
 
                 var label =
                     (a.tenNguoiNhan || '') +
@@ -993,7 +805,6 @@
                             : ''
                     );
 
-
                 var detail =
                     [
                         a.diaChiChiTiet,
@@ -1004,10 +815,9 @@
                     .filter(Boolean)
                     .join(', ');
 
-
                 return (
 
-                    '<div class="form-check border rounded p-3 mb-2">' +
+                    '<div class="form-check border rounded p-3 mb-2 d-flex align-items-start">' +
 
                         '<input ' +
 
@@ -1053,6 +863,21 @@
 
                         '</label>' +
 
+                        '<div class="ms-auto ps-2 d-flex gap-1 flex-shrink-0">' +
+                            '<button type="button" ' +
+                                    'class="btn btn-sm btn-outline-brown btn-edit-address" ' +
+                                    'data-id="' + a.maDiaChi + '" ' +
+                                    'aria-label="Sửa địa chỉ">' +
+                                '<i class="bi bi-pencil me-1"></i>Sửa' +
+                            '</button>' +
+                            '<button type="button" ' +
+                                    'class="btn btn-sm btn-outline-danger btn-delete-address" ' +
+                                    'data-id="' + a.maDiaChi + '" ' +
+                                    'aria-label="Xóa địa chỉ">' +
+                                '<i class="bi bi-trash me-1"></i>Xóa' +
+                            '</button>' +
+                        '</div>' +
+
                     '</div>'
 
                 );
@@ -1061,10 +886,116 @@
 
     }
 
+    function editAddress(id) {
 
-    /* ========================= */
-    /* THÔNG BÁO FORM ĐỊA CHỈ */
-    /* ========================= */
+        var address = addressList.find(function (a) {
+            return String(a.maDiaChi) === String(id);
+        });
+
+        if (!address) {
+            return;
+        }
+
+        editingAddressId = address.maDiaChi;
+
+        $('addressRecipient').value = address.tenNguoiNhan || '';
+        $('addressPhone').value = address.soDienThoai || '';
+        $('addressProvince').value = address.tinhThanh || '';
+        $('addressDistrict').value = address.quanHuyen || '';
+        $('addressWard').value = address.phuongXa || '';
+        $('addressDetail').value = address.diaChiChiTiet || '';
+        $('addressDefault').checked = !!address.laMacDinh;
+
+        $('addAddressModalLabel').textContent = 'Chỉnh sửa địa chỉ giao hàng';
+
+        bootstrap.Modal.getOrCreateInstance($('addAddressModal')).show();
+
+    }
+
+    function deleteAddress(id) {
+
+        var address = addressList.find(function (a) {
+            return String(a.maDiaChi) === String(id);
+        });
+
+        if (!address) {
+            return;
+        }
+
+        var message = address.laMacDinh
+            ? 'Đây là địa chỉ mặc định. Bạn có chắc muốn xóa không?'
+            : 'Bạn có chắc muốn xóa địa chỉ này không?';
+
+        OB.confirm(message, {
+            title: 'Xóa địa chỉ',
+            confirmText: 'Xóa'
+        }).then(function (confirmed) {
+
+            if (!confirmed) {
+                return;
+            }
+
+            var current = document.querySelector('input[name="maDiaChi"]:checked');
+
+            var keepId = current && String(current.value) !== String(id)
+                ? current.value
+                : null;
+
+            OB.request('DELETE', '/api/profile/addresses/' + encodeURIComponent(id))
+
+                .then(function () {
+
+                    return OB.request('GET', '/api/profile/addresses');
+
+                })
+
+                .then(function (addresses) {
+
+                    renderAddresses(addresses, keepId);
+
+                    alertBox('Đã xóa địa chỉ.', 'success');
+
+                })
+
+                .catch(function (err) {
+
+                    if (Auth.handleAuthError(err, ROLE)) {
+                        return;
+                    }
+
+                    alertBox(err.message || 'Không thể xóa địa chỉ.', 'danger');
+
+                });
+
+        });
+
+    }
+
+    $('addressList').addEventListener('click', function (e) {
+
+        var editBtn = e.target.closest('.btn-edit-address');
+
+        if (editBtn) {
+
+            e.preventDefault();
+
+            editAddress(editBtn.getAttribute('data-id'));
+
+            return;
+
+        }
+
+        var btn = e.target.closest('.btn-delete-address');
+
+        if (btn) {
+
+            e.preventDefault();
+
+            deleteAddress(btn.getAttribute('data-id'));
+
+        }
+
+    });
 
     function showAddressFormAlert(
         message,
@@ -1083,14 +1014,13 @@
 
     }
 
-
-    /* ========================= */
-    /* RESET FORM ĐỊA CHỈ */
-    /* ========================= */
-
     function resetAddressForm() {
 
         $('addAddressForm').reset();
+
+        editingAddressId = null;
+
+        $('addAddressModalLabel').textContent = 'Thêm địa chỉ giao hàng';
 
         $('addressFormAlert').className =
             'alert d-none';
@@ -1103,11 +1033,6 @@
 
     }
 
-
-    /* ========================= */
-    /* LOAD CHECKOUT */
-    /* ========================= */
-
     function load() {
 
         if (!Auth.isLoggedIn()) {
@@ -1119,7 +1044,6 @@
             return;
 
         }
-
 
         if (!Auth.hasRole(ROLE)) {
 
@@ -1134,7 +1058,6 @@
 
         }
 
-
         if (!getSelectedIds().length) {
 
             window.location.href = '/cart';
@@ -1142,7 +1065,6 @@
             return;
 
         }
-
 
         Promise.all([
 
@@ -1170,7 +1092,6 @@
 
             hide('checkoutLoading');
 
-
             if (ok) {
 
                 show('checkoutForm');
@@ -1181,7 +1102,6 @@
         .catch(function (err) {
 
             hide('checkoutLoading');
-
 
             if (
                 Auth.handleAuthError(
@@ -1194,7 +1114,6 @@
 
             }
 
-
             alertBox(
                 err.message,
                 'danger'
@@ -1204,11 +1123,6 @@
 
     }
 
-
-    /* ========================= */
-    /* THÊM ĐỊA CHỈ */
-    /* ========================= */
-
     $('addAddressForm')
         .addEventListener(
             'submit',
@@ -1216,10 +1130,8 @@
 
                 e.preventDefault();
 
-
                 var form =
                     $('addAddressForm');
-
 
                 if (!form.checkValidity()) {
 
@@ -1229,18 +1141,14 @@
 
                 }
 
-
                 var btn =
                     $('saveAddressBtn');
 
-
                 btn.disabled = true;
-
 
                 btn.innerHTML =
                     '<span class="spinner-border spinner-border-sm me-1"></span>' +
                     'Đang lưu...';
-
 
                 var payload = {
 
@@ -1280,10 +1188,17 @@
 
                 };
 
+                var isEdit = editingAddressId !== null;
+
+                var current = document.querySelector('input[name="maDiaChi"]:checked');
+
+                var keepId = current ? current.value : null;
 
                 OB.request(
-                    'POST',
-                    '/api/profile/addresses',
+                    isEdit ? 'PUT' : 'POST',
+                    isEdit
+                        ? '/api/profile/addresses/' + encodeURIComponent(editingAddressId)
+                        : '/api/profile/addresses',
                     payload
                 )
 
@@ -1297,8 +1212,9 @@
 
                         renderAddresses(
                             addresses,
-                            address &&
-                            address.maDiaChi
+                            isEdit
+                                ? (keepId || (address && address.maDiaChi))
+                                : (address && address.maDiaChi)
                         );
 
                     });
@@ -1309,17 +1225,14 @@
 
                     resetAddressForm();
 
-
                     var modalElement =
                         $('addAddressModal');
-
 
                     var modal =
                         bootstrap.Modal
                             .getInstance(
                                 modalElement
                             );
-
 
                     if (modal) {
 
@@ -1342,15 +1255,12 @@
 
                     }
 
-
                     showAddressFormAlert(
                         err.message,
                         'danger'
                     );
 
-
                     btn.disabled = false;
-
 
                     btn.innerHTML =
                         '<i class="bi bi-check2-circle me-1"></i>Lưu địa chỉ';
@@ -1359,8 +1269,6 @@
 
             }
         );
-
-    // ĐÓNG MODAL
 
     $('addAddressModal')
         .addEventListener(
@@ -1372,8 +1280,6 @@
             }
         );
 
-    //ĐẶT HÀNG
-
     $('checkoutForm')
         .addEventListener(
             'submit',
@@ -1381,12 +1287,10 @@
 
                 e.preventDefault();
 
-
                 var selected =
                     document.querySelector(
                         'input[name="maDiaChi"]:checked'
                     );
-
 
                 if (!selected) {
 
@@ -1398,7 +1302,6 @@
                     return;
 
                 }
-
 
                 var storeOrders = [];
 
@@ -1429,7 +1332,6 @@
                     }
                 );
 
-
                 if (missing) {
 
                     alertBox(
@@ -1443,18 +1345,14 @@
 
                 }
 
-
                 var btn =
                     $('placeOrder');
 
-
                 btn.disabled = true;
-
 
                 btn.innerHTML =
                     '<span class="spinner-border spinner-border-sm me-1"></span>' +
                     'Đang đặt hàng...';
-
 
                 OB.request(
                     'POST',
@@ -1506,12 +1404,10 @@
 
                     }
 
-
                     alertBox(
                         err.message,
                         'danger'
                     );
-
 
                     btn.disabled = false;
 
@@ -1528,7 +1424,6 @@
 })();
 
 </script>
-
 
 </body>
 </html>

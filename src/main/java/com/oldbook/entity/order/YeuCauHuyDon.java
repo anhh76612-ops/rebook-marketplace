@@ -2,6 +2,7 @@ package com.oldbook.entity.order;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 
@@ -31,6 +32,11 @@ public class YeuCauHuyDon {
 
     @Column(name = "ly_do", columnDefinition = "TEXT")
     private String lyDo;
+
+    // Lý do chủ cửa hàng đồng ý / từ chối yêu cầu hủy
+    @Nationalized
+    @Column(name = "ly_do_phan_hoi", length = 1000)
+    private String lyDoPhanHoi;
 
     @Column(name = "trang_thai_yeu_cau", length = 50)
     private String trangThaiYeuCau;

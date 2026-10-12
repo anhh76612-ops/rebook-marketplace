@@ -23,6 +23,7 @@
     <h1 class="h4 fw-bold mb-3">Giỏ hàng của bạn</h1>
 
     <div id="cartAlert" class="alert alert-danger d-none" role="alert"></div>
+    <div id="cartNotice" class="alert alert-warning d-none" role="status"></div>
 
     <div id="cartLoading" class="text-center text-muted py-5">
         <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải giỏ hàng...
@@ -272,7 +273,13 @@
         } else if (e.target.closest('.btn-minus')) {
             if (qty > 1) { run(function () { return Cart.update(id, qty - 1); }); }
         } else if (e.target.closest('.btn-remove')) {
-            run(function () { return Cart.remove(id); });
+            var nameEl = tr.querySelector('.fw-semibold');
+            var bookName = nameEl ? nameEl.textContent : 'sản phẩm này';
+            OB.confirm('Bạn có chắc muốn xóa "' + bookName + '" khỏi giỏ hàng?', {
+                title: 'Xóa sản phẩm', confirmText: 'Xóa'
+            }).then(function (ok) {
+                if (ok) { run(function () { return Cart.remove(id); }); }
+            });
         }
     });
 
@@ -314,15 +321,25 @@
     });
 
     $('btnClearCart').addEventListener('click', function () {
-        if (window.confirm('Xóa toàn bộ sản phẩm trong giỏ hàng?')) {
-            run(function () { return Cart.clear(); });
-        }
+        OB.confirm('Tất cả sản phẩm trong giỏ hàng sẽ bị xóa.', {
+            title: 'Xóa toàn bộ giỏ hàng?', confirmText: 'Xóa tất cả'
+        }).then(function (ok) {
+            if (ok) { run(function () { return Cart.clear(); }); }
+        });
     });
     if (!Auth.hasRole(ROLE)) {
         hide('cartLoading');
         show('cartWrongRole');
         return;
     }
+    try {
+        var notice = JSON.parse(window.sessionStorage.getItem('ob_cart_notice') || 'null');
+        window.sessionStorage.removeItem('ob_cart_notice');
+        if (notice && notice.length) {
+            $('cartNotice').innerHTML = notice.map(OB.escapeHtml).join('<br>');
+            show('cartNotice');
+        }
+    } catch (e) { /* bỏ qua */ }
     load();
 })();
 </script>

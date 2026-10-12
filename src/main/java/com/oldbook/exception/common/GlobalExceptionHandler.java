@@ -1,5 +1,6 @@
 package com.oldbook.exception.common;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,6 +37,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.error(400, e.getMessage()));
+    }
+
+    // Lỗi ràng buộc dữ liệu: trả 409 thay vì để rơi vào /error (bị coi là 401)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException e) {
+        return ResponseEntity.status(409).body(ApiResponse.error(409,
+                "Không thể thực hiện thao tác vì dữ liệu đang được sử dụng ở nơi khác."));
     }
 
     // Bắt lỗi Validate Request (ví dụ: @NotBlank, @Email)

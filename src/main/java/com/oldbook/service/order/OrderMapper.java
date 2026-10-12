@@ -1,10 +1,12 @@
 package com.oldbook.service.order;
 
+import com.oldbook.dto.order.CancelRequestResponse;
 import com.oldbook.dto.order.OrderItemResponse;
 import com.oldbook.dto.order.ShipmentEventResponse;
 import com.oldbook.dto.order.ShipmentResponse;
 import com.oldbook.dto.order.StoreOrderResponse;
 import com.oldbook.entity.order.DonHangCuaHang;
+import com.oldbook.entity.order.YeuCauHuyDon;
 import com.oldbook.constant.order.TrangThaiDonHang;
 import com.oldbook.constant.shipping.TrangThaiVanChuyen;
 import com.oldbook.entity.shipping.DonViVanChuyen;
@@ -13,6 +15,7 @@ import com.oldbook.entity.shipping.VanChuyen;
 import com.oldbook.entity.system.DanhGia;
 import com.oldbook.repository.shipping.LichSuVanChuyenRepository;
 import com.oldbook.repository.order.ChiTietDonHangRepository;
+import com.oldbook.repository.order.YeuCauHuyDonRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
 import com.oldbook.repository.system.DanhGiaRepository;
 import com.oldbook.service.catalog.DanhGiaService;
@@ -32,6 +35,7 @@ public class OrderMapper {
     private final VanChuyenRepository vanChuyenRepository;
     private final LichSuVanChuyenRepository lichSuVanChuyenRepository;
     private final DanhGiaRepository danhGiaRepository;
+    private final YeuCauHuyDonRepository yeuCauHuyDonRepository;
 
     public List<StoreOrderResponse> toStoreOrderResponses(List<DonHangCuaHang> stores) {
         if (stores.isEmpty()) {
@@ -50,9 +54,11 @@ public class OrderMapper {
 
         Map<Integer, List<LichSuVanChuyen>> history = loadHistory(shipments.values());
         Map<Integer, DanhGia> reviews = loadReviews(ids);
+        Map<Integer, YeuCauHuyDon> cancelRequests = loadCancelRequests(ids);
 
         return stores.stream()
-                .map(store -> toStoreOrderResponse(store, shipments.get(store.getMaDHCH()), history, reviews, false))
+                .map(store -> toStoreOrderResponse(store, shipments.get(store.getMaDHCH()), history, reviews,
+                        cancelRequests, false))
                 .toList();
     }
 
@@ -60,7 +66,16 @@ public class OrderMapper {
     public StoreOrderResponse toStoreOrderResponse(DonHangCuaHang store, VanChuyen vanChuyen) {
         return toStoreOrderResponse(
                 store, vanChuyen, vanChuyen == null ? Map.of() : loadHistory(List.of(vanChuyen)),
-                loadReviews(List.of(store.getMaDHCH())), true);
+                loadReviews(List.of(store.getMaDHCH())), loadCancelRequests(List.of(store.getMaDHCH())), true);
+    }
+
+    private Map<Integer, YeuCauHuyDon> loadCancelRequests(List<Integer> storeOrderIds) {
+        return yeuCauHuyDonRepository.findAllByDonHangCuaHang_MaDHCHIn(storeOrderIds).stream()
+                .collect(Collectors.toMap(
+                        r -> r.getDonHangCuaHang().getMaDHCH(),
+                        Function.identity(),
+                        (a, b) -> a.getMaYeuCau() >= b.getMaYeuCau() ? a : b
+                ));
     }
 
     private Map<Integer, DanhGia> loadReviews(List<Integer> storeOrderIds) {
@@ -86,6 +101,7 @@ public class OrderMapper {
     private StoreOrderResponse toStoreOrderResponse(
             DonHangCuaHang store, VanChuyen vanChuyen, Map<Integer, List<LichSuVanChuyen>> history,
             Map<Integer, DanhGia> reviews,
+            Map<Integer, YeuCauHuyDon> cancelRequests,
             boolean includeFinance
     ) {
         List<OrderItemResponse> items = chiTietDonHangRepository
@@ -126,11 +142,29 @@ public class OrderMapper {
                 .ngayXacNhan(store.getNgayXacNhan())
                 .ngayGiao(store.getNgayGiao())
                 .ngayHoanTra(store.getNgayHoanTra())
+                .ngayHuy(store.getNgayHuy())
+                .huyBoi(store.getHuyBoi())
+                .lyDoHuy(store.getLyDoHuy())
+                .yeuCauHuy(toCancelRequestResponse(cancelRequests.get(store.getMaDHCH())))
                 .commissionTien(includeFinance && store.getNgayGiao() != null ? store.getCommissionTien() : null)
                 .doanhThuShop(includeFinance && store.getNgayGiao() != null ? store.getDoanhThuShop() : null)
                 .vanChuyen(vanChuyen == null ? null
                         : toShipmentResponse(vanChuyen, history.getOrDefault(vanChuyen.getMaVanChuyen(), List.of())))
                 .items(items)
+                .build();
+    }
+
+    private static CancelRequestResponse toCancelRequestResponse(YeuCauHuyDon request) {
+        if (request == null) {
+            return null;
+        }
+        return CancelRequestResponse.builder()
+                .maYeuCau(request.getMaYeuCau())
+                .lyDo(request.getLyDo())
+                .lyDoPhanHoi(request.getLyDoPhanHoi())
+                .trangThaiYeuCau(request.getTrangThaiYeuCau())
+                .ngayGui(request.getNgayGui())
+                .ngayXuLy(request.getNgayXuLy())
                 .build();
     }
 
