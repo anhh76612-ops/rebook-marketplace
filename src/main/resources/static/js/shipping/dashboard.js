@@ -6,10 +6,15 @@
   var page = document.querySelector('[data-shipping-page]');
   var MA_CODE = page ? page.getAttribute('data-ma-code') : null;
   var API = '/api/shipping/' + encodeURIComponent(MA_CODE || '');
-  var REFRESH_MS = 30000;
+  var KEEP_ALIVE_MS = 120000;
+  var DEBOUNCE_MS = 300;
+  var RETRY_MS = 1000;
+  var MAX_RECONNECT_MS = 30000;
 
   var shipments = [];
   var pending = [];
+  var pendingView = { page: 0, size: 10 };
+  var shipmentView = { page: 0, size: 10, filter: '' };
 
   // Không gửi token đăng nhập (nếu trình duyệt đang lưu) vì trang này không dùng tài khoản.
   function api(method, path, body) {
@@ -109,16 +114,69 @@
       .catch(function (e) { if (!silent) OldBook.toast(e.message, 'danger'); });
   }
 
-  // Đơn được cửa hàng xác nhận sẽ tự xuất hiện: làm mới định kỳ khi tab đang mở và không có hộp thoại nào đang mở.
-  function startAutoRefresh() {
-    window.setInterval(function () {
-      if (document.hidden) return;
-      if (document.querySelector('.modal.show')) return;
+  // Đơn được cửa hàng xác nhận hoặc hủy sẽ tự cập nhật: máy chủ báo qua WebSocket /ws/van-chuyen?maCode=...
+  // (kênh riêng theo mã hãng vì trang không đăng nhập). Tin không mang dữ liệu, trang tự tải lại danh sách.
+  // Các tin dồn dập được gom thành một lần tải; tab đang ẩn hoặc đang mở hộp thoại thì để dành, xong mới tải.
+  function startLiveUpdate() {
+    if (!window.WebSocket) return;
+
+    var timer = null;
+    var stale = false;
+    var keepAlive = null;
+    var socket = null;
+    var failures = 0;
+    var dropped = false;
+    var leaving = false;
+
+    function run() {
+      timer = null;
+      if (document.hidden) { stale = true; return; }
+      if (document.querySelector('.modal.show')) { timer = window.setTimeout(run, RETRY_MS); return; }
+      stale = false;
       loadAll(true);
-    }, REFRESH_MS);
+    }
+
+    function schedule() {
+      if (!timer) { timer = window.setTimeout(run, DEBOUNCE_MS); }
+    }
+
+    function connect() {
+      if (leaving) return;
+      socket = new window.WebSocket(
+        window.location.origin.replace(/^http/, 'ws') + '/ws/van-chuyen?maCode=' + encodeURIComponent(MA_CODE));
+
+      socket.onopen = function () {
+        failures = 0;
+        // Nối lại sau khi rớt: các thay đổi trong lúc mất kết nối không được báo, nên tải lại.
+        if (dropped) { dropped = false; schedule(); }
+        // Giữ kết nối sống qua các proxy cắt kết nối rảnh.
+        keepAlive = window.setInterval(function () {
+          if (socket && socket.readyState === 1) { socket.send('ping'); }
+        }, KEEP_ALIVE_MS);
+      };
+      socket.onmessage = function (event) {
+        var message;
+        try { message = JSON.parse(event.data); } catch (e) { return; }
+        if (message && message.type === 'VAN_CHUYEN_THAY_DOI') { schedule(); }
+      };
+      socket.onclose = function () {
+        if (keepAlive) { window.clearInterval(keepAlive); keepAlive = null; }
+        if (leaving) return;
+        dropped = true;
+        failures += 1;
+        window.setTimeout(connect, Math.min(MAX_RECONNECT_MS, 2000 * Math.pow(2, failures - 1)));
+      };
+    }
+
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden && !document.querySelector('.modal.show')) loadAll(true);
+      if (!document.hidden && stale) { schedule(); }
     });
+    window.addEventListener('pagehide', function () {
+      leaving = true;
+      if (socket) { socket.close(); }
+    });
+
+    connect();
   }
 
   function updateStats() {
@@ -129,13 +187,26 @@
     document.getElementById('statReturned').textContent = count(['DA_HOAN_TRA']);
   }
 
+  function paginate(list, view, prefix, unit) {
+    var pages = Math.max(1, Math.ceil(list.length / view.size));
+    if (view.page >= pages) { view.page = pages - 1; }
+    var start = view.page * view.size;
+    var end = Math.min(start + view.size, list.length);
+    document.getElementById(prefix + 'Count').textContent = list.length ? (start + 1) + '–' + end + ' / ' + list.length + ' ' + unit : '0 ' + unit;
+    document.getElementById(prefix + 'PageLabel').textContent = 'Trang ' + (view.page + 1) + ' / ' + pages;
+    document.getElementById(prefix + 'Previous').disabled = view.page === 0;
+    document.getElementById(prefix + 'Next').disabled = view.page >= pages - 1;
+    return list.slice(start, end);
+  }
+
   function renderPending() {
     var body = document.getElementById('pendingBody');
+    var pageRows = paginate(pending, pendingView, 'pending', 'yêu cầu');
     if (!pending.length) {
       body.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Không có yêu cầu chờ tiếp nhận.</td></tr>';
       return;
     }
-    body.innerHTML = pending.map(function (x) {
+    body.innerHTML = pageRows.map(function (x) {
       return '<tr>' +
         '<td><strong>#DHCH' + esc(x.maDHCH) + '</strong><div class="small text-muted">Đơn #' + esc(x.maDH) + '</div></td>' +
         '<td class="small">' + esc(x.maVanDon || '-') + '</td>' +
@@ -152,11 +223,16 @@
     var body = document.getElementById('shipmentBody');
     // Đơn CHO_LAY_HANG nằm ở tab Tiếp nhận yêu cầu; đơn DA_HUY không hiển thị với đơn vị vận chuyển.
     var rows = shipments.filter(function (x) { return x.trangThaiVanChuyen !== 'CHO_LAY_HANG' && x.trangThaiVanChuyen !== 'DA_HUY'; });
+    var total = rows.length;
+    if (shipmentView.filter) {
+      rows = rows.filter(function (x) { return x.trangThaiVanChuyen === shipmentView.filter; });
+    }
+    var pageRows = paginate(rows, shipmentView, 'shipment', 'vận đơn');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Chưa có vận đơn.</td></tr>';
+      body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">' + (total ? 'Không có vận đơn ở trạng thái này.' : 'Chưa có vận đơn.') + '</td></tr>';
       return;
     }
-    body.innerHTML = rows.map(function (x) {
+    body.innerHTML = pageRows.map(function (x) {
       var canUpdate = (x.trangThaiTiepTheo || []).length > 0;
       return '<tr>' +
         '<td><strong>' + esc(x.maVanDon || ('VC-' + x.maVanChuyen)) + '</strong></td>' +
@@ -243,6 +319,16 @@
     }).catch(function (e) { OldBook.toast(e.message, 'danger'); });
   }
 
+  function bindPaging(prefix, view, render) {
+    document.getElementById(prefix + 'PageSize').addEventListener('change', function () {
+      view.size = parseInt(this.value, 10) || 10;
+      view.page = 0;
+      render();
+    });
+    document.getElementById(prefix + 'Previous').addEventListener('click', function () { view.page -= 1; render(); });
+    document.getElementById(prefix + 'Next').addEventListener('click', function () { view.page += 1; render(); });
+  }
+
   window.Shipping = {
     loadAll: loadAll,
     loadShipments: loadShipments,
@@ -258,7 +344,14 @@
       showAlert('Liên kết thiếu mã đơn vị vận chuyển.');
       return;
     }
+    bindPaging('pending', pendingView, renderPending);
+    bindPaging('shipment', shipmentView, renderShipments);
+    document.getElementById('shipmentFilter').addEventListener('change', function () {
+      shipmentView.filter = this.value;
+      shipmentView.page = 0;
+      renderShipments();
+    });
     loadAll();
-    startAutoRefresh();
+    startLiveUpdate();
   });
 })();

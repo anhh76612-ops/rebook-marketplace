@@ -24,8 +24,11 @@ import java.util.Locale;
  *
  *   Sự kiện                            | Người nhận
  *   gian hàng đăng ký hoặc gửi duyệt lại | mọi Quản lý
+ *   sách mới đăng hoặc sửa, chờ duyệt     | mọi Quản lý
  *   cửa hàng, sách được duyệt / bị từ chối | chủ cửa hàng đó
  *   đơn được xác nhận, đổi trạng thái giao | khách mua
+ *   cửa hàng hủy đơn, duyệt / từ chối yêu cầu hủy | khách mua
+ *   khách đặt đơn, hủy đơn, gửi yêu cầu hủy | chủ cửa hàng đó
  *   được thêm vai trò                     | các tài khoản đang có của người đó
  *   thanh toán xong, có khoản hoàn, đã hoàn | khách mua
  *   có khoản cần hoàn hoặc cần chi         | mọi Quản lý
@@ -55,7 +58,20 @@ public class NghiepVuThongBaoService {
                 MucDoThongBao.QUAN_TRONG,
                 guiLai ? "Gian hàng gửi duyệt lại" : "Gian hàng mới chờ duyệt",
                 "\"" + cuaHang.getTenCuaHang() + "\""
-                        + (guiLai ? " vừa sửa thông tin và gửi duyệt lại." : " vừa đăng ký và đang chờ xét duyệt."),
+                        + (guiLai ? " vừa sửa thông tin và gửi duyệt lại." : " vừa đăng ký và đang chờ phê duyệt."),
+                TRANG_KIEM_DUYET
+        ));
+    }
+
+    @Transactional
+    public void sachChoDuyet(Sach sach, boolean guiLai) {
+        String tenCuaHang = sach.getCuaHang() == null ? "một cửa hàng" : "\"" + sach.getCuaHang().getTenCuaHang() + "\"";
+        thongBaoService.guiChoVaiTro(VaiTro.QUAN_LY, null, new NoiDungThongBao(
+                "SACH_CHO_DUYET",
+                MucDoThongBao.QUAN_TRONG,
+                guiLai ? "Sách chờ duyệt lại" : "Sách mới chờ phê duyệt",
+                "\"" + sach.getTenSach() + "\" của " + tenCuaHang
+                        + (guiLai ? " vừa được chỉnh sửa và đang chờ duyệt lại." : " vừa được đăng bán và đang chờ phê duyệt."),
                 TRANG_KIEM_DUYET
         ));
     }
@@ -122,6 +138,72 @@ public class NghiepVuThongBaoService {
                 MucDoThongBao.THONG_TIN,
                 "Đơn #" + donHang.getMaDHCH() + ": " + tenTrangThai,
                 "Đơn hàng từ " + tenCuaHang(donHang) + " vừa chuyển sang trạng thái \"" + tenTrangThai + "\".",
+                TRANG_DON_HANG
+        ));
+    }
+
+    @Transactional
+    public void donHangMoi(DonHangCuaHang donHang) {
+        guiChoChuCuaHang(donHang.getCuaHang(), new NoiDungThongBao(
+                "DON_HANG_MOI",
+                MucDoThongBao.QUAN_TRONG,
+                "Có đơn hàng mới #" + donHang.getMaDHCH(),
+                tenNguoiNhan(donHang) + " vừa đặt đơn #" + donHang.getMaDHCH() + ". Vui lòng xác nhận đơn.",
+                TRANG_DON_CUA_HANG
+        ));
+    }
+
+    @Transactional
+    public void khachHuyDon(DonHangCuaHang donHang, String lyDo) {
+        guiChoChuCuaHang(donHang.getCuaHang(), new NoiDungThongBao(
+                "DON_HANG_BI_KHACH_HUY",
+                MucDoThongBao.QUAN_TRONG,
+                "Khách đã hủy đơn #" + donHang.getMaDHCH(),
+                "Đơn #" + donHang.getMaDHCH() + " đã được hủy ngay vì chưa xác nhận. Lý do: " + lyDo,
+                TRANG_DON_CUA_HANG
+        ));
+    }
+
+    @Transactional
+    public void khachYeuCauHuy(DonHangCuaHang donHang, String lyDo) {
+        guiChoChuCuaHang(donHang.getCuaHang(), new NoiDungThongBao(
+                "YEU_CAU_HUY_DON",
+                MucDoThongBao.QUAN_TRONG,
+                "Khách yêu cầu hủy đơn #" + donHang.getMaDHCH(),
+                "Lý do: " + lyDo + ". Vui lòng đồng ý hoặc từ chối yêu cầu.",
+                TRANG_DON_CUA_HANG
+        ));
+    }
+
+    @Transactional
+    public void cuaHangHuyDon(DonHangCuaHang donHang, String lyDo) {
+        guiChoKhachMua(donHang, new NoiDungThongBao(
+                "DON_HANG_BI_CUA_HANG_HUY",
+                MucDoThongBao.QUAN_TRONG,
+                "Đơn #" + donHang.getMaDHCH() + " đã bị hủy",
+                tenCuaHang(donHang) + " đã hủy đơn. Lý do: " + lyDo,
+                TRANG_DON_HANG
+        ));
+    }
+
+    @Transactional
+    public void yeuCauHuyDuocDuyet(DonHangCuaHang donHang) {
+        guiChoKhachMua(donHang, new NoiDungThongBao(
+                "YEU_CAU_HUY_DUOC_DUYET",
+                MucDoThongBao.THONG_TIN,
+                "Đơn #" + donHang.getMaDHCH() + " đã được hủy",
+                tenCuaHang(donHang) + " đã đồng ý yêu cầu hủy đơn của bạn.",
+                TRANG_DON_HANG
+        ));
+    }
+
+    @Transactional
+    public void yeuCauHuyBiTuChoi(DonHangCuaHang donHang, String lyDo) {
+        guiChoKhachMua(donHang, new NoiDungThongBao(
+                "YEU_CAU_HUY_BI_TU_CHOI",
+                MucDoThongBao.QUAN_TRONG,
+                "Yêu cầu hủy đơn #" + donHang.getMaDHCH() + " bị từ chối",
+                tenCuaHang(donHang) + " đã từ chối yêu cầu hủy. Lý do: " + lyDo,
                 TRANG_DON_HANG
         ));
     }
@@ -247,6 +329,13 @@ public class NghiepVuThongBaoService {
                 .findByNguoiDung_MaNDAndVaiTro(nguoiDung.getMaND(), vaiTro.name())
                 .filter(taiKhoan -> TrangThaiTaiKhoan.HOAT_DONG.name().equals(taiKhoan.getTrangThai()))
                 .ifPresent(taiKhoan -> thongBaoService.guiChoTaiKhoan(taiKhoan, noiDung));
+    }
+
+    private static String tenNguoiNhan(DonHangCuaHang donHang) {
+        if (donHang.getDonHang() == null || donHang.getDonHang().getTenNguoiNhan() == null) {
+            return "Khách hàng";
+        }
+        return donHang.getDonHang().getTenNguoiNhan();
     }
 
     private static String tenCuaHang(DonHangCuaHang donHang) {

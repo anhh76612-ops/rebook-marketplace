@@ -21,6 +21,7 @@ import com.oldbook.repository.identity.DiaChiRepository;
 import com.oldbook.repository.identity.NguoiDungRepository;
 import com.oldbook.repository.order.*;
 import com.oldbook.repository.shipping.DonViVanChuyenRepository;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,8 @@ public class DonHangService {
     private final OrderMapper orderMapper;
     private final YeuCauHuyDonRepository yeuCauHuyDonRepository;
     private final OrderSettlementService settlementService;
+    private final DonHangRealtimeService realtimeService;
+    private final NghiepVuThongBaoService nghiepVuThongBaoService;
 
     @Transactional
     public OrderResponse createOrder(Integer maND, CreateOrderRequest request) {
@@ -257,6 +260,9 @@ public class DonHangService {
                     .build();
 
             dhch = donHangCuaHangRepository.save(dhch);
+            // Cửa hàng đang mở trang đơn sẽ thấy đơn mới ngay khi giao dịch này commit.
+            realtimeService.baoThayDoi(dhch);
+            nghiepVuThongBaoService.donHangMoi(dhch);
 
             for (CheckoutLine line : draft.lines()) {
                 ChiTietDonHang chiTiet = ChiTietDonHang.builder()
@@ -322,6 +328,7 @@ public class DonHangService {
 
         if (TrangThaiDonHang.CHO_XU_LY.name().equals(status)) {
             settlementService.settleCancelled(order, VaiTro.KHACH_HANG.name(), reason);
+            nghiepVuThongBaoService.khachHuyDon(order, reason);
         } else if (TrangThaiDonHang.DA_XAC_NHAN.name().equals(status)) {
             if (yeuCauHuyDonRepository.existsByDonHangCuaHang_MaDHCH(maDHCH)) {
                 throw new BusinessException("Bạn đã gửi yêu cầu hủy cho đơn hàng này");
@@ -332,9 +339,12 @@ public class DonHangService {
                     .lyDo(reason)
                     .trangThaiYeuCau(TrangThaiYeuCauHuy.CHO_DUYET.name())
                     .build());
+            nghiepVuThongBaoService.khachYeuCauHuy(order, reason);
         } else {
             throw new BusinessException("Đơn hàng đã được đơn vị vận chuyển tiếp nhận, không thể hủy");
         }
+
+        realtimeService.baoThayDoi(order);
 
         return buildOrderResponse(order.getDonHang());
     }

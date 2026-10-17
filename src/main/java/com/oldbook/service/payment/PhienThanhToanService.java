@@ -1,6 +1,7 @@
 package com.oldbook.service.payment;
 
 import com.oldbook.config.payment.PaymentProperties;
+import com.oldbook.constant.auth.VaiTro;
 import com.oldbook.constant.order.PhuongThucThanhToan;
 import com.oldbook.constant.payment.TrangThaiPhienThanhToan;
 import com.oldbook.dto.order.CreateOrderRequest;
@@ -12,10 +13,12 @@ import com.oldbook.entity.payment.PhienThanhToan;
 import com.oldbook.exception.common.BusinessException;
 import com.oldbook.repository.catalog.SachRepository;
 import com.oldbook.repository.identity.NguoiDungRepository;
+import com.oldbook.repository.identity.TaiKhoanRepository;
 import com.oldbook.repository.payment.PhienThanhToanRepository;
 import com.oldbook.service.order.DonHangService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -54,6 +57,8 @@ public class PhienThanhToanService {
     private final PhienThanhToanRepository phienRepository;
     private final SachRepository sachRepository;
     private final NguoiDungRepository nguoiDungRepository;
+    private final TaiKhoanRepository taiKhoanRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final DonHangService donHangService;
     private final VietQrLinkBuilder vietQrLinkBuilder;
     private final ObjectMapper objectMapper;
@@ -110,6 +115,7 @@ public class PhienThanhToanService {
             traKho(phien);
             phien.setTrangThai(TrangThaiPhienThanhToan.DA_HUY.name());
             phienRepository.save(phien);
+            baoDoiTrangThai(phien);
         }
 
         return toResponse(phien);
@@ -152,6 +158,7 @@ public class PhienThanhToanService {
                         traKho(phien);
                         phien.setTrangThai(TrangThaiPhienThanhToan.HET_HAN.name());
                         phienRepository.save(phien);
+                        baoDoiTrangThai(phien);
                     }
                 });
             } catch (RuntimeException ex) {
@@ -190,6 +197,18 @@ public class PhienThanhToanService {
         traKho(phien);
         phien.setTrangThai(trangThaiMoi.name());
         phienRepository.save(phien);
+        baoDoiTrangThai(phien);
+    }
+
+    /**
+     * Báo cho trang quét mã của khách biết phiên vừa đổi trạng thái, để trang không phải hỏi lại theo chu kỳ.
+     * Phải gọi bên trong giao dịch đang đổi trạng thái: tin chỉ được đẩy đi sau khi giao dịch đó commit.
+     */
+    public void baoDoiTrangThai(PhienThanhToan phien) {
+        taiKhoanRepository
+                .findByNguoiDung_MaNDAndVaiTro(phien.getNguoiMua().getMaND(), VaiTro.KHACH_HANG.name())
+                .ifPresent(taiKhoan -> eventPublisher.publishEvent(
+                        new PhienThanhToanDoiEvent(taiKhoan.getMaTK(), phien.getMaPhien(), phien.getTrangThai())));
     }
 
     private void doiTonKho(Integer maSach, int chenhLech) {

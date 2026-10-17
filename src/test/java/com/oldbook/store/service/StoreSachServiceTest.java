@@ -15,6 +15,7 @@ import com.oldbook.dto.store.UpdateTonKhoRequest;
 import com.oldbook.dto.store.UpdateTrangThaiBanRequest;
 import com.oldbook.repository.store.CuaHangRepository;
 import com.oldbook.security.store.StoreAccess;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
@@ -43,6 +44,7 @@ class StoreSachServiceTest {
     @Mock SachRepository sachRepository;
     @Mock DanhMucRepository danhMucRepository;
     @Mock StoreAccess storeAccess;
+    @Mock NghiepVuThongBaoService nghiepVuThongBaoService;
     @InjectMocks StoreSachService service;
 
     @Test
