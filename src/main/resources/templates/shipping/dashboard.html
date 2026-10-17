@@ -40,7 +40,6 @@
       <div class="panel">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
           <div><h2 class="h5 fw-bold mb-1">Yêu cầu chưa tiếp nhận</h2><div class="text-muted small">Đơn cửa hàng đã xác nhận và bàn giao, chờ phân công đi lấy hàng.</div></div>
-          <button class="btn btn-outline-secondary btn-sm" onclick="Shipping.loadAll()"><i class="bi bi-arrow-clockwise me-1"></i>Làm mới</button>
         </div>
         <div class="table-responsive">
           <table class="table align-middle">
@@ -48,6 +47,18 @@
             <tbody id="pendingBody"><tr><td colspan="7" class="text-center text-muted py-4">Đang tải...</td></tr></tbody>
           </table>
         </div>
+        <nav class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-2" aria-label="Phân trang yêu cầu chờ tiếp nhận">
+          <div class="d-flex align-items-center gap-2">
+            <label for="pendingPageSize" class="small text-muted">Mỗi trang</label>
+            <select id="pendingPageSize" class="form-select form-select-sm w-auto"><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option></select>
+            <span id="pendingCount" class="small text-muted" aria-live="polite"></span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" id="pendingPrevious" class="btn btn-outline-secondary btn-sm">Trước</button>
+            <span id="pendingPageLabel" class="small" aria-live="polite"></span>
+            <button type="button" id="pendingNext" class="btn btn-outline-secondary btn-sm">Sau</button>
+          </div>
+        </nav>
       </div>
     </section>
 
@@ -55,7 +66,17 @@
       <div class="panel">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
           <div><h2 class="h5 fw-bold mb-1">Danh sách vận chuyển</h2><div class="text-muted small">Lấy hàng → giao hàng → kết quả. Trạng thái được đồng bộ ngay cho cửa hàng và khách.</div></div>
-          <button class="btn btn-outline-secondary btn-sm" onclick="Shipping.loadShipments()"><i class="bi bi-arrow-clockwise me-1"></i>Làm mới</button>
+          <div class="d-flex align-items-center gap-2">
+            <select id="shipmentFilter" class="form-select form-select-sm w-auto" aria-label="Lọc trạng thái đơn hàng">
+              <option value="">Tất cả trạng thái</option>
+              <option value="DANG_LAY_HANG">Đang lấy hàng</option>
+              <option value="DA_LAY_HANG">Đã lấy hàng</option>
+              <option value="DANG_GIAO">Đang giao</option>
+              <option value="GIAO_THAT_BAI">Giao thất bại</option>
+              <option value="DA_GIAO">Đã giao</option>
+              <option value="DA_HOAN_TRA">Đã hoàn trả</option>
+            </select>
+          </div>
         </div>
         <div class="table-responsive">
           <table class="table align-middle">
@@ -63,6 +84,18 @@
             <tbody id="shipmentBody"><tr><td colspan="6" class="text-center text-muted py-4">Đang tải...</td></tr></tbody>
           </table>
         </div>
+        <nav class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-2" aria-label="Phân trang vận đơn">
+          <div class="d-flex align-items-center gap-2">
+            <label for="shipmentPageSize" class="small text-muted">Mỗi trang</label>
+            <select id="shipmentPageSize" class="form-select form-select-sm w-auto"><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option></select>
+            <span id="shipmentCount" class="small text-muted" aria-live="polite"></span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" id="shipmentPrevious" class="btn btn-outline-secondary btn-sm">Trước</button>
+            <span id="shipmentPageLabel" class="small" aria-live="polite"></span>
+            <button type="button" id="shipmentNext" class="btn btn-outline-secondary btn-sm">Sau</button>
+          </div>
+        </nav>
       </div>
     </section>
 
