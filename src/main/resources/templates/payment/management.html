@@ -27,7 +27,7 @@
             rồi bấm "Đã chuyển" để ghi nhận.
         </p>
 
-        <ul class="nav nav-tabs mb-3" role="tablist">
+        <ul class="nav nav-pills mb-3" role="tablist">
             <li class="nav-item" role="presentation">
                 <button type="button" class="nav-link active" role="tab" aria-selected="true" data-tab="HOAN_TIEN_KHACH">Hoàn tiền cho khách</button>
             </li>
@@ -39,9 +39,9 @@
             </li>
         </ul>
 
-        <div class="panel">
-            <div id="paymentsFilter" class="d-flex flex-wrap align-items-end gap-3 mb-3">
-                <div>
+        <div id="paymentsFilter" class="panel mb-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
                     <label for="paymentsStatus" class="form-label">Trạng thái</label>
                     <select id="paymentsStatus" class="form-select">
                         <option value="CHO_XU_LY" selected>Chờ chuyển khoản</option>
@@ -51,26 +51,28 @@
                     </select>
                 </div>
             </div>
+        </div>
 
-            <div id="paymentsError" class="alert alert-danger d-none" role="alert"></div>
-            <div id="paymentsLoading" class="text-center text-muted py-4 d-none" role="status">
-                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải...
-            </div>
-            <p id="paymentsEmpty" class="text-muted text-center py-4 d-none">Không có dòng nào.</p>
+        <div id="paymentsError" class="alert alert-danger d-none" role="alert"></div>
+        <div id="paymentsLoading" class="panel text-center text-muted py-5 d-none" role="status">
+            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải...
+        </div>
+        <div id="paymentsEmpty" class="panel text-center py-5 d-none">Không có dòng nào.</div>
 
+        <div class="panel p-0">
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
                     <caption class="visually-hidden" id="paymentsCaption">Danh sách khoản cần chuyển</caption>
-                    <thead id="paymentsHead"></thead>
+                    <thead id="paymentsHead" class="table-light"></thead>
                     <tbody id="paymentsRows"></tbody>
                 </table>
             </div>
 
-            <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3" aria-label="Phân trang">
+            <nav class="d-flex flex-wrap align-items-center justify-content-between gap-3 p-3" aria-label="Phân trang">
                 <span id="paymentsSummary" class="small text-muted" aria-live="polite"></span>
-                <div class="d-flex gap-2">
-                    <button id="paymentsPrev" type="button" class="btn btn-outline-brown btn-sm" disabled>Trang trước</button>
-                    <button id="paymentsNext" type="button" class="btn btn-outline-brown btn-sm" disabled>Trang sau</button>
+                <div class="d-flex align-items-center gap-2">
+                    <button id="paymentsPrev" type="button" class="btn btn-outline-secondary btn-sm" disabled>Trước</button>
+                    <button id="paymentsNext" type="button" class="btn btn-outline-secondary btn-sm" disabled>Sau</button>
                 </div>
             </nav>
         </div>

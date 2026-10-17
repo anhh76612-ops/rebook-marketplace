@@ -19,6 +19,12 @@
     <noscript><div class="alert alert-warning">Vui lòng bật JavaScript để tải và kiểm duyệt dữ liệu.</div></noscript>
 
     <div id="moderationContent" class="d-none">
+        <ul class="nav nav-pills mb-3" role="tablist">
+            <li class="nav-item" role="presentation"><button type="button" class="nav-link active" data-bs-toggle="pill" data-bs-target="#storeReviewTab" role="tab"><i class="bi bi-shop me-1" aria-hidden="true"></i>Phê duyệt cửa hàng</button></li>
+            <li class="nav-item" role="presentation"><button type="button" class="nav-link" data-bs-toggle="pill" data-bs-target="#bookReviewTab" role="tab"><i class="bi bi-book me-1" aria-hidden="true"></i>Phê duyệt sách</button></li>
+        </ul>
+        <div class="tab-content">
+        <div class="tab-pane fade show active" id="storeReviewTab" role="tabpanel">
         <section class="panel mb-4" aria-labelledby="storeReviewTitle">
             <h2 id="storeReviewTitle" class="h5 mb-3"><i class="bi bi-shop me-2" aria-hidden="true"></i>Cửa hàng</h2>
             <form id="storeReviewFilter" class="row g-3 mb-3">
@@ -63,7 +69,9 @@
                 <div class="d-flex gap-2"><button id="storeReviewPrev" type="button" class="btn btn-outline-brown btn-sm" disabled>Trang trước</button><button id="storeReviewNext" type="button" class="btn btn-outline-brown btn-sm" disabled>Trang sau</button></div>
             </nav>
         </section>
+        </div>
 
+        <div class="tab-pane fade" id="bookReviewTab" role="tabpanel">
         <section class="panel mb-4" aria-labelledby="bookReviewTitle">
             <h2 id="bookReviewTitle" class="h5 mb-3"><i class="bi bi-book me-2" aria-hidden="true"></i>Sách</h2>
             <form id="bookReviewFilter" class="row g-3 mb-3">
@@ -108,6 +116,8 @@
                 <div class="d-flex gap-2"><button id="bookReviewPrev" type="button" class="btn btn-outline-brown btn-sm" disabled>Trang trước</button><button id="bookReviewNext" type="button" class="btn btn-outline-brown btn-sm" disabled>Trang sau</button></div>
             </nav>
         </section>
+        </div>
+        </div>
     </div>
 </main>
 
