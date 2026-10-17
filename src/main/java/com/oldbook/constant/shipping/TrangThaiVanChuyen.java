@@ -14,8 +14,13 @@ public enum TrangThaiVanChuyen {
     DA_LAY_HANG("Đã lấy hàng", TrangThaiDonHang.DA_LAY_HANG),
     DANG_GIAO("Đang giao", TrangThaiDonHang.DANG_GIAO),
     DA_GIAO("Đã giao", TrangThaiDonHang.DA_GIAO),
-    /** Một lần giao không thành công; đơn hàng con vẫn ở trạng thái "Đang giao" cho tới khi hoàn trả. */
+    /**
+     * Một lần giao không thành công; đơn hàng con vẫn ở trạng thái "Đang giao".
+     * Hãng chuyển lại DANG_GIAO để giao lại; khi số lần thất bại đạt shipping.max-delivery-attempts
+     * thì hệ thống tự chuyển DA_HOAN_TRA (xem ShipmentSyncService).
+     */
     GIAO_THAT_BAI("Giao thất bại", TrangThaiDonHang.DANG_GIAO),
+    /** Chỉ hệ thống tự chuyển sang trạng thái này khi hết số lần giao cho phép, đơn vị vận chuyển không tự chọn. */
     DA_HOAN_TRA("Đã hoàn trả", TrangThaiDonHang.DA_HOAN_TRA),
     /** Chỉ do hệ thống đặt khi cửa hàng đồng ý hủy đơn trước lúc hãng lấy hàng; hãng không tự chuyển sang trạng thái này. */
     DA_HUY("Đã hủy", TrangThaiDonHang.DA_HUY);
@@ -41,13 +46,18 @@ public enum TrangThaiVanChuyen {
         return this == DA_GIAO || this == DA_HOAN_TRA || this == DA_HUY;
     }
 
+    /**
+     * Bước chuyển đơn vị vận chuyển được phép báo (cổng đối tác và đồng bộ API).
+     * Không có bước nào tới DA_HOAN_TRA: hoàn hàng chỉ do hệ thống tự chuyển sau lần giao thất bại cuối cùng.
+     */
     public boolean canMoveTo(TrangThaiVanChuyen next) {
         return switch (this) {
             case CHO_LAY_HANG -> next == DANG_LAY_HANG || next == DA_LAY_HANG || next == DANG_GIAO;
             case DANG_LAY_HANG -> next == DA_LAY_HANG || next == DANG_GIAO;
             case DA_LAY_HANG -> next == DANG_GIAO;
-            case DANG_GIAO -> next == DA_GIAO || next == GIAO_THAT_BAI || next == DA_HOAN_TRA;
-            case GIAO_THAT_BAI -> next == DANG_GIAO || next == DA_HOAN_TRA;
+            case DANG_GIAO -> next == DA_GIAO || next == GIAO_THAT_BAI;
+            // Giao thất bại chưa hết lượt: chỉ có thể giao lại.
+            case GIAO_THAT_BAI -> next == DANG_GIAO;
             case DA_GIAO, DA_HOAN_TRA, DA_HUY -> false;
         };
     }

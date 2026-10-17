@@ -202,10 +202,30 @@ class ShippingSyncIntegrationTest {
     }
 
     @Test
-    void failedDeliveryReturnsGoodsToStockWithoutRevenue() {
+    void failedDeliveryIsRetriedAndThirdFailureReturnsGoodsToStockWithoutRevenue() {
         sync("picked");
         sync("delivering");
+
+        // Lần 1, 2: giao thất bại rồi giao lại, đơn con vẫn "Đang giao", chưa hoàn kho.
+        for (int lan = 1; lan <= 2; lan++) {
+            assertThat(sync("delivery_fail")).isEqualTo(SyncResult.APPLIED);
+            assertThat(shipmentStatus()).isEqualTo("GIAO_THAT_BAI");
+            assertThat(failCount()).isEqualTo(lan);
+            assertThat(orderStatus()).isEqualTo("DANG_GIAO");
+            assertThat(sachRepository.findById(book.getMaSach()).orElseThrow().getSoLuongTon()).isEqualTo(3);
+
+            assertThat(sync("delivering")).isEqualTo(SyncResult.APPLIED);
+            assertThat(shipmentStatus()).isEqualTo("DANG_GIAO");
+        }
+
+        // Hãng không tự hoàn trả được khi chưa hết lượt.
+        assertThat(sync("returned")).isEqualTo(SyncResult.IGNORED_INVALID_TRANSITION);
+        assertThat(shipmentStatus()).isEqualTo("DANG_GIAO");
+
+        // Lần 3: tự động hoàn trả.
         assertThat(sync("delivery_fail")).isEqualTo(SyncResult.APPLIED);
+        assertThat(shipmentStatus()).isEqualTo("DA_HOAN_TRA");
+        assertThat(failCount()).isEqualTo(3);
 
         DonHangCuaHang returned = donHangCuaHangRepository.findById(order.getMaDHCH()).orElseThrow();
         assertThat(returned.getTrangThaiDonHang()).isEqualTo("DA_HOAN_TRA");
@@ -296,11 +316,33 @@ class ShippingSyncIntegrationTest {
         Integer id = vanChuyenService.tiepNhan("GHN", accept).getMaVanChuyen();
         portal(id, "DANG_GIAO");
 
-        // max-delivery-attempts = 1: giao thất bại là tự chuyển hoàn hàng, cộng lại tồn kho.
+        // max-delivery-attempts = 3: hai lần đầu giao thất bại thì chỉ được giao lại.
+        var fail1 = portal(id, "GIAO_THAT_BAI");
+        assertThat(fail1.getTrangThaiVanChuyen()).isEqualTo("GIAO_THAT_BAI");
+        assertThat(fail1.getSoLanGiaoThatBai()).isEqualTo(1);
+        assertThat(fail1.getSoLanGiaoToiDa()).isEqualTo(3);
+        assertThat(fail1.getTrangThaiTiepTheo()).containsExactly("DANG_GIAO");
+        assertThat(orderStatus()).isEqualTo("DANG_GIAO");
+
+        // Hãng không tự chọn hoàn trả được.
+        assertThatThrownBy(() -> portal(id, "DA_HOAN_TRA"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("tự động hoàn trả");
+
+        var retry1 = portal(id, "DANG_GIAO");
+        assertThat(retry1.getGhiChuGiaoHang()).isEqualTo("Giao lại lần 2/3");
+        portal(id, "GIAO_THAT_BAI");
+        portal(id, "DANG_GIAO");
+        assertThat(sachRepository.findById(book.getMaSach()).orElseThrow().getSoLuongTon()).isEqualTo(3);
+
+        // Lần 3: tự chuyển hoàn hàng, cộng lại tồn kho.
         var result = portal(id, "GIAO_THAT_BAI");
         assertThat(result.getTrangThaiVanChuyen()).isEqualTo("DA_HOAN_TRA");
+        assertThat(result.getSoLanGiaoThatBai()).isEqualTo(3);
+        assertThat(result.getTrangThaiTiepTheo()).isEmpty();
         assertThat(orderStatus()).isEqualTo("DA_HOAN_TRA");
         assertThat(sachRepository.findById(book.getMaSach()).orElseThrow().getSoLuongTon()).isEqualTo(5);
+        // xác nhận + tiếp nhận + DANG_GIAO + 3 x GIAO_THAT_BAI + 2 x giao lại + hoàn trả (HE_THONG)
+        assertThat(lichSuVanChuyenRepository.count()).isEqualTo(9);
     }
 
     // ---- helpers ----
@@ -309,6 +351,14 @@ class ShippingSyncIntegrationTest {
         CapNhatVanChuyenRequest req = new CapNhatVanChuyenRequest();
         req.setTrangThai(trangThai);
         return vanChuyenService.capNhat("GHN", maVanChuyen, req);
+    }
+
+    private String shipmentStatus() {
+        return vanChuyenRepository.findByDonHangCuaHang_MaDHCH(order.getMaDHCH()).orElseThrow().getTrangThaiVanChuyen();
+    }
+
+    private Integer failCount() {
+        return vanChuyenRepository.findByDonHangCuaHang_MaDHCH(order.getMaDHCH()).orElseThrow().getSoLanGiaoThatBai();
     }
 
     private String orderStatus() {

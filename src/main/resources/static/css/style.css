@@ -198,10 +198,25 @@ main { min-height: 60vh; }
 .cart-link i { font-size: 1.5rem; vertical-align: middle; }
 .cart-count { position: absolute; top: -8px; left: 16px; background: var(--danger-fill); color: var(--text-on-inverse);
   border-radius: var(--radius-pill); font-size: .7rem; padding: 1px 6px; }
-.menu { background: var(--surface-bar); padding: 0; }
-.menu .nav-link { color: var(--text-on-bar) !important; padding: .8rem 1rem; font-weight: 500; }
-.menu .nav-link:hover, .menu .nav-link:active, .menu .nav-link.active { background: var(--surface-brand); color: var(--text-on-brand) !important; }
-
+.menu { background: var(--surface-bar); padding: .55rem 0; }
+.menu .navbar-nav { gap: .45rem; }
+.menu .navbar-nav .nav-link {
+  display: inline-flex; align-items: center;
+  padding: .38rem .95rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--text-on-bar) 30%, transparent);
+  color: var(--text-on-bar) !important;
+  font-size: .9rem; font-weight: 500; white-space: nowrap;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.menu .navbar-nav .nav-link:hover {
+  background: color-mix(in srgb, var(--text-on-bar) 14%, transparent);
+}
+.menu .navbar-nav .nav-link.active {
+  background: var(--surface-brand); border-color: var(--surface-brand);
+  color: var(--text-on-brand) !important; font-weight: 600;
+}
+.menu .navbar-nav .nav-link:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
 .btn-accent { background: var(--cta); border-color: var(--cta); color: var(--cta-text); font-weight: 600; }
 .btn-outline-brown { border: 2px solid var(--text-heading); color: var(--text-heading); font-weight: 600; background: transparent; }
 .btn-outline-secondary { --bs-btn-color: var(--text-heading); --bs-btn-border-color: var(--border-strong);
@@ -277,11 +292,9 @@ main { min-height: 60vh; }
 .book-title a { color: var(--text-main); }
 .book-title a:hover { color: var(--price); }
 .book-author { font-size: .85rem; color: var(--text-soft); margin-bottom: .4rem; min-height: 2.4em; }
-.price-line { font-size: .85rem; margin: 0; color: var(--text-soft); }
 .price { color: var(--price); font-size: 1rem; font-weight: 700; }
 .book-info .btn { margin-top: auto !important; }
 #wishlistGrid .book-info [data-remove-wishlist] { margin-top: .5rem !important; }
-.book-info .price-line:last-of-type { margin-bottom: .2rem; }
 
 .promo { border-radius: var(--radius-panel); padding: 2rem; color: var(--text-on-inverse); }
 .promo h3 { font-family: var(--font-display); font-size: 1.7rem; font-weight: 700; color: inherit; }
@@ -358,6 +371,8 @@ main { min-height: 60vh; }
 .auth-showcase-overlay { position: absolute; inset: 0; background: radial-gradient(circle at top right, color-mix(in srgb, var(--brand) 38%, transparent), transparent 35%); pointer-events: none; }
 .auth-showcase-content { position: relative; z-index: 1; height: 100%; padding: 3rem; display: flex; flex-direction: column; justify-content: flex-end; }
 .auth-eyebrow, .auth-step-label { display: inline-flex; align-items: center; width: fit-content; font-size: .76rem; font-weight: 700; letter-spacing: .12em; color: var(--text-on-inverse-accent); }
+/* Nhãn bước nằm trên thẻ sáng chứ không trên ảnh nền tối như .auth-eyebrow, nên dùng màu nhấn đọc được trên thẻ. */
+.auth-step-label { color: var(--text-accent); }
 .auth-showcase h1 { max-width: 570px; font-family: var(--font-display); font-size: clamp(2.2rem, 4.4vw, 3.4rem); line-height: 1.1; margin: .9rem 0 1rem; }
 .auth-showcase p { max-width: 560px; font-size: 1rem; line-height: 1.7; color: color-mix(in srgb, var(--text-on-inverse) 88%, transparent); }
 .auth-benefits { margin-top: 1.7rem; display: grid; gap: .9rem; }
@@ -550,6 +565,22 @@ video.review-media-item { object-fit: contain; background: var(--surface-media);
 .order-timeline ul li { display: grid; grid-template-columns: 12.5rem 1fr; gap: .25rem 1rem; align-items: baseline; }
 .order-timeline .tl-time { color: var(--text-soft); white-space: nowrap; }
 .order-timeline .tl-note { color: inherit; }
+
+/* ===== Thanh toán chuyển khoản: trang quét mã, hoàn tiền, quản lý thanh toán ===== */
+.pay-qr img { max-width: 100%; height: auto; border: 1px solid var(--border-soft); border-radius: var(--radius-box); }
+.pay-countdown { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .25rem 1rem; padding-bottom: .75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-soft); }
+.pay-countdown-label { color: var(--text-soft); }
+.pay-countdown-value { font-family: var(--font-display); font-size: 2.25rem; font-weight: 700; line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.pay-details { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .6rem 1.25rem; align-items: center; margin-bottom: 1rem; }
+.pay-details dt { font-weight: 500; color: var(--text-soft); }
+.pay-details dd { margin: 0; overflow-wrap: anywhere; }
+.pay-code { font-size: 1.15rem; letter-spacing: .08em; color: var(--text-strong); }
+.pay-message > i { color: var(--text-accent); }
+.pay-status { display: inline-block; padding: .15rem .65rem; border-radius: var(--radius-pill); font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.pay-status.is-ok { background: var(--status-ok-bg); color: var(--status-ok-text); }
+.pay-status.is-wait { background: var(--status-neutral-bg); color: var(--status-neutral-text); }
+.pay-status.is-bad { background: var(--status-bad-bg); color: var(--status-bad-text); }
+.pay-ledger-text { max-width: 22rem; overflow-wrap: anywhere; }
 
 @media (max-width: 576px) {
   .order-timeline ul li { grid-template-columns: 1fr; }
@@ -966,10 +997,16 @@ video.review-media-item { object-fit: contain; background: var(--surface-media);
 [data-theme="dark"] .form-control::placeholder { color: var(--text-disabled); }
 
 /* Vài lớp màu cố định của Bootstrap không tự đổi theo chế độ tối. */
-[data-theme="dark"] .text-dark { color: var(--text-main) !important; }
+/* Chữ text-dark nằm trên nền vàng hoặc xanh nhạt của Bootstrap (nhãn "Chờ duyệt") thì phải giữ màu sẫm. */
+[data-theme="dark"] .text-dark:not(.bg-warning):not(.bg-info) { color: var(--text-main) !important; }
+/* Đỏ mặc định của Bootstrap quá tối trên nền sẫm: dấu * bắt buộc và dòng báo lỗi dùng màu cảnh báo của theme. */
+[data-theme="dark"] .text-danger { color: var(--danger) !important; }
 [data-theme="dark"] .bg-white,
 [data-theme="dark"] .bg-light { background-color: var(--surface-soft) !important; }
 [data-theme="dark"] .table-light { --bs-table-bg: var(--surface-soft); --bs-table-color: var(--text-main); --bs-table-border-color: var(--border-soft); }
+
+/* Hộp xác nhận (OB.confirm) nằm trên lớp phủ tối: thêm viền để thấy mép hộp. */
+[data-theme="dark"] .ob-confirm-dialog { border: 1px solid var(--border-soft); }
 
 /* =========================================================
    THEME TẠP CHÍ
@@ -1068,7 +1105,45 @@ video.review-media-item { object-fit: contain; background: var(--surface-media);
   --bs-body-color: var(--text-main);
   --bs-secondary-color: var(--text-soft);
   --bs-border-color: var(--border-strong);
+
+  /* Màu ngữ nghĩa của Bootstrap (nhãn text-bg-*, bg-*, chữ text-*, hộp alert-*): mực của theme thay cho xanh, đỏ, vàng tươi. */
+  --bs-primary-rgb: 120, 44, 24;
+  --bs-secondary-rgb: 110, 102, 94;
+  --bs-success-rgb: 92, 107, 71;
+  --bs-danger-rgb: 154, 52, 18;
+  --bs-warning-rgb: 201, 162, 75;
+  --bs-info-rgb: 213, 206, 192;
+  --bs-light-rgb: 239, 233, 220;
+  --bs-success-bg-subtle: #E6E9DA;
+  --bs-success-border-subtle: #C9D0B4;
+  --bs-success-text-emphasis: #4A5835;
+  --bs-danger-bg-subtle: #F1DCD3;
+  --bs-danger-border-subtle: #E3C2B4;
+  --bs-danger-text-emphasis: #9A3412;
+  --bs-warning-bg-subtle: #F3E9CC;
+  --bs-warning-border-subtle: #E3D3A3;
+  --bs-warning-text-emphasis: #6B4E0F;
+  --bs-info-bg-subtle: #EFE9DC;
+  --bs-info-border-subtle: #D5CEC0;
+  --bs-info-text-emphasis: #3A322D;
+
+  /* Bóng của Bootstrap (shadow-sm trên thông báo nổi, modal, dropdown). */
+  --bs-box-shadow: none;
+  --bs-box-shadow-sm: none;
+  --bs-box-shadow-lg: none;
 }
+
+/* Ô đánh dấu của Bootstrap bo góc bằng giá trị viết cứng, không qua biến. */
+[data-theme="magazine"] .form-check-input[type="checkbox"] { border-radius: 0; }
+
+/* Vài bóng pha từ màu nhấn chứ không từ --shadow-color. */
+[data-theme="magazine"] .address-card.default,
+[data-theme="magazine"] .btn-order-primary,
+[data-theme="magazine"] .btn-order-primary:hover:not(:disabled),
+[data-theme="magazine"] .cart-drawer-foot { box-shadow: none; }
+
+/* Hộp xác nhận (OB.confirm) không còn bóng nên cần viền để tách khỏi nền. */
+[data-theme="magazine"] .ob-confirm-dialog { border: 1px solid var(--border-strong); }
 
 /* Banner không ảnh nền. */
 [data-theme="magazine"] .hero-slide { --hero-img-opacity: 0; }
@@ -1094,8 +1169,6 @@ video.review-media-item { object-fit: contain; background: var(--surface-media);
 [data-theme="magazine"] .book-category-tag { top: 1.25rem; left: 1.25rem; background: var(--cta-alt); }
 [data-theme="magazine"] .wishlist-mini { top: 1.25rem; right: 1.25rem; }
 
-/* Nhãn nhỏ trên thẻ trắng của trang đăng nhập: màu nhấn sáng không đọc được trên nền giấy. */
-[data-theme="magazine"] .auth-step-label { color: var(--text-soft); }
 /* ===== Bố cục trang đơn hàng: tab trạng thái dạng cột dọc bên trái ===== */
 .order-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 1.5rem; align-items: start; }
 .order-sidebar { position: sticky; top: 1rem; background: var(--surface-card); border: 1px solid var(--border-soft); border-radius: var(--radius-panel); padding: .6rem; }
@@ -1109,7 +1182,8 @@ video.review-media-item { object-fit: contain; background: var(--surface-media);
 .order-history-list .tl-time { color: var(--text-soft); font-size: .9rem; }
 
 @media (max-width: 767px) {
-  .order-layout { grid-template-columns: 1fr; gap: 1rem; }
+  /* minmax(0, 1fr): hàng tab cuộn ngang bên trong cột, không đẩy cả trang rộng ra. */
+  .order-layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .order-sidebar { position: static; }
   .order-tabs-vertical { flex-direction: row; overflow-x: auto; }
   .order-tabs-vertical .order-tab { width: auto; white-space: nowrap; }

@@ -12,16 +12,20 @@ public record CuaHangResponse(
         String soDienThoaiCH,
         String trangThaiDuyet,
         LocalDateTime ngayTao,
-        String lyDoTuChoi
+        String lyDoTuChoi,
+        String maNganHang,
+        String soTaiKhoan,
+        String tenChuTaiKhoan
 ) {
     public static CuaHangResponse from(CuaHang cuaHang) {
         return new CuaHangResponse(cuaHang.getMaCH(), cuaHang.getTenCuaHang(), cuaHang.getMoTa(),
                 cuaHang.getDiaChiCH(), cuaHang.getSoDienThoaiCH(), cuaHang.getTrangThaiDuyet(),
-                cuaHang.getNgayTao(), null);
+                cuaHang.getNgayTao(), null,
+                cuaHang.getMaNganHang(), cuaHang.getSoTaiKhoan(), cuaHang.getTenChuTaiKhoan());
     }
 
     public CuaHangResponse withLyDoTuChoi(String lyDo) {
         return new CuaHangResponse(maCH, tenCuaHang, moTa, diaChiCH, soDienThoaiCH,
-                trangThaiDuyet, ngayTao, lyDo);
+                trangThaiDuyet, ngayTao, lyDo, maNganHang, soTaiKhoan, tenChuTaiKhoan);
     }
 }

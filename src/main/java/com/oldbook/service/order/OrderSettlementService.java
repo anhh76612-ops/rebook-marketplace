@@ -1,5 +1,6 @@
 package com.oldbook.service.order;
 
+import com.oldbook.constant.order.PhuongThucThanhToan;
 import com.oldbook.constant.order.TrangThaiDonHang;
 import com.oldbook.constant.order.TrangThaiThanhToan;
 import com.oldbook.entity.catalog.Sach;
@@ -15,6 +16,7 @@ import com.oldbook.repository.order.DonHangCuaHangRepository;
 import com.oldbook.repository.order.DonHangRepository;
 import com.oldbook.repository.payment.CauHinhChietKhauRepository;
 import com.oldbook.repository.payment.ThanhToanRepository;
+import com.oldbook.service.payment.ChuyenTienService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,7 @@ public class OrderSettlementService {
     private final SachRepository sachRepository;
     private final DonHangRepository donHangRepository;
     private final DonHangCuaHangRepository donHangCuaHangRepository;
+    private final ChuyenTienService chuyenTienService;
 
     /** Tỷ lệ hoa hồng (%) áp dụng khi danh mục chưa có cấu hình chiết khấu đang hiệu lực. */
     @Value("${marketplace.commission.default-rate:5.00}")
@@ -89,10 +92,17 @@ public class OrderSettlementService {
         order.setNgayGiao(now);
         donHangCuaHangRepository.save(order);
 
-        // COD: đơn vị vận chuyển thu đủ tiền hàng + phí ship từ khách khi giao thành công.
-        recordTransaction(order, LOAI_THU_HO_COD, order.getTongTienShopOrder(), maVanDon, now);
+        boolean traTruoc = laTraTruoc(order);
+        if (!traTruoc) {
+            // COD: đơn vị vận chuyển thu đủ tiền hàng + phí ship từ khách khi giao thành công.
+            recordTransaction(order, LOAI_THU_HO_COD, order.getTongTienShopOrder(), maVanDon, now);
+        }
         recordTransaction(order, LOAI_HOA_HONG, commission, maVanDon, now);
         recordTransaction(order, LOAI_DOANH_THU_SHOP, doanhThu, maVanDon, now);
+        if (traTruoc) {
+            // Chuyển khoản: sàn đang giữ tiền của khách, nên phải chi phần doanh thu cho cửa hàng.
+            chuyenTienService.taoChiChoCuaHang(order);
+        }
 
         refreshParentPaymentStatus(order.getDonHang().getMaDH());
     }
@@ -117,13 +127,15 @@ public class OrderSettlementService {
         }
         chiTietDonHangRepository.saveAll(lines);
 
-        // COD: chưa thu tiền của khách nên không có khoản nào phải hoàn lại.
         order.setCommissionTien(BigDecimal.ZERO);
         order.setDoanhThuShop(BigDecimal.ZERO);
-        order.setTienHoanTra(BigDecimal.ZERO);
+        order.setTienHoanTra(tienPhaiHoan(order));
         order.setTrangThaiThanhToanShop(TrangThaiThanhToan.KHONG_THANH_TOAN.name());
         order.setNgayHoanTra(LocalDateTime.now());
         donHangCuaHangRepository.save(order);
+        if (laTraTruoc(order)) {
+            chuyenTienService.taoHoanTienChoDon(order, "Giao hàng không thành công");
+        }
 
         refreshParentPaymentStatus(order.getDonHang().getMaDH());
     }
@@ -147,12 +159,15 @@ public class OrderSettlementService {
         order.setTrangThaiDonHang(TrangThaiDonHang.DA_HUY.name());
         order.setCommissionTien(BigDecimal.ZERO);
         order.setDoanhThuShop(BigDecimal.ZERO);
-        order.setTienHoanTra(BigDecimal.ZERO);
+        order.setTienHoanTra(tienPhaiHoan(order));
         order.setTrangThaiThanhToanShop(TrangThaiThanhToan.KHONG_THANH_TOAN.name());
         order.setNgayHuy(LocalDateTime.now());
         order.setHuyBoi(huyBoi);
         order.setLyDoHuy(lyDo);
         donHangCuaHangRepository.save(order);
+        if (laTraTruoc(order)) {
+            chuyenTienService.taoHoanTienChoDon(order, "Đơn hàng bị hủy");
+        }
 
         refreshParentPaymentStatus(order.getDonHang().getMaDH());
     }
@@ -203,7 +218,20 @@ public class OrderSettlementService {
         });
 
         TrangThaiThanhToan status;
-        if (delivered == children.size()) {
+        if (PhuongThucThanhToan.laTraTruoc(parent.getPhuongThucTT())) {
+            // Chuyển khoản: khách đã trả đủ từ đầu. Trạng thái chỉ đổi theo phần phải hoàn lại.
+            long hoanLai = children.stream()
+                    .filter(c -> TrangThaiDonHang.DA_HUY.name().equals(c.getTrangThaiDonHang())
+                            || TrangThaiDonHang.DA_HOAN_TRA.name().equals(c.getTrangThaiDonHang()))
+                    .count();
+            if (hoanLai == 0) {
+                status = TrangThaiThanhToan.DA_THANH_TOAN;
+            } else {
+                status = hoanLai == children.size()
+                        ? TrangThaiThanhToan.KHONG_THANH_TOAN
+                        : TrangThaiThanhToan.THANH_TOAN_MOT_PHAN;
+            }
+        } else if (delivered == children.size()) {
             status = TrangThaiThanhToan.DA_THANH_TOAN;
         } else if (delivered > 0) {
             status = TrangThaiThanhToan.THANH_TOAN_MOT_PHAN;
@@ -213,6 +241,15 @@ public class OrderSettlementService {
 
         parent.setTrangThaiThanhToan(status.name());
         donHangRepository.save(parent);
+    }
+
+    private static boolean laTraTruoc(DonHangCuaHang order) {
+        return PhuongThucThanhToan.laTraTruoc(order.getDonHang().getPhuongThucTT());
+    }
+
+    /** COD chưa thu tiền của khách nên không phải hoàn; chuyển khoản thì hoàn cả tiền hàng lẫn phí vận chuyển. */
+    private static BigDecimal tienPhaiHoan(DonHangCuaHang order) {
+        return laTraTruoc(order) ? nz(order.getTongTienShopOrder()) : BigDecimal.ZERO;
     }
 
     private static BigDecimal nz(BigDecimal v) {

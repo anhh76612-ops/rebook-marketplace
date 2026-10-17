@@ -2,7 +2,9 @@ package com.oldbook.service.order;
 
 import com.oldbook.constant.auth.VaiTro;
 import com.oldbook.constant.catalog.TrangThaiBan;
+import com.oldbook.constant.order.PhuongThucThanhToan;
 import com.oldbook.constant.order.TrangThaiDonHang;
+import com.oldbook.constant.order.TrangThaiThanhToan;
 import com.oldbook.constant.order.TrangThaiYeuCauHuy;
 import com.oldbook.constant.shipping.TrangThaiDonViVanChuyen;
 import com.oldbook.constant.catalog.TrangThaiDuyet;
@@ -54,6 +56,46 @@ public class DonHangService {
             throw new BusinessException("Phương thức thanh toán hiện hỗ trợ: COD");
         }
 
+        return buildOrderResponse(
+                saveOrder(prepareOrder(maND, request), PHUONG_THUC_COD, TRANG_THAI_TT_CHO)
+        );
+    }
+
+    /**
+     * Kiểm tra và tính tiền y như lúc đặt hàng nhưng không lưu gì.
+     * Dịch vụ thanh toán dùng để biết số tiền và các sách cần giữ trước khi hiện mã QR.
+     */
+    @Transactional
+    public OrderPreview previewOrder(Integer maND, CreateOrderRequest request) {
+        PreparedOrder prepared = prepareOrder(maND, request);
+
+        List<OrderPreview.Line> lines = prepared.drafts().stream()
+                .flatMap(draft -> draft.lines().stream())
+                .map(line -> new OrderPreview.Line(
+                        line.sach().getMaSach(),
+                        line.cartItem().getSoLuong()
+                ))
+                .toList();
+
+        return new OrderPreview(prepared.tongThanhToan(), lines);
+    }
+
+    /**
+     * Tạo đơn đã thanh toán bằng chuyển khoản. Không có API nào gọi thẳng vào đây:
+     * chỉ dịch vụ thanh toán gọi, sau khi ngân hàng báo đã nhận đủ tiền.
+     */
+    @Transactional
+    public OrderResponse createPaidOrder(Integer maND, CreateOrderRequest request) {
+        return buildOrderResponse(
+                saveOrder(
+                        prepareOrder(maND, request),
+                        PhuongThucThanhToan.CHUYEN_KHOAN.name(),
+                        TrangThaiThanhToan.DA_THANH_TOAN.name()
+                )
+        );
+    }
+
+    private PreparedOrder prepareOrder(Integer maND, CreateOrderRequest request) {
         NguoiDung nguoiMua = nguoiDungRepository.findById(maND)
                 .orElseThrow(() -> new BusinessException("Người dùng không tồn tại"));
 
@@ -162,15 +204,30 @@ public class DonHangService {
                 .add(tongPhiShip)
                 .subtract(tongGiamGia);
 
+        return new PreparedOrder(
+                nguoiMua,
+                diaChi,
+                cartItems,
+                drafts,
+                tongTienHang,
+                tongPhiShip,
+                tongGiamGia,
+                tongThanhToan
+        );
+    }
+
+    private DonHang saveOrder(PreparedOrder prepared, String phuongThucTT, String trangThaiThanhToan) {
+        DiaChi diaChi = prepared.diaChi();
+
         DonHang donHang = DonHang.builder()
-                .nguoiMua(nguoiMua)
+                .nguoiMua(prepared.nguoiMua())
                 .giamGiaSan(BigDecimal.ZERO)
-                .tongTienHang(tongTienHang)
-                .tongPhiShip(tongPhiShip)
-                .tongGiamGia(tongGiamGia)
-                .tongThanhToan(tongThanhToan)
-                .phuongThucTT(PHUONG_THUC_COD)
-                .trangThaiThanhToan(TRANG_THAI_TT_CHO)
+                .tongTienHang(prepared.tongTienHang())
+                .tongPhiShip(prepared.tongPhiShip())
+                .tongGiamGia(prepared.tongGiamGia())
+                .tongThanhToan(prepared.tongThanhToan())
+                .phuongThucTT(phuongThucTT)
+                .trangThaiThanhToan(trangThaiThanhToan)
                 .diaChiGiao(diaChi)
                 .tenNguoiNhan(diaChi.getTenNguoiNhan())
                 .soDienThoaiNhan(diaChi.getSoDienThoai())
@@ -182,7 +239,7 @@ public class DonHangService {
 
         donHang = donHangRepository.save(donHang);
 
-        for (StoreDraft draft : drafts) {
+        for (StoreDraft draft : prepared.drafts()) {
             DonHangCuaHang dhch = DonHangCuaHang.builder()
                     .donHang(donHang)
                     .cuaHang(draft.cuaHang())
@@ -194,7 +251,7 @@ public class DonHangService {
                     .commissionTien(BigDecimal.ZERO)
                     .tongTienShopOrder(draft.tienHang().add(draft.phiShip()))
                     .trangThaiDonHang(TRANG_THAI_DON_MOI)
-                    .trangThaiThanhToanShop(TRANG_THAI_TT_CHO)
+                    .trangThaiThanhToanShop(trangThaiThanhToan)
                     .tienHoanTra(BigDecimal.ZERO)
                     .ghiChu(draft.ghiChu())
                     .build();
@@ -223,10 +280,10 @@ public class DonHangService {
         }
 
         // Chỉ xóa các dòng đã đặt; sản phẩm không được chọn vẫn còn trong giỏ.
-        chiTietGioHangRepository.deleteAll(cartItems);
+        chiTietGioHangRepository.deleteAll(prepared.cartItems());
         chiTietGioHangRepository.flush();
 
-        return buildOrderResponse(donHang);
+        return donHang;
     }
 
     @Transactional(readOnly = true)
@@ -403,6 +460,18 @@ public class DonHangService {
                 .storeOrders(storeResponses)
                 .build();
     }
+
+    /** Yêu cầu đặt hàng đã qua kiểm tra và tính tiền, sẵn sàng để lưu. */
+    private record PreparedOrder(
+            NguoiDung nguoiMua,
+            DiaChi diaChi,
+            List<ChiTietGioHang> cartItems,
+            List<StoreDraft> drafts,
+            BigDecimal tongTienHang,
+            BigDecimal tongPhiShip,
+            BigDecimal tongGiamGia,
+            BigDecimal tongThanhToan
+    ) {}
 
     private record StoreDraft(
             CuaHang cuaHang,
