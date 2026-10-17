@@ -507,6 +507,13 @@
       if (writing && !closingAfterSave) { event.preventDefault(); }
     });
     loadStore();
+    if (OB.notifications) {
+      var idle = function () {
+        return !writing && !storeLoading && !document.querySelector('.modal.show') && $('storeForm').classList.contains('d-none');
+      };
+      OB.notifications.refreshOn(['CUA_HANG_DUOC_DUYET', 'CUA_HANG_BI_TU_CHOI'], loadStore, idle);
+      OB.notifications.refreshOn(['SACH_DUOC_DUYET', 'SACH_BI_TU_CHOI'], loadBooks, idle);
+    }
   }
 
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }

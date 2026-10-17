@@ -17,6 +17,7 @@ import com.oldbook.dto.store.UpdateTonKhoRequest;
 import com.oldbook.dto.store.UpdateTrangThaiBanRequest;
 import com.oldbook.repository.store.CuaHangRepository;
 import com.oldbook.security.store.StoreAccess;
+import com.oldbook.service.notification.NghiepVuThongBaoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -38,6 +39,7 @@ public class StoreSachService {
     private final SachRepository sachRepository;
     private final DanhMucRepository danhMucRepository;
     private final StoreAccess storeAccess;
+    private final NghiepVuThongBaoService nghiepVuThongBaoService;
 
     @Transactional(readOnly = true)
     public PageResponse<SachResponse> listMyBooks(int page, int size, String sort, String trangThaiDuyet) {
@@ -72,7 +74,9 @@ public class StoreSachService {
         sach.setSoLuongTon(request.soLuongTon());
         sach.setTrangThaiDuyet(TrangThaiDuyet.CHO_DUYET.name());
         sach.setTrangThaiBan(TrangThaiBan.DANG_BAN.name());
-        return SachMapper.toResponse(sachRepository.save(sach));
+        Sach daLuu = sachRepository.save(sach);
+        nghiepVuThongBaoService.sachChoDuyet(daLuu, false);
+        return SachMapper.toResponse(daLuu);
     }
 
     @Transactional
@@ -83,7 +87,9 @@ public class StoreSachService {
         applyContent(sach, request);
         sach.setTrangThaiDuyet(TrangThaiDuyet.CHO_DUYET.name());
         sach.setLyDoTuChoi(null);
-        return SachMapper.toResponse(sachRepository.save(sach));
+        Sach daLuu = sachRepository.save(sach);
+        nghiepVuThongBaoService.sachChoDuyet(daLuu, true);
+        return SachMapper.toResponse(daLuu);
     }
 
     @Transactional

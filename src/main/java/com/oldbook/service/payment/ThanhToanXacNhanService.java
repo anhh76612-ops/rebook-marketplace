@@ -204,6 +204,7 @@ public class ThanhToanXacNhanService {
         phien.setDonHang(donHangRepository.getReferenceById(donHang.getMaDH()));
         phien.setSoTienNhan(giaoDich.soTien());
         phienRepository.save(phien);
+        phienService.baoDoiTrangThai(phien);
 
         thongBaoService.thanhToanThanhCong(phien.getNguoiMua(), donHang.getMaDH(), giaoDich.soTien());
 
@@ -223,6 +224,7 @@ public class ThanhToanXacNhanService {
             phien.setTrangThai(TrangThaiPhienThanhToan.CAN_HOAN_TIEN.name());
             phien.setSoTienNhan(giaoDich.getSoTien());
             phienRepository.save(phien);
+            phienService.baoDoiTrangThai(phien);
         }
 
         chuyenTienService.taoHoanTienChoPhien(phien, giaoDich, lyDo);

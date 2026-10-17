@@ -334,10 +334,6 @@
             .then(function () { submit.disabled = false; });
     });
 
-    function hasActiveOrder() {
-        return flattenStoreOrders(allOrders).some(function (e) { return !T.isFinal(e.store.trangThaiDonHang); });
-    }
-
     function load(silent) {
         if (!Auth.isLoggedIn()) { Auth.redirectToLogin('/orders'); return; }
         if (!Auth.hasRole(ROLE)) { $('ordersLoading').classList.add('d-none'); $('orderSidebar').classList.add('d-none'); $('ordersAlert').className = 'alert alert-warning'; $('ordersAlert').textContent = 'Chỉ tài khoản khách hàng mới được xem đơn hàng.'; return; }
@@ -363,8 +359,8 @@
 
     drawTabs();
     load(false);
-    // Trạng thái do đơn vị vận chuyển cập nhật nên tự làm mới để khách thấy đơn tiến triển.
-    T.autoRefresh(function () { load(true); }, hasActiveOrder, 30000);
+    // Cửa hàng xác nhận / hủy / đơn vị vận chuyển cập nhật: máy chủ báo qua WebSocket nên danh sách đổi ngay.
+    T.liveRefresh(function () { load(true); });
 })();
 </script>
 </body>

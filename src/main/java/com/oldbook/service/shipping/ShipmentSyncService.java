@@ -9,6 +9,7 @@ import com.oldbook.exception.common.BusinessException;
 import com.oldbook.repository.order.DonHangCuaHangRepository;
 import com.oldbook.repository.shipping.LichSuVanChuyenRepository;
 import com.oldbook.repository.shipping.VanChuyenRepository;
+import com.oldbook.service.order.DonHangRealtimeService;
 import com.oldbook.service.order.OrderSettlementService;
 import com.oldbook.service.notification.NghiepVuThongBaoService;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,7 @@ public class ShipmentSyncService {
     private final OrderSettlementService settlementService;
     private final ShippingProperties properties;
     private final NghiepVuThongBaoService nghiepVuThongBaoService;
+    private final DonHangRealtimeService realtimeService;
 
     /**
      * @param expectedMaCode mã đơn vị vận chuyển phải sở hữu vận đơn; null = không kiểm tra
@@ -186,6 +188,7 @@ public class ShipmentSyncService {
         order.setTrangThaiDonHang(next.toTrangThaiDonHang().name());
         donHangCuaHangRepository.save(order);
         nghiepVuThongBaoService.donHangDoiTrangThaiGiao(order, tenTrangThaiThongBao(previous, next, vanChuyen));
+        realtimeService.baoThayDoi(order);
 
         lichSuVanChuyenRepository.save(LichSuVanChuyen.builder()
                 .vanChuyen(vanChuyen)

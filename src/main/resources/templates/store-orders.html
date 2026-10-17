@@ -363,9 +363,9 @@
     T.renderTabs($('orderTabs'), currentTab);
     loadProducts();
     load(false);
-    T.autoRefresh(function () { load(true); }, function () {
-        return orders.some(function (o) { return !T.isFinal(o.storeOrder.trangThaiDonHang); }) && Object.keys(busy).length === 0;
-    }, 30000);
+    // Khách đặt / hủy / gửi yêu cầu hủy, đơn vị vận chuyển cập nhật: máy chủ báo qua WebSocket nên danh sách đổi ngay.
+    // Đang xử lý một đơn (busy) thì chờ xong mới tải lại để không làm mất trạng thái nút.
+    T.liveRefresh(function () { load(true); }, function () { return Object.keys(busy).length === 0; });
 })();
 </script>
 </body>

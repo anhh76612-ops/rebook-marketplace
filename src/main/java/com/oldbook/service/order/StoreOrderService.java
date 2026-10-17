@@ -53,6 +53,7 @@ public class StoreOrderService {
     private final NghiepVuThongBaoService nghiepVuThongBaoService;
     private final YeuCauHuyDonRepository yeuCauHuyDonRepository;
     private final OrderSettlementService settlementService;
+    private final DonHangRealtimeService realtimeService;
 
     private static final String CHUA_DANH_GIA = "CHUA_DANH_GIA";
 
@@ -208,6 +209,8 @@ public class StoreOrderService {
         order.setNgayXacNhan(LocalDateTime.now());
         donHangCuaHangRepository.save(order);
         nghiepVuThongBaoService.donHangDuocXacNhan(order);
+        realtimeService.baoThayDoi(order);
+        realtimeService.baoDonViVanChuyen(order);
 
         VanChuyen vanChuyen = vanChuyenRepository.save(
                 VanChuyen.builder()
@@ -238,6 +241,8 @@ public class StoreOrderService {
 
         if (TrangThaiDonHang.CHO_XU_LY.name().equals(status)) {
             settlementService.settleCancelled(order, VaiTro.CHU_CUA_HANG.name(), reason);
+            nghiepVuThongBaoService.cuaHangHuyDon(order, reason);
+            realtimeService.baoThayDoi(order);
             return toSellerResponse(order, null);
         }
 
@@ -256,6 +261,9 @@ public class StoreOrderService {
                         maDHCH, TrangThaiYeuCauHuy.CHO_DUYET.name())
                 .ifPresent(request -> resolveRequest(request, TrangThaiYeuCauHuy.DA_DUYET, null));
 
+        nghiepVuThongBaoService.cuaHangHuyDon(order, reason);
+        realtimeService.baoThayDoi(order);
+        realtimeService.baoDonViVanChuyen(order);
         return toSellerResponse(order, vanChuyen);
     }
 
@@ -297,6 +305,9 @@ public class StoreOrderService {
         markShipmentCancelled(vanChuyen, "Đơn bị hủy theo yêu cầu của khách");
 
         resolveRequest(request, TrangThaiYeuCauHuy.DA_DUYET, null);
+        nghiepVuThongBaoService.yeuCauHuyDuocDuyet(order);
+        realtimeService.baoThayDoi(order);
+        realtimeService.baoDonViVanChuyen(order);
         return toSellerResponse(order, vanChuyen);
     }
 
@@ -307,6 +318,8 @@ public class StoreOrderService {
         YeuCauHuyDon request = requirePendingCancelRequest(maDHCH);
 
         resolveRequest(request, TrangThaiYeuCauHuy.TU_CHOI, reason);
+        nghiepVuThongBaoService.yeuCauHuyBiTuChoi(order, reason);
+        realtimeService.baoThayDoi(order);
         return toSellerResponse(order, vanChuyenRepository.findByDonHangCuaHang_MaDHCH(maDHCH).orElse(null));
     }
 
