@@ -7,6 +7,7 @@ import com.oldbook.dto.catalog.SachResponse;
 import com.oldbook.entity.catalog.CuaHang;
 import com.oldbook.entity.catalog.DanhMuc;
 import com.oldbook.entity.catalog.Sach;
+import com.oldbook.entity.catalog.SachHinhAnh;
 import com.oldbook.repository.catalog.DanhMucRepository;
 import com.oldbook.repository.catalog.SachRepository;
 import com.oldbook.service.catalog.SachMapper;
@@ -27,12 +28,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class StoreSachService {
+    private static final int MAX_IMAGES = 10;
     private static final Set<String> SORT_FIELDS = Set.of("maSach", "tenSach", "giaBanCu", "soLuongTon", "ngayTao");
 
     private final CuaHangRepository cuaHangRepository;
@@ -70,7 +75,7 @@ public class StoreSachService {
         Sach sach = Sach.builder().cuaHang(cuaHang).build();
         applyContent(sach, new UpdateSachRequest(request.maDM(), request.tenSach(), request.tacGia(),
                 request.nhaXuatBan(), request.namXuatBan(), request.giaBia(), request.giaBanCu(),
-                request.doMoiPercent(), request.tinhTrangVatLy(), request.moTaChiTiet(), request.hinhAnhUrl()));
+                request.doMoiPercent(), request.tinhTrangVatLy(), request.moTaChiTiet(), request.hinhAnhUrl(), request.hinhAnhUrls()));
         sach.setSoLuongTon(request.soLuongTon());
         sach.setTrangThaiDuyet(TrangThaiDuyet.CHO_DUYET.name());
         sach.setTrangThaiBan(TrangThaiBan.DANG_BAN.name());
@@ -171,7 +176,35 @@ public class StoreSachService {
         sach.setDoMoiPercent(request.doMoiPercent());
         sach.setTinhTrangVatLy(optionalText(request.tinhTrangVatLy()));
         sach.setMoTaChiTiet(optionalText(request.moTaChiTiet()));
-        sach.setHinhAnhUrl(optionalText(request.hinhAnhUrl()));
+        applyImages(sach, imageUrls(request));
+    }
+
+    private List<String> imageUrls(UpdateSachRequest request) {
+        List<String> source = request.hinhAnhUrls() != null ? request.hinhAnhUrls()
+                : (request.hinhAnhUrl() == null ? List.of() : List.of(request.hinhAnhUrl()));
+        var urls = new LinkedHashSet<String>();
+        for (String value : source) {
+            String url = optionalText(value);
+            if (url == null) {
+                continue;
+            }
+            if (url.length() > 500) {
+                throw new BusinessException("Đường dẫn ảnh không được vượt quá 500 ký tự");
+            }
+            urls.add(url);
+        }
+        if (urls.size() > MAX_IMAGES) {
+            throw new BusinessException("Mỗi sách chỉ được có tối đa " + MAX_IMAGES + " ảnh");
+        }
+        return new ArrayList<>(urls);
+    }
+
+    private void applyImages(Sach sach, List<String> urls) {
+        sach.setHinhAnhUrl(urls.isEmpty() ? null : urls.get(0));
+        sach.getHinhAnhs().clear();
+        for (int i = 0; i < urls.size(); i++) {
+            sach.getHinhAnhs().add(SachHinhAnh.builder().sach(sach).url(urls.get(i)).thuTu(i).build());
+        }
     }
 
     private void validateStock(Integer stock) {

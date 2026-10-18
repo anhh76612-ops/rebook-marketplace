@@ -34,35 +34,43 @@ async function openNew(app) {
   app.set('bookSalePrice', '50000');
 }
 
-function selectFile(app, file) {
-  app.set('bookImageFile', 'C:\\fakepath\\' + file.name);
-  app.get('bookImageFile').files = [file];
+function selectFiles(app, ...files) {
+  app.set('bookImageFile', 'C:\\fakepath\\' + files[0].name);
+  app.get('bookImageFile').files = files;
   app.trigger('bookImageFile', 'change');
 }
 
-function writes(app) { return app.calls.filter(call => call.method !== 'GET'); }
+const thumbs = app => [...app.get('bookImageList').querySelectorAll('img')];
+const imageAction = (app, action, index) =>
+  app.get('bookImageList').querySelector(`[data-image-action="${action}"][data-image-index="${index}"]`);
 
-test('seller uploads multipart with JWT before saving a book and blocks dismissal and duplicate submissions', async () => {
+function writes(app) { return app.calls.filter(call => call.method !== 'GET'); }
+const uploadsOf = app => writes(app).filter(call => call.url === BASE + '/hinh-anh');
+const jpg = name => new File([name], name + '.jpg', { type: 'image/jpeg' });
+
+test('seller uploads several images in order before saving and blocks dismissal and duplicate submissions', async () => {
   let finishUpload;
   const pendingUpload = new Promise(resolve => { finishUpload = resolve; });
   const app = await seller(async call => {
-    if (call.url === BASE + '/hinh-anh') { await pendingUpload; return { hinhAnhUrl: imageUrl }; }
+    if (call.url === BASE + '/hinh-anh') { await pendingUpload; return { hinhAnhUrl: imageUrl.replace('cover', call.body.get('file').name.replace('.jpg', '')) }; }
     if (call.url === BASE) { return { maSach: 50, ...call.body }; }
     throw new Error('Unexpected API: ' + call.url);
   });
   await openNew(app);
-  const file = new File(['cover'], 'cover.jpg', { type: 'image/jpeg' });
-  selectFile(app, file);
-  const preview = app.get('bookImagePreview').getAttribute('src');
-  assert.match(preview, /^blob:/);
+  const first = jpg('one');
+  const second = jpg('two');
+  selectFiles(app, first, second);
+  assert.equal(thumbs(app).length, 2);
+  thumbs(app).forEach(img => assert.match(img.getAttribute('src'), /^blob:/));
+  assert.equal(app.get('bookImageFile').files.length, 0);
+  assert.equal(app.get('bookImageList').textContent.includes('Ảnh bìa'), true);
   app.trigger('sellerBookForm', 'submit');
   app.trigger('sellerBookForm', 'submit');
-  assert.equal(writes(app).length, 1);
-  assert.equal(writes(app)[0].url, BASE + '/hinh-anh');
-  assert.ok(writes(app)[0].body instanceof FormData);
-  assert.equal(writes(app)[0].body.get('file'), file);
-  assert.match(writes(app)[0].headers.Authorization, /^Bearer /);
-  assert.equal(Object.hasOwn(writes(app)[0].headers, 'Content-Type'), false, 'browser sets multipart boundary');
+  await settle();
+  assert.equal(uploadsOf(app).length, 1);
+  assert.equal(uploadsOf(app)[0].body.get('file'), first);
+  assert.match(uploadsOf(app)[0].headers.Authorization, /^Bearer /);
+  assert.equal(Object.hasOwn(uploadsOf(app)[0].headers, 'Content-Type'), false, 'browser sets multipart boundary');
   assert.equal(app.get('saveBook').disabled, true);
   assert.equal(app.get('bookFields').disabled, true);
   assert.equal(app.get('bookImageUploading').classList.contains('d-none'), false);
@@ -70,48 +78,49 @@ test('seller uploads multipart with JWT before saving a book and blocks dismissa
   assert.equal(app.get('sellerBookModal').classList.contains('show'), true);
   finishUpload();
   await settle();
-  assert.deepEqual(writes(app).map(call => call.url), [BASE + '/hinh-anh', BASE]);
-  assert.equal(writes(app)[1].headers['Content-Type'], 'application/json');
-  assert.equal(writes(app)[1].body.hinhAnhUrl, imageUrl);
-  assert.equal(writes(app)[1].body.soLuongTon, 0);
+  assert.deepEqual(writes(app).map(call => call.url), [BASE + '/hinh-anh', BASE + '/hinh-anh', BASE]);
+  assert.equal(writes(app)[1].body.get('file'), second);
+  const saved = writes(app)[2].body;
+  assert.equal(writes(app)[2].headers['Content-Type'], 'application/json');
+  assert.deepEqual(saved.hinhAnhUrls, [imageUrl.replace('cover', 'one'), imageUrl.replace('cover', 'two')]);
+  assert.equal(saved.hinhAnhUrl, saved.hinhAnhUrls[0]);
+  assert.equal(saved.soLuongTon, 0);
   assert.equal(app.get('sellerBookModal').classList.contains('show'), false);
-  assert.deepEqual(app.revokedPreviewUrls, [preview]);
-  assert.equal(app.get('bookImageFile').files.length, 0);
+  assert.equal(app.revokedPreviewUrls.length, 2);
 });
 
-test('failed upload preserves selected file and entered data for retry without saving a book', async () => {
-  let attempts = 0;
+test('failed upload keeps selected images and retry only uploads the images that are still missing', async () => {
+  let secondAttempts = 0;
   const app = await seller(async call => {
     if (call.url === BASE + '/hinh-anh') {
-      attempts++;
-      return attempts === 1 ? { httpStatus: 502, message: 'Không tải được ảnh' } : { hinhAnhUrl: imageUrl };
+      const name = call.body.get('file').name;
+      if (name === 'two.jpg' && ++secondAttempts === 1) { return { httpStatus: 502, message: 'Không tải được ảnh' }; }
+      return { hinhAnhUrl: imageUrl.replace('cover', name.replace('.jpg', '')) };
     }
     if (call.url === BASE) { return { maSach: 50 }; }
     throw new Error('Unexpected API: ' + call.url);
   });
   await openNew(app);
-  const file = new File(['cover'], 'cover.png', { type: 'image/png' });
-  selectFile(app, file);
-  const preview = app.get('bookImagePreview').getAttribute('src');
+  selectFiles(app, jpg('one'), jpg('two'));
   app.trigger('sellerBookForm', 'submit');
   await settle();
-  assert.deepEqual(writes(app).map(call => call.url), [BASE + '/hinh-anh']);
+  assert.deepEqual(writes(app).map(call => call.url), [BASE + '/hinh-anh', BASE + '/hinh-anh']);
   assert.match(app.get('bookFormError').textContent, /Không tải được ảnh/);
   assert.equal(app.get('bookTitle').value, 'Sách mới');
-  assert.equal(app.get('bookImageFile').files[0], file);
-  assert.equal(app.get('bookImagePreview').getAttribute('src'), preview);
+  assert.equal(thumbs(app).length, 2);
   assert.equal(app.get('sellerBookModal').classList.contains('show'), true);
   assert.equal(app.get('saveBook').disabled, false);
   app.trigger('sellerBookForm', 'submit');
   await settle();
-  assert.equal(attempts, 2);
-  assert.equal(writes(app).at(-1).body.hinhAnhUrl, imageUrl);
+  assert.equal(uploadsOf(app).length, 3, 'only the failed image is uploaded again');
+  assert.equal(writes(app).at(-1).url, BASE);
+  assert.equal(writes(app).at(-1).body.hinhAnhUrls.length, 2);
 });
 
-test('retry after a book save failure reuses the successful upload and saves corrected data', async () => {
+test('retry after a book save failure reuses the successful uploads and saves corrected data', async () => {
   let saves = 0;
   const app = await seller(async call => {
-    if (call.url === BASE + '/hinh-anh') { return { hinhAnhUrl: imageUrl }; }
+    if (call.url === BASE + '/hinh-anh') { return { hinhAnhUrl: imageUrl.replace('cover', call.body.get('file').name.replace('.jpg', '')) }; }
     if (call.url === BASE) {
       saves++;
       return saves === 1 ? { httpStatus: 400, message: 'Hãy sửa thông tin sách' } : { maSach: 50 };
@@ -119,100 +128,112 @@ test('retry after a book save failure reuses the successful upload and saves cor
     throw new Error('Unexpected API: ' + call.url);
   });
   await openNew(app);
-  selectFile(app, new File(['cover'], 'cover.webp', { type: 'image/webp' }));
+  selectFiles(app, jpg('one'), jpg('two'));
   app.trigger('sellerBookForm', 'submit');
   await settle();
   assert.match(app.get('bookFormError').textContent, /Hãy sửa thông tin sách/);
-  assert.equal(app.get('sellerBookModal').classList.contains('show'), true);
   app.set('bookTitle', 'Tên đã sửa');
   app.trigger('sellerBookForm', 'submit');
   await settle();
-  assert.equal(writes(app).filter(call => call.url === BASE + '/hinh-anh').length, 1);
+  assert.equal(uploadsOf(app).length, 2);
   assert.equal(saves, 2);
   assert.equal(writes(app).at(-1).body.tenSach, 'Tên đã sửa');
-  assert.equal(writes(app).at(-1).body.hinhAnhUrl, imageUrl);
+  assert.equal(writes(app).at(-1).body.hinhAnhUrls.length, 2);
 });
 
-test('seller rejects invalid types, empty images and files over 10 MiB before any upload', async () => {
-  const app = await seller(async call => { throw new Error('Invalid image must not write: ' + call.url); });
+test('seller rejects invalid types, empty images and files over 10 MiB but keeps valid ones, up to 10 images', async () => {
+  const app = await seller(async call => { throw new Error('Selecting images must not write: ' + call.url); });
   await openNew(app);
   for (const [file, expected] of [
     [new File(['svg'], 'cover.svg', { type: 'image/svg+xml' }), /JPEG, PNG hoặc WebP/],
     [new File([], 'empty.jpg', { type: 'image/jpeg' }), /không được để trống/],
     [new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' }), /10 MB/]
   ]) {
-    selectFile(app, file);
-    app.trigger('sellerBookForm', 'submit');
-    await settle();
+    selectFiles(app, file);
     assert.match(app.get('bookImageError').textContent, expected);
-    assert.equal(writes(app).length, 0);
+    assert.equal(thumbs(app).length, 0);
   }
-  selectFile(app, new File([new Uint8Array(10 * 1024 * 1024)], 'limit.png', { type: 'image/png' }));
+  selectFiles(app, new File(['bad'], 'bad.gif', { type: 'image/gif' }), jpg('ok'));
+  assert.match(app.get('bookImageError').textContent, /JPEG, PNG hoặc WebP/);
+  assert.equal(thumbs(app).length, 1);
+  selectFiles(app, jpg('a'));
   assert.equal(app.get('bookImageError').textContent, '');
-  assert.equal(app.get('bookImageFile').customValidity, '');
-  assert.match(app.get('bookImagePreview').getAttribute('src'), /^blob:/);
-  selectFile(app, new File(['invalid'], 'invalid.gif', { type: 'image/gif' }));
-  assert.equal(app.get('bookImagePreviewPanel').classList.contains('d-none'), false, 'invalid selection can be cleared');
-  app.trigger('removeBookImage');
-  assert.equal(app.get('bookImageFile').customValidity, '');
-  assert.equal(app.get('bookImageError').textContent, '');
+  selectFiles(app, ...Array.from({ length: 12 }, (_, i) => jpg('m' + i)));
+  assert.equal(thumbs(app).length, 10);
+  assert.match(app.get('bookImageError').textContent, /tối đa 10 ảnh/);
+  assert.equal(writes(app).length, 0);
 });
 
-test('choosing a different file after save failure uploads the replacement instead of using the cached URL', async () => {
+test('seller can remove an image and promote another one to cover before saving', async () => {
   const app = await seller(async call => {
-    if (call.url === BASE + '/hinh-anh') { return { hinhAnhUrl: imageUrl.replace('cover.jpg', call.body.get('file').name) }; }
-    if (call.url === BASE) { return { httpStatus: 400, message: 'Hãy sửa thông tin sách' }; }
+    if (call.url === BASE + '/hinh-anh') { return { hinhAnhUrl: imageUrl.replace('cover', call.body.get('file').name.replace('.jpg', '')) }; }
+    if (call.url === BASE) { return { maSach: 50 }; }
     throw new Error('Unexpected API: ' + call.url);
   });
   await openNew(app);
-  selectFile(app, new File(['first'], 'first.jpg', { type: 'image/jpeg' }));
-  const firstPreview = app.get('bookImagePreview').getAttribute('src');
+  selectFiles(app, jpg('one'), jpg('two'), jpg('three'));
+  const removedPreview = thumbs(app)[0].getAttribute('src');
+  app.trigger(imageAction(app, 'remove', 0));
+  assert.equal(thumbs(app).length, 2);
+  assert.ok(app.revokedPreviewUrls.includes(removedPreview));
+  app.trigger(imageAction(app, 'cover', 1));
   app.trigger('sellerBookForm', 'submit');
   await settle();
-  selectFile(app, new File(['second'], 'second.png', { type: 'image/png' }));
-  app.trigger('sellerBookForm', 'submit');
-  await settle();
-  assert.equal(writes(app).filter(call => call.url.endsWith('/hinh-anh')).length, 2);
-  assert.match(writes(app).at(-1).body.hinhAnhUrl, /second\.png$/);
-  assert.ok(app.revokedPreviewUrls.includes(firstPreview));
+  assert.deepEqual(uploadsOf(app).map(call => call.body.get('file').name), ['three.jpg', 'two.jpg']);
+  assert.deepEqual(writes(app).at(-1).body.hinhAnhUrls, [imageUrl.replace('cover', 'three'), imageUrl.replace('cover', 'two')]);
+  assert.equal(writes(app).at(-1).body.hinhAnhUrl, imageUrl.replace('cover', 'three'));
 });
 
-test('editing keeps the existing cover unless removed and resets file state between books', async () => {
+test('editing loads every existing image, saves the edited list and resets state between books', async () => {
+  const book = { ...existingBook, hinhAnhUrl: '/images/a.jpg', hinhAnhUrls: ['/images/a.jpg', '/images/b.jpg', '/images/c.jpg'] };
   const app = await seller(async call => {
-    if (call.url === BASE + '/41' && call.method === 'PUT') { return { ...existingBook, ...call.body }; }
+    if (call.url === BASE + '/41' && call.method === 'PUT') { return { ...book, ...call.body }; }
+    if (call.url === BASE + '/hinh-anh') { return { hinhAnhUrl: imageUrl }; }
     if (call.url === BASE) { return { maSach: 50 }; }
     throw new Error('Unexpected API: ' + call.url);
-  }, existingBook);
+  }, book);
   app.trigger(app.get('sellerBooksRows').querySelector('[data-book-action="edit"]'));
   await settle();
-  assert.equal(app.get('bookImagePreview').getAttribute('src'), existingBook.hinhAnhUrl);
+  assert.deepEqual(thumbs(app).map(img => img.getAttribute('src')), book.hinhAnhUrls);
   app.trigger('sellerBookForm', 'submit');
   await settle();
-  assert.equal(writes(app).at(-1).body.hinhAnhUrl, existingBook.hinhAnhUrl);
-  assert.equal(writes(app).filter(call => call.url.endsWith('/hinh-anh')).length, 0);
+  assert.deepEqual(writes(app).at(-1).body.hinhAnhUrls, book.hinhAnhUrls);
+  assert.equal(uploadsOf(app).length, 0);
 
   app.trigger(app.get('sellerBooksRows').querySelector('[data-book-action="edit"]'));
   await settle();
-  selectFile(app, new File(['replacement'], 'replacement.jpg', { type: 'image/jpeg' }));
-  const preview = app.get('bookImagePreview').getAttribute('src');
-  app.trigger('removeBookImage');
-  assert.equal(app.get('bookImagePreview').getAttribute('src'), null);
-  assert.equal(app.get('bookImageFile').files.length, 0);
-  assert.ok(app.revokedPreviewUrls.includes(preview));
+  app.trigger(imageAction(app, 'remove', 0));
+  selectFiles(app, jpg('new'));
+  app.trigger(imageAction(app, 'cover', 2));
   app.trigger('sellerBookForm', 'submit');
   await settle();
+  assert.equal(uploadsOf(app).length, 1);
+  assert.deepEqual(writes(app).at(-1).body.hinhAnhUrls, [imageUrl, '/images/b.jpg', '/images/c.jpg']);
+  assert.equal(writes(app).at(-1).body.hinhAnhUrl, imageUrl);
+
+  app.trigger(app.get('sellerBooksRows').querySelector('[data-book-action="edit"]'));
+  await settle();
+  app.trigger(imageAction(app, 'remove', 0));
+  app.trigger(imageAction(app, 'remove', 0));
+  app.trigger(imageAction(app, 'remove', 0));
+  app.trigger('sellerBookForm', 'submit');
+  await settle();
+  assert.deepEqual(writes(app).at(-1).body.hinhAnhUrls, []);
   assert.equal(writes(app).at(-1).body.hinhAnhUrl, null);
 
   await openNew(app);
-  selectFile(app, new File(['discarded'], 'discarded.png', { type: 'image/png' }));
-  const discarded = app.get('bookImagePreview').getAttribute('src');
+  selectFiles(app, jpg('discarded'));
+  const discarded = thumbs(app)[0].getAttribute('src');
   new app.window.bootstrap.Modal(app.get('sellerBookModal')).hide();
   assert.ok(app.revokedPreviewUrls.includes(discarded));
   await openNew(app);
-  assert.equal(app.get('bookImageFile').files.length, 0);
-  assert.equal(app.get('bookImagePreview').getAttribute('src'), null);
-  app.trigger('sellerBookForm', 'submit');
+  assert.equal(thumbs(app).length, 0);
+  assert.equal(app.get('bookImagePreviewPanel').classList.contains('d-none'), true);
+});
+
+test('a legacy book with only a cover URL is shown as a single image', async () => {
+  const app = await seller(async call => { throw new Error('Unexpected API: ' + call.url); }, existingBook);
+  app.trigger(app.get('sellerBooksRows').querySelector('[data-book-action="edit"]'));
   await settle();
-  assert.equal(writes(app).at(-1).body.hinhAnhUrl, null);
-  assert.equal(writes(app).filter(call => call.url.endsWith('/hinh-anh')).length, 0);
+  assert.deepEqual(thumbs(app).map(img => img.getAttribute('src')), [existingBook.hinhAnhUrl]);
 });
