@@ -3,6 +3,7 @@ package com.oldbook.dto.store;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record UpdateSachRequest(
         @NotNull(message = "Danh mục không được để trống") @Positive Integer maDM,
@@ -16,6 +17,7 @@ public record UpdateSachRequest(
         @DecimalMin("0") @DecimalMax("100") @Digits(integer = 3, fraction = 2) BigDecimal doMoiPercent,
         @Size(max = 255) String tinhTrangVatLy,
         @Size(max = 10000) String moTaChiTiet,
-        @Size(max = 500) String hinhAnhUrl
+        @Size(max = 500) String hinhAnhUrl,
+        @Size(max = 10, message = "Mỗi sách chỉ được có tối đa 10 ảnh") List<@Size(max = 500) String> hinhAnhUrls
 ) {
 }

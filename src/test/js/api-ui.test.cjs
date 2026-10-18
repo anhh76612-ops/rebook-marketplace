@@ -400,7 +400,7 @@ test('seller edits preserve optional content, omit stock, and update stock/sale 
   await settle();
   assert.equal(app.get('bookDescription').value, 'Mô tả giữ lại');
   assert.equal(app.get('bookPublisher').value, 'NXB Trẻ');
-  assert.equal(app.get('bookImagePreview').getAttribute('src'), '/images/existing.jpg');
+  assert.equal(app.get('bookImageList').querySelector('img').getAttribute('src'), '/images/existing.jpg');
   assert.equal(app.get('bookInitialStock').disabled, true);
   app.set('bookTitle', 'Tên sau');
   app.trigger('sellerBookForm', 'submit');
@@ -412,7 +412,7 @@ test('seller edits preserve optional content, omit stock, and update stock/sale 
   const update = app.calls.find(call => call.method === 'PUT');
   assert.deepEqual(update.body, {
     maDM: 3, tenSach: 'Tên sau', tacGia: 'Tác giả', nhaXuatBan: 'NXB Trẻ', namXuatBan: 2020,
-    giaBia: 150000, giaBanCu: 75000, doMoiPercent: 92.5, tinhTrangVatLy: 'Không rách trang', moTaChiTiet: 'Mô tả giữ lại', hinhAnhUrl: '/images/existing.jpg'
+    giaBia: 150000, giaBanCu: 75000, doMoiPercent: 92.5, tinhTrangVatLy: 'Không rách trang', moTaChiTiet: 'Mô tả giữ lại', hinhAnhUrls: ['/images/existing.jpg'], hinhAnhUrl: '/images/existing.jpg'
   });
   assert.equal(Object.hasOwn(update.body, 'soLuongTon'), false);
   assert.equal(book.soLuongTon, 12);
@@ -470,7 +470,8 @@ test('pending and rejected stores can read full private book details without ena
     assert.equal(app.get('sellerBookModal').classList.contains('show'), true);
     assert.equal(app.get('bookDescription').value, book.moTaChiTiet);
     assert.equal(app.get('bookPublisher').value, book.nhaXuatBan);
-    assert.equal(app.get('bookImagePreview').getAttribute('src'), book.hinhAnhUrl);
+    assert.equal(app.get('bookImageList').querySelector('img').getAttribute('src'), book.hinhAnhUrl);
+    assert.equal(app.get('bookImageList').querySelector('[data-image-action]'), null, 'read-only view has no image actions');
     assert.equal(app.get('bookCategory').value, String(book.maDM));
     assert.equal(app.get('bookFields').disabled, true);
     assert.equal(app.get('saveBook').disabled, true);

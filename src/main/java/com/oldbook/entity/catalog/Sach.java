@@ -3,8 +3,13 @@ package com.oldbook.entity.catalog;
 import jakarta.persistence.*;
 import lombok.*;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "sach")
@@ -60,6 +65,12 @@ public class Sach {
 
     @Column(name = "hinh_anh_url", length = 500)
     private String hinhAnhUrl;
+
+    @OneToMany(mappedBy = "sach", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SUBSELECT)
+    @OrderBy("thuTu ASC")
+    @Builder.Default
+    private List<SachHinhAnh> hinhAnhs = new ArrayList<>();
 
     @Column(name = "trang_thai_duyet", length = 50)
     private String trangThaiDuyet;

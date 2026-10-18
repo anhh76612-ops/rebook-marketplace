@@ -37,7 +37,7 @@ class StoreRequestValidationTest {
     @Test
     void bookRequestRejectsValuesThatCannotFitDatabaseColumns() {
         var request = new CreateSachRequest(2, "Sách", null, null, 2020,
-                null, new BigDecimal("12345678901234.00"), new BigDecimal("101.00"), null, null, 1, null);
+                null, new BigDecimal("12345678901234.00"), new BigDecimal("101.00"), null, null, 1, null, null);
 
         var violations = FACTORY.getValidator().validate(request);
         assertThat(violations).extracting(v -> v.getPropertyPath().toString())

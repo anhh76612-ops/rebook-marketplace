@@ -32,6 +32,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -281,6 +282,72 @@ class StoreSachServiceTest {
         verifyNoInteractions(cuaHangRepository, sachRepository);
     }
 
+    @Test
+    void newBookKeepsImagesInOrderWithFirstAsCoverAndDropsDuplicates() {
+        ownerWithLockedStore(store(3, "DA_DUYET"));
+        when(danhMucRepository.findById(2)).thenReturn(Optional.of(category()));
+        when(sachRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        var base = createRequest(5);
+
+        var response = service.create(new CreateSachRequest(base.maDM(), base.tenSach(), base.tacGia(), base.nhaXuatBan(),
+                base.namXuatBan(), base.giaBia(), base.giaBanCu(), base.doMoiPercent(), base.tinhTrangVatLy(),
+                base.moTaChiTiet(), base.soLuongTon(), null,
+                List.of(" https://img/1.jpg ", "https://img/2.jpg", "https://img/1.jpg", " ")));
+
+        assertThat(response.hinhAnhUrl()).isEqualTo("https://img/1.jpg");
+        assertThat(response.hinhAnhUrls()).containsExactly("https://img/1.jpg", "https://img/2.jpg");
+    }
+
+    @Test
+    void legacySingleImageUrlIsStoredAsOneImage() {
+        ownerWithLockedStore(store(3, "DA_DUYET"));
+        when(danhMucRepository.findById(2)).thenReturn(Optional.of(category()));
+        when(sachRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        var base = createRequest(5);
+
+        var response = service.create(new CreateSachRequest(base.maDM(), base.tenSach(), base.tacGia(), base.nhaXuatBan(),
+                base.namXuatBan(), base.giaBia(), base.giaBanCu(), base.doMoiPercent(), base.tinhTrangVatLy(),
+                base.moTaChiTiet(), base.soLuongTon(), "https://img/legacy.jpg", null));
+
+        assertThat(response.hinhAnhUrls()).containsExactly("https://img/legacy.jpg");
+    }
+
+    @Test
+    void editReplacesImageListAndCanClearIt() {
+        CuaHang store = store(3, "DA_DUYET");
+        Sach book = book(store);
+        ownerWithLockedStore(store);
+        when(sachRepository.findByIdForUpdate(10)).thenReturn(Optional.of(book));
+        when(danhMucRepository.findById(2)).thenReturn(Optional.of(category()));
+        when(sachRepository.save(book)).thenReturn(book);
+        var base = updateRequest();
+
+        var withImages = service.update(10, new UpdateSachRequest(base.maDM(), base.tenSach(), base.tacGia(),
+                base.nhaXuatBan(), base.namXuatBan(), base.giaBia(), base.giaBanCu(), base.doMoiPercent(),
+                base.tinhTrangVatLy(), base.moTaChiTiet(), null, List.of("https://img/b.jpg", "https://img/a.jpg")));
+        assertThat(withImages.hinhAnhUrl()).isEqualTo("https://img/b.jpg");
+        assertThat(withImages.hinhAnhUrls()).containsExactly("https://img/b.jpg", "https://img/a.jpg");
+
+        var cleared = service.update(10, new UpdateSachRequest(base.maDM(), base.tenSach(), base.tacGia(),
+                base.nhaXuatBan(), base.namXuatBan(), base.giaBia(), base.giaBanCu(), base.doMoiPercent(),
+                base.tinhTrangVatLy(), base.moTaChiTiet(), null, List.of()));
+        assertThat(cleared.hinhAnhUrl()).isNull();
+        assertThat(cleared.hinhAnhUrls()).isEmpty();
+    }
+
+    @Test
+    void moreThanTenImagesAreRejected() {
+        ownerWithLockedStore(store(3, "DA_DUYET"));
+        when(danhMucRepository.findById(2)).thenReturn(Optional.of(category()));
+        var base = createRequest(5);
+        var urls = java.util.stream.IntStream.range(0, 11).mapToObj(i -> "https://img/" + i + ".jpg").toList();
+
+        assertThatThrownBy(() -> service.create(new CreateSachRequest(base.maDM(), base.tenSach(), base.tacGia(),
+                base.nhaXuatBan(), base.namXuatBan(), base.giaBia(), base.giaBanCu(), base.doMoiPercent(),
+                base.tinhTrangVatLy(), base.moTaChiTiet(), base.soLuongTon(), null, urls)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("tối đa 10 ảnh");
+    }
+
     private void ownerWithLockedStore(CuaHang store) {
         when(storeAccess.requireOwner()).thenReturn(7);
         when(cuaHangRepository.findByChuShopMaNDForUpdate(7)).thenReturn(Optional.of(store));
@@ -309,12 +376,12 @@ class StoreSachServiceTest {
     private CreateSachRequest createRequest(int stock) {
         return new CreateSachRequest(2, " Sách ", "Tác giả", null, 2020,
                 new BigDecimal("50000.00"), new BigDecimal("25000.00"), new BigDecimal("80.00"),
-                "Tốt", "Mô tả", stock, null);
+                "Tốt", "Mô tả", stock, null, null);
     }
 
     private UpdateSachRequest updateRequest() {
         return new UpdateSachRequest(2, "Sách sửa", "Tác giả", null, 2020,
                 new BigDecimal("50000.00"), new BigDecimal("30000.00"), new BigDecimal("80.00"),
-                "Tốt", "Mô tả sửa", null);
+                "Tốt", "Mô tả sửa", null, null);
     }
 }

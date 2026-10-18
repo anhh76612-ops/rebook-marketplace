@@ -22,11 +22,9 @@
   var bookReady = false;
   var bookReadOnly = false;
   var closingAfterSave = false;
-  var currentBookImageUrl = null;
-  var selectedImageFile = null;
-  var uploadedImageUrl = null;
-  var imagePreviewUrl = null;
+  var bookImages = [];
   var IMAGE_MAX_SIZE = 10 * 1024 * 1024;
+  var MAX_IMAGES = 10;
   var bookModal;
   var stockModal;
 
@@ -64,8 +62,6 @@
     $('addBook').disabled = !canWrite();
     $('saveBook').disabled = bookReadOnly || !canWrite() || !bookReady;
     $('bookFields').disabled = bookReadOnly || writing || !bookReady || !approved();
-    visible('removeBookImage', !bookReadOnly);
-    $('removeBookImage').disabled = bookReadOnly || writing || !bookReady || !approved();
     $('saveStock').disabled = !canWrite() || stockBookId === null;
     $('stockQuantity').disabled = writing || !approved();
     document.querySelectorAll('#sellerBooksRows [data-book-action]').forEach(function (button) {
@@ -232,29 +228,37 @@
     tinhTrangVatLy: 'bookPhysicalCondition', moTaChiTiet: 'bookDescription'
   };
 
-  function releaseImagePreview() {
-    if (imagePreviewUrl) { window.URL.revokeObjectURL(imagePreviewUrl); imagePreviewUrl = null; }
+  function safeImageSrc(url) {
+    return url && (/^blob:/.test(url) || /^https?:\/\//i.test(url) || /^\/(?!\/)/.test(url)) ? url : '';
   }
 
-  function renderImagePreview() {
-    var url = imagePreviewUrl || currentBookImageUrl;
-    var safe = url && (/^blob:/.test(url) || /^https?:\/\//i.test(url) || /^\/(?!\/)/.test(url));
-    if (safe) { $('bookImagePreview').setAttribute('src', url); }
-    else { $('bookImagePreview').removeAttribute('src'); }
-    visible('bookImagePreview', !!safe);
-    visible('bookImagePreviewPanel', !!safe || !!$('bookImageFile').value);
+  function releaseImagePreviews() {
+    bookImages.forEach(function (image) {
+      if (image.preview) { window.URL.revokeObjectURL(image.preview); image.preview = null; }
+    });
   }
 
-  function resetBookImage(url) {
-    releaseImagePreview();
-    currentBookImageUrl = url || null;
-    selectedImageFile = null;
-    uploadedImageUrl = null;
+  function renderBookImages() {
+    $('bookImageList').innerHTML = bookImages.map(function (image, index) {
+      var src = safeImageSrc(image.preview || image.url || image.uploaded);
+      var actions = bookReadOnly ? '' :
+        '<div class="d-flex flex-wrap gap-1 mt-1">' +
+        (index > 0 ? '<button type="button" class="btn btn-outline-secondary btn-sm py-0" data-image-action="cover" data-image-index="' + index + '">Ảnh bìa</button>' : '') +
+        '<button type="button" class="btn btn-outline-danger btn-sm py-0" data-image-action="remove" data-image-index="' + index + '">Xóa</button></div>';
+      return '<div class="col-6 col-sm-4 col-md-3"><div class="border rounded p-1 h-100">' +
+        '<img class="w-100 rounded book-image-thumb" style="aspect-ratio:3/4;object-fit:cover" alt="' + (index === 0 ? 'Ảnh bìa sách' : 'Ảnh sách ' + (index + 1)) + '"' + (src ? ' src="' + esc(src) + '"' : '') + '>' +
+        (index === 0 ? '<span class="address-default-badge mt-1">Ảnh bìa</span>' : '') + actions + '</div></div>';
+    }).join('');
+    visible('bookImagePreviewPanel', bookImages.length > 0);
+  }
+
+  function resetBookImages(urls) {
+    releaseImagePreviews();
+    bookImages = (urls || []).map(function (url) { return { url: url, file: null, uploaded: null, preview: null }; });
     $('bookImageFile').value = '';
-    $('bookImageFile').setCustomValidity('');
     error('bookImageError', '');
     visible('bookImageUploading', false);
-    renderImagePreview();
+    renderBookImages();
   }
 
   function imageValidationMessage(file) {
@@ -266,40 +270,58 @@
     return '';
   }
 
-  function selectBookImage() {
+  function selectBookImages() {
     if (bookReadOnly || !canWrite() || !bookReady) { return; }
-    var file = $('bookImageFile').files[0];
-    if (!file) { resetBookImage(currentBookImageUrl); return; }
-    var validation = imageValidationMessage(file);
-    releaseImagePreview();
-    selectedImageFile = null;
-    uploadedImageUrl = null;
-    $('bookImageFile').setCustomValidity(validation);
-    error('bookImageError', validation);
-    if (!validation) {
-      selectedImageFile = file;
-      imagePreviewUrl = window.URL.createObjectURL(file);
+    var files = Array.prototype.slice.call($('bookImageFile').files || []);
+    $('bookImageFile').value = '';
+    if (!files.length) { return; }
+    var problem = '';
+    files.forEach(function (file) {
+      var validation = imageValidationMessage(file);
+      if (validation) { problem = problem || validation; return; }
+      if (bookImages.length >= MAX_IMAGES) { problem = problem || 'Mỗi sách chỉ được có tối đa ' + MAX_IMAGES + ' ảnh.'; return; }
+      bookImages.push({ url: null, file: file, uploaded: null, preview: window.URL.createObjectURL(file) });
+    });
+    error('bookImageError', problem);
+    renderBookImages();
+  }
+
+  function changeBookImage(event) {
+    var button = event.target.closest('[data-image-action]');
+    if (!button || bookReadOnly || !canWrite() || !bookReady) { return; }
+    var index = Number(button.getAttribute('data-image-index'));
+    if (!bookImages[index]) { return; }
+    if (button.dataset.imageAction === 'remove') {
+      var removed = bookImages.splice(index, 1)[0];
+      if (removed.preview) { window.URL.revokeObjectURL(removed.preview); }
+    } else if (button.dataset.imageAction === 'cover') {
+      bookImages.unshift(bookImages.splice(index, 1)[0]);
     }
-    renderImagePreview();
+    error('bookImageError', '');
+    renderBookImages();
   }
 
-  function removeBookImage() {
-    if (bookReadOnly || !canWrite() || !bookReady) { return; }
-    resetBookImage(null);
+  function imageUrls() {
+    return bookImages.map(function (image) { return image.url || image.uploaded; }).filter(Boolean);
   }
 
-  function uploadBookImage() {
-    if (uploadedImageUrl) { return Promise.resolve(uploadedImageUrl); }
+  function uploadBookImage(image) {
+    if (image.url || image.uploaded) { return Promise.resolve(); }
     var data = new window.FormData();
-    data.append('file', selectedImageFile);
-    visible('bookImageUploading', true);
+    data.append('file', image.file);
     return OB.request('POST', BASE + '/hinh-anh', data).then(function (result) {
       if (!result || typeof result.hinhAnhUrl !== 'string' || !/^https:\/\//i.test(result.hinhAnhUrl)) {
         throw new Error('Phản hồi tải ảnh không hợp lệ. Vui lòng thử lại.');
       }
-      uploadedImageUrl = result.hinhAnhUrl;
-      return uploadedImageUrl;
-    }).finally(function () { visible('bookImageUploading', false); });
+      image.uploaded = result.hinhAnhUrl;
+    });
+  }
+
+  function uploadBookImages() {
+    visible('bookImageUploading', true);
+    return bookImages.reduce(function (chain, image) {
+      return chain.then(function () { return uploadBookImage(image); });
+    }, Promise.resolve()).then(imageUrls).finally(function () { visible('bookImageUploading', false); });
   }
 
   function loadBookForm() {
@@ -324,7 +346,7 @@
           }).join('');
         if (book) {
           Object.keys(contentFields).forEach(function (key) { setValue(contentFields[key], book[key]); });
-          resetBookImage(book.hinhAnhUrl);
+          resetBookImages(book.hinhAnhUrls && book.hinhAnhUrls.length ? book.hinhAnhUrls : (book.hinhAnhUrl ? [book.hinhAnhUrl] : []));
           setValue('bookCategory', book.maDM);
           $('bookModalTitle').textContent = (readOnly ? 'Chi tiết: ' : 'Sửa nội dung: ') + book.tenSach;
           if (readOnly) {
@@ -353,7 +375,7 @@
     bookReadOnly = !!readOnly;
     editingBookId = id === undefined ? null : id;
     $('sellerBookForm').reset();
-    resetBookImage(null);
+    resetBookImages([]);
     $('bookCategory').innerHTML = '<option value="">Đang tải danh mục...</option>';
     $('bookModalTitle').textContent = bookReadOnly ? 'Chi tiết sách' : (editingBookId === null ? 'Thêm sách mới' : 'Sửa nội dung sách');
     visible('bookSubmissionNotice', !bookReadOnly);
@@ -410,7 +432,11 @@
     var body = { maDM: Number($('bookCategory').value), tenSach: nullableText('bookTitle'),
       tacGia: nullableText('bookAuthor'), nhaXuatBan: nullableText('bookPublisher'), namXuatBan: nullableNumber('bookYear'),
       giaBia: nullableNumber('bookCoverPrice'), giaBanCu: nullableNumber('bookSalePrice'), doMoiPercent: nullableNumber('bookCondition'),
-      tinhTrangVatLy: nullableText('bookPhysicalCondition'), moTaChiTiet: nullableText('bookDescription'), hinhAnhUrl: currentBookImageUrl };
+      tinhTrangVatLy: nullableText('bookPhysicalCondition'), moTaChiTiet: nullableText('bookDescription') };
+    var pendingUpload = bookImages.some(function (image) { return !image.url && !image.uploaded; });
+    var urls = imageUrls();
+    body.hinhAnhUrls = urls;
+    body.hinhAnhUrl = urls[0] || null;
     if (!body.tenSach) { error('bookFormError', 'Tên sách không được để trống.'); return; }
     if (editingBookId === null) { body.soLuongTon = Number($('bookInitialStock').value); }
     var url = BASE + (editingBookId === null ? '' : '/' + encodeURIComponent(editingBookId));
@@ -418,8 +444,12 @@
       closeSavedModal(bookModal);
       OB.toast('Nội dung sách đã được gửi để duyệt.', 'success');
       return loadBooks();
-    }, selectedImageFile ? function () {
-      return uploadBookImage().then(function (url) { body.hinhAnhUrl = url; return body; });
+    }, pendingUpload ? function () {
+      return uploadBookImages().then(function (all) {
+        body.hinhAnhUrls = all;
+        body.hinhAnhUrl = all[0] || null;
+        return body;
+      });
     } : null);
   }
 
@@ -476,8 +506,8 @@
     $('storeForm').addEventListener('submit', saveStore);
     $('addBook').addEventListener('click', function () { openBook(); });
     $('sellerBookForm').addEventListener('submit', saveBook);
-    $('bookImageFile').addEventListener('change', selectBookImage);
-    $('removeBookImage').addEventListener('click', removeBookImage);
+    $('bookImageFile').addEventListener('change', selectBookImages);
+    $('bookImageList').addEventListener('click', changeBookImage);
     $('retryBookDetail').addEventListener('click', loadBookForm);
     $('sellerStockForm').addEventListener('submit', saveStock);
     $('retryBooks').addEventListener('click', loadBooks);
@@ -500,7 +530,7 @@
       if (writing && !closingAfterSave) { event.preventDefault(); return; }
       ++detailSequence;
       bookReady = false;
-      resetBookImage(null);
+      resetBookImages([]);
       syncControls();
     });
     $('sellerStockModal').addEventListener('hide.bs.modal', function (event) {
