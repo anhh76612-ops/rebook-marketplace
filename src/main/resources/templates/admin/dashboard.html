@@ -207,7 +207,7 @@
                         </div>
                         <div>
                             <h2 class="font-headline-sm text-headline-sm text-primary">Nhật ký hệ thống gần đây</h2>
-                            <p class="font-caption text-caption text-text-muted">10 hoạt động mới nhất</p>
+                            <p id="dashLogsSummary" class="font-caption text-caption text-text-muted">Hoạt động mới nhất</p>
                         </div>
                     </div>
                     <a th:href="@{/admin/audit-logs}" class="self-start px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center gap-1">
@@ -232,6 +232,10 @@
                         Đang tải nhật ký gần đây...
                     </p>
                 </div>
+
+                <nav id="dashLogsPager"
+                     class="hidden flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-space-sm border-t border-surface-container"
+                     aria-label="Phân trang nhật ký"></nav>
             </section>
 
         </div>

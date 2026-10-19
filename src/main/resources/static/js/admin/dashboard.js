@@ -116,7 +116,14 @@
 
     var LOGS_NOTE_CLASS = 'rounded-xl bg-surface-warm/60 p-space-md font-body-sm text-body-sm text-text-muted';
 
+    var LOGS_PAGE_SIZE = 10;
+    var PAGER_BTN = 'min-w-9 h-9 px-3 rounded-lg font-label-md text-label-md transition-colors ';
+    var PAGER_BTN_IDLE = PAGER_BTN + 'bg-surface-warm text-primary hover:bg-surface-cream';
+    var PAGER_BTN_ACTIVE = PAGER_BTN + 'bg-primary text-on-primary';
+    var PAGER_BTN_OFF = PAGER_BTN + 'bg-surface-warm text-text-muted opacity-50 cursor-not-allowed';
+
     var logsLoading = false;
+    var logsPage = 0;
 
     function formatDateTime(value) {
         if (!value) {
@@ -186,17 +193,85 @@
         }).join('');
     }
 
-    function loadRecentLogs() {
+    function pagerButton(label, targetPage, className, disabled, current) {
+        return '<button type="button" class="' + className + '"' +
+            (disabled ? ' disabled' : ' data-logs-page="' + targetPage + '"') +
+            (current ? ' aria-current="page"' : '') + '>' + label + '</button>';
+    }
+
+    function pageNumbers(current, total) {
+        var numbers = [];
+        for (var i = 0; i < total; i++) {
+            if (i === 0 || i === total - 1 || Math.abs(i - current) <= 1) {
+                numbers.push(i);
+            } else if (numbers[numbers.length - 1] !== -1) {
+                numbers.push(-1);
+            }
+        }
+        return numbers;
+    }
+
+    function renderLogsPager(page) {
+        var pager = $('dashLogsPager');
+        if (!pager) {
+            return;
+        }
+
+        var total = page.totalPages || 0;
+        var current = page.page || 0;
+        var elements = page.totalElements || 0;
+
+        var summary = $('dashLogsSummary');
+        if (summary) {
+            summary.textContent = elements
+                ? formatNumber(elements) + ' hoạt động · ' + LOGS_PAGE_SIZE + ' hoạt động mỗi trang'
+                : 'Hoạt động mới nhất';
+        }
+
+        if (total <= 1) {
+            pager.classList.add('hidden');
+            pager.innerHTML = '';
+            return;
+        }
+
+        var from = current * LOGS_PAGE_SIZE + 1;
+        var to = Math.min((current + 1) * LOGS_PAGE_SIZE, elements);
+
+        var buttons = pagerButton('<span class="material-symbols-outlined text-[18px] align-middle">chevron_left</span>',
+            current - 1, current === 0 ? PAGER_BTN_OFF : PAGER_BTN_IDLE, current === 0, false);
+
+        pageNumbers(current, total).forEach(function (number) {
+            buttons += number === -1
+                ? '<span class="px-1 text-text-muted">…</span>'
+                : pagerButton(number + 1, number, number === current ? PAGER_BTN_ACTIVE : PAGER_BTN_IDLE, false, number === current);
+        });
+
+        buttons += pagerButton('<span class="material-symbols-outlined text-[18px] align-middle">chevron_right</span>',
+            current + 1, current >= total - 1 ? PAGER_BTN_OFF : PAGER_BTN_IDLE, current >= total - 1, false);
+
+        pager.innerHTML =
+            '<p class="font-caption text-caption text-text-muted">Hiển thị ' + formatNumber(from) + '–' + formatNumber(to) +
+            ' / ' + formatNumber(elements) + '</p>' +
+            '<div class="flex flex-wrap items-center gap-1">' + buttons + '</div>';
+        pager.classList.remove('hidden');
+    }
+
+    function loadRecentLogs(targetPage) {
         if (logsLoading) {
             return;
         }
 
+        if (typeof targetPage === 'number') {
+            logsPage = targetPage;
+        }
+
         logsLoading = true;
+        var refetch = false;
         renderLogsState('loading');
 
         OB.request(
             'GET',
-            '/api/admin/nhat-ky?page=0&size=10'
+            '/api/admin/nhat-ky?page=' + logsPage + '&size=' + LOGS_PAGE_SIZE
         )
             .then(function (page) {
                 var logs =
@@ -204,7 +279,14 @@
                         ? page.content
                         : [];
 
+                if (!logs.length && page && page.totalPages > 0 && logsPage > 0) {
+                    logsPage = page.totalPages - 1;
+                    refetch = true;
+                    return;
+                }
+
                 renderRecentLogs(logs);
+                renderLogsPager(page || {});
             })
             .catch(function (err) {
                 if (UI.handleApiError(err)) {
@@ -218,6 +300,9 @@
             })
             .then(function () {
                 logsLoading = false;
+                if (refetch) {
+                    loadRecentLogs();
+                }
             });
     }
 
@@ -269,6 +354,14 @@
         $('dashLogs').addEventListener('click', function (event) {
             if (event.target.closest('[data-logs-retry]')) {
                 loadRecentLogs();
+            }
+        });
+
+        $('dashLogsPager').addEventListener('click', function (event) {
+            var button = event.target.closest('[data-logs-page]');
+            if (button) {
+                loadRecentLogs(Number(button.getAttribute('data-logs-page')));
+                $('dashLogs').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         });
 

@@ -32,16 +32,19 @@ public class CapNhatDonViVanChuyenRequest {
     @Max(value = 60, message = "Thời gian giao dự kiến tối đa 60 ngày")
     private Integer thoiGianGiaoDuKien;
 
+    @NotBlank(message = "Người liên hệ không được để trống")
     @Size(max = 255, message = "Tên người liên hệ tối đa 255 ký tự")
     private String nguoiLienHe;
 
     @Pattern(regexp = "^$|^[0-9+().\\s-]{8,20}$", message = "Số điện thoại không hợp lệ")
     private String soDienThoai;
 
+    @NotBlank(message = "Email không được để trống")
     @Email(message = "Email liên hệ không hợp lệ")
     @Size(max = 255, message = "Email tối đa 255 ký tự")
     private String email;
 
+    @NotBlank(message = "Địa chỉ không được để trống")
     @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự")
     private String diaChi;
 
