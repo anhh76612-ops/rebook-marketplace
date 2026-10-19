@@ -131,25 +131,10 @@ function pageOf(content) {
   return { content, page: 0, size: 20, totalElements: content.length, totalPages: content.length ? 1 : 0 };
 }
 
-test('payment management reloads when a refund or a payout needs to be made', async () => {
-  const app = page('payment/management.html', ['banks.js', 'notifications.js', 'management/payments.js'],
-    async () => pageOf([]), 'QUAN_LY', { pathname: '/management/payments' });
-  await settle();
-  await app.open();
-  assert.equal(app.count('/api/management/payments/transfers'), 1);
-
-  app.push(changed('CAN_HOAN_TIEN'));
-  app.push(changed('CAN_CHI_CUA_HANG'));
-  assert.equal(app.pending(), 1, 'bursts are merged into one reload');
-  await app.flush();
-  assert.equal(app.count('/api/management/payments/transfers'), 2);
-
-  app.push(changed('DON_HANG_MOI'));
-  assert.equal(app.pending(), 0);
-});
+// Trang Thanh toán của Quản lý nhận tin qua js/management/realtime.js; xem manager-shell.test.cjs.
 
 test('refund page reloads when a refund is created or paid', async () => {
-  const app = page('payment/refunds.html', ['banks.js', 'notifications.js', 'payment-refunds.js'],
+  const app = page('payment/refunds.html', ['banks.js', 'bank-account-form.js', 'notifications.js', 'payment-refunds.js'],
     async () => [], 'KHACH_HANG', { pathname: '/payment/refunds' });
   await settle();
   await app.open();
