@@ -154,8 +154,21 @@
                                     <p id="editPhoneError" class="mt-1 hidden text-xs text-error"></p>
                                 </div>
                                 <div>
-                                    <label for="editAvatarUrl" class="mb-1.5 block text-sm font-semibold text-primary">URL ảnh đại diện</label>
-                                    <input id="editAvatarUrl" maxlength="500" class="w-full rounded-lg border border-line-border bg-surface-white px-3 py-2.5 text-sm outline-none focus:border-secondary" type="url">
+                                    <label for="editAvatarFile" class="mb-1.5 block text-sm font-semibold text-primary">Ảnh đại diện</label>
+                                    <div class="flex items-center gap-4">
+                                        <div class="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-surface-cream ring-2 ring-line-border">
+                                            <img id="editAvatarPreview" class="hidden h-full w-full object-cover" alt="Ảnh đại diện">
+                                            <div id="editAvatarPlaceholder" class="flex h-full w-full items-center justify-center text-primary">
+                                                <span class="material-symbols-outlined text-3xl">person</span>
+                                            </div>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <input id="editAvatarFile" type="file" accept="image/jpeg,image/png,image/webp" class="block w-full text-sm text-on-surface-variant file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-surface-cream file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-surface-container">
+                                            <p class="mt-1 text-xs text-text-muted">JPG, PNG hoặc WebP, tối đa 10 MB.</p>
+                                            <p id="editAvatarError" class="mt-1 hidden text-xs text-error"></p>
+                                        </div>
+                                        <button id="editAvatarRemove" type="button" class="shrink-0 rounded-lg bg-surface-cream px-3 py-2 text-sm font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-50">Xóa ảnh</button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label for="editTieuSu" class="mb-1.5 block text-sm font-semibold text-primary">Tiểu sử</label>

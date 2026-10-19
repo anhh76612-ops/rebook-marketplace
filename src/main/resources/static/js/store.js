@@ -384,6 +384,8 @@
     $('bookModalClose').textContent = bookReadOnly ? 'Đóng' : 'Hủy';
     visible('initialStockGroup', editingBookId === null);
     $('bookInitialStock').required = editingBookId === null;
+    ['bookAuthor', 'bookPublisher', 'bookYear', 'bookCoverPrice', 'bookCondition'].forEach(function (id) { $(id).required = editingBookId === null; });
+    document.querySelectorAll('.book-create-required').forEach(function (el) { el.classList.toggle('d-none', editingBookId !== null); });
     $('bookInitialStock').disabled = editingBookId !== null;
     $('saveBook').textContent = editingBookId === null ? 'Gửi sách để duyệt' : 'Lưu và gửi duyệt lại';
     bookModal.show();

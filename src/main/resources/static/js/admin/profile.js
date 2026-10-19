@@ -30,6 +30,12 @@
     var profile = null;
     var busy = false;
 
+    var MAX_AVATAR_SIZE = 10 * 1024 * 1024;
+    var selectedAvatarFile = null;
+    var uploadedAvatarUrl = null;
+    var removeAvatar = false;
+    var previewUrl = null;
+
     function show(id) { $(id).classList.remove('hidden'); }
     function hide(id) { $(id).classList.add('hidden'); }
     function text(id, value) { $(id).textContent = value == null || value === '' ? '—' : String(value); }
@@ -121,7 +127,7 @@
             $('editProfileButton').classList.remove('hidden');
             $('editHoTen').value = profile.hoTen || '';
             $('editPhone').value = profile.soDienThoai || '';
-            $('editAvatarUrl').value = profile.avatarUrl || '';
+            resetAvatarField();
             $('editTieuSu').value = profile.tieuSu || '';
             updateBioCounter();
         } else {
@@ -260,6 +266,95 @@
         }
     }
 
+    function releasePreview() {
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            previewUrl = null;
+        }
+    }
+
+    function renderAvatarField(url) {
+        var img = $('editAvatarPreview');
+        if (url) {
+            img.src = url;
+            img.classList.remove('hidden');
+            hide('editAvatarPlaceholder');
+        } else {
+            img.removeAttribute('src');
+            img.classList.add('hidden');
+            show('editAvatarPlaceholder');
+        }
+        $('editAvatarRemove').disabled = !url;
+    }
+
+    function resetAvatarField() {
+        releasePreview();
+        selectedAvatarFile = null;
+        uploadedAvatarUrl = null;
+        removeAvatar = false;
+        $('editAvatarFile').value = '';
+        hide('editAvatarError');
+        renderAvatarField(profile && profile.avatarUrl);
+    }
+
+    function onAvatarSelected() {
+        var file = $('editAvatarFile').files && $('editAvatarFile').files[0];
+        if (!file) {
+            resetAvatarField();
+            return;
+        }
+
+        var message = '';
+        if (['image/jpeg', 'image/png', 'image/webp'].indexOf(file.type) === -1) {
+            message = 'Vui lòng chọn ảnh JPG, PNG hoặc WebP.';
+        } else if (!file.size || file.size > MAX_AVATAR_SIZE) {
+            message = 'Ảnh phải có dữ liệu và không vượt quá 10 MB.';
+        }
+        if (message) {
+            resetAvatarField();
+            text('editAvatarError', message);
+            show('editAvatarError');
+            return;
+        }
+
+        releasePreview();
+        selectedAvatarFile = file;
+        uploadedAvatarUrl = null;
+        removeAvatar = false;
+        hide('editAvatarError');
+        previewUrl = URL.createObjectURL(file);
+        renderAvatarField(previewUrl);
+    }
+
+    function onAvatarRemove() {
+        releasePreview();
+        selectedAvatarFile = null;
+        uploadedAvatarUrl = null;
+        removeAvatar = true;
+        $('editAvatarFile').value = '';
+        hide('editAvatarError');
+        renderAvatarField('');
+    }
+
+    function resolveAvatarUrl() {
+        if (!selectedAvatarFile) {
+            return Promise.resolve(removeAvatar ? null : (profile.avatarUrl || null));
+        }
+        if (uploadedAvatarUrl) {
+            return Promise.resolve(uploadedAvatarUrl);
+        }
+
+        var data = new FormData();
+        data.append('file', selectedAvatarFile, selectedAvatarFile.name);
+        return OB.request('POST', '/api/profile/avatar', data).then(function (result) {
+            if (!result || typeof result.avatarUrl !== 'string' || !/^https:\/\//i.test(result.avatarUrl)) {
+                throw new Error('Không nhận được đường dẫn ảnh đã tải lên.');
+            }
+            uploadedAvatarUrl = result.avatarUrl;
+            return uploadedAvatarUrl;
+        });
+    }
+
     function updateBioCounter() {
         text('editBioCounter', $('editTieuSu').value.length);
     }
@@ -350,12 +445,15 @@
         $('saveEditButton').disabled = true;
         $('saveEditButton').textContent = 'Đang lưu...';
 
-        OB.request('PUT', '/api/profile', {
-            hoTen: $('editHoTen').value.trim(),
-            soDienThoai: $('editPhone').value.trim() || null,
-            avatarUrl: $('editAvatarUrl').value.trim() || null,
-            tieuSu: $('editTieuSu').value.trim() || null
-        })
+        resolveAvatarUrl()
+            .then(function (avatarUrl) {
+                return OB.request('PUT', '/api/profile', {
+                    hoTen: $('editHoTen').value.trim(),
+                    soDienThoai: $('editPhone').value.trim() || null,
+                    avatarUrl: avatarUrl,
+                    tieuSu: $('editTieuSu').value.trim() || null
+                });
+            })
             .then(function () {
                 window.AdminUI.notify('Cập nhật hồ sơ thành công.', 'success');
                 setEditMode(false);
@@ -403,6 +501,9 @@
         $('editProfileButton').addEventListener('click', function () { setEditMode(true); });
         $('cancelEditButton').addEventListener('click', function () { setEditMode(false); renderPersonal(); });
         $('editTieuSu').addEventListener('input', updateBioCounter);
+        $('editAvatarFile').addEventListener('change', onAvatarSelected);
+        $('editAvatarRemove').addEventListener('click', onAvatarRemove);
+        window.addEventListener('pagehide', releasePreview);
         $('editProfileForm').addEventListener('submit', saveProfile);
         $('profileRetry').addEventListener('click', loadProfile);
 
