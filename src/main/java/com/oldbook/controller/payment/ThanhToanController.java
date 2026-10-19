@@ -8,17 +8,23 @@ import com.oldbook.dto.payment.PhienThanhToanResponse;
 import com.oldbook.dto.payment.TaiKhoanNhanRequest;
 import com.oldbook.dto.payment.YeuCauChuyenTienResponse;
 import com.oldbook.filter.auth.JwtAuthenticationFilter.AuthenticatedUserDetails;
+import com.oldbook.service.media.BankQrUploadService;
 import com.oldbook.service.payment.ChuyenTienService;
+import com.oldbook.service.payment.TaiKhoanHoanDonService;
 import com.oldbook.service.payment.PhienThanhToanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
+import java.util.Map;
 
 /** Thanh toán chuyển khoản phía khách hàng: phiên thanh toán và các khoản hoàn tiền của chính họ. */
 @RestController
@@ -28,6 +34,8 @@ public class ThanhToanController {
 
     private final PhienThanhToanService phienService;
     private final ChuyenTienService chuyenTienService;
+    private final TaiKhoanHoanDonService taiKhoanHoanDonService;
+    private final BankQrUploadService bankQrUploadService;
 
     @GetMapping("/config")
     public ResponseEntity<ApiResponse<PaymentConfigResponse>> config() {
@@ -65,6 +73,28 @@ public class ThanhToanController {
         return ResponseEntity.ok(ApiResponse.success(
                 chuyenTienService.nhapTaiKhoanNhan(maNDKhachHang(), maYeuCau, request)
         ));
+    }
+
+    /** Tải ảnh mã QR ngân hàng để nhận hoàn tiền; trả về địa chỉ ảnh để gửi kèm TaiKhoanNhanRequest. */
+    @PostMapping(value = "/bank-qr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, String>>> taiAnhQr(@RequestPart("file") MultipartFile file) {
+        maNDKhachHang();
+        return ResponseEntity.ok(ApiResponse.success(Map.of("url", bankQrUploadService.upload(file))));
+    }
+
+    /** Hộp thoại hủy đơn: tài khoản hệ thống đã biết (người chuyển) và tài khoản hoàn khách đã chọn. */
+    @GetMapping("/orders/{maDH}/refund-account")
+    public ResponseEntity<ApiResponse<TaiKhoanHoanDonService.ThongTin>> taiKhoanHoanCuaDon(@PathVariable Integer maDH) {
+        return ResponseEntity.ok(ApiResponse.success(taiKhoanHoanDonService.thongTin(maNDKhachHang(), maDH)));
+    }
+
+    /** Lưu tài khoản hoàn ưu tiên cho đơn chuyển khoản, trước khi gọi API hủy đơn. */
+    @PutMapping("/orders/{maDH}/refund-account")
+    public ResponseEntity<ApiResponse<TaiKhoanHoanDonService.ThongTin>> luuTaiKhoanHoanCuaDon(
+            @PathVariable Integer maDH,
+            @Valid @RequestBody TaiKhoanNhanRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(taiKhoanHoanDonService.luu(maNDKhachHang(), maDH, request)));
     }
 
     private Integer maNDKhachHang() {

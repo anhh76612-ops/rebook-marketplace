@@ -52,6 +52,10 @@ public class CuaHang {
     @Column(name = "ten_chu_tai_khoan", length = 255)
     private String tenChuTaiKhoan;
 
+    // Ảnh mã QR ngân hàng do chủ cửa hàng tải lên; dùng khi chưa khai số tài khoản.
+    @Column(name = "qr_ngan_hang_url", length = 500)
+    private String qrNganHangUrl;
+
     @Column(name = "ngay_tao", updatable = false)
     private LocalDateTime ngayTao;
 

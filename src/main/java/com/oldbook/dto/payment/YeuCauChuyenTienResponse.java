@@ -23,6 +23,12 @@ public record YeuCauChuyenTienResponse(
         // Mã VietQR tới tài khoản người nhận; trống khi chưa có đủ thông tin tài khoản.
         String qrUrl,
         LocalDateTime ngayTao,
-        LocalDateTime ngayXuLy
+        LocalDateTime ngayXuLy,
+        // Bên hủy đơn (KHACH_HANG, CUA_HANG, HE_THONG) và lý do hủy; trống với khoản không do hủy đơn.
+        String huyBoi,
+        String lyDoHuy,
+        String maDotChi,
+        // Ảnh mã QR ngân hàng người nhận đã tải lên (dùng khi không có số tài khoản).
+        String qrNganHangUrl
 ) {
 }

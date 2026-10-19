@@ -75,6 +75,10 @@ public class YeuCauChuyenTien {
     @Column(name = "ten_chu_tai_khoan", length = 255)
     private String tenChuTaiKhoan;
 
+    // Ảnh mã QR ngân hàng khách tải lên khi không khai số tài khoản.
+    @Column(name = "qr_ngan_hang_url", length = 500)
+    private String qrNganHangUrl;
+
     @Nationalized
     @Column(name = "ly_do", length = 500)
     private String lyDo;
@@ -82,6 +86,10 @@ public class YeuCauChuyenTien {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ma_tk_xu_ly", referencedColumnName = "ma_tk")
     private TaiKhoan nguoiXuLy;
+
+    // Mã đợt chi gộp (DC...) khi Quản lý chi nhiều đơn của một cửa hàng bằng một lần chuyển khoản.
+    @Column(name = "ma_dot_chi", length = 20)
+    private String maDotChi;
 
     @Column(name = "ngay_xu_ly")
     private LocalDateTime ngayXuLy;

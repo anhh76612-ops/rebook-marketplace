@@ -4,6 +4,8 @@ import com.oldbook.constant.payment.KetQuaDoiSoat;
 import com.oldbook.constant.payment.LoaiChuyenTien;
 import com.oldbook.constant.payment.TrangThaiChuyenTien;
 import com.oldbook.dto.catalog.PageResponse;
+import com.oldbook.dto.management.QuanLyDto.GiaoDichTrang;
+import com.oldbook.dto.management.QuanLyDto.TomTatGiaoDich;
 import com.oldbook.dto.payment.GiaoDichNganHangResponse;
 import com.oldbook.dto.payment.TaiKhoanNhanRequest;
 import com.oldbook.dto.payment.YeuCauChuyenTienResponse;
@@ -20,14 +22,17 @@ import com.oldbook.repository.payment.GiaoDichNganHangRepository;
 import com.oldbook.repository.payment.PhienThanhToanRepository;
 import com.oldbook.repository.payment.ThanhToanRepository;
 import com.oldbook.repository.payment.YeuCauChuyenTienRepository;
+import com.oldbook.service.management.VanHanhThayDoiEvent;
 import com.oldbook.service.notification.NghiepVuThongBaoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -61,6 +66,7 @@ public class ChuyenTienService {
     private final TaiKhoanRepository taiKhoanRepository;
     private final NghiepVuThongBaoService thongBaoService;
     private final VietQrLinkBuilder vietQrLinkBuilder;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ---------------------------------------------------------------
     // Lập khoản (gọi từ quyết toán và từ bước xác nhận tiền về)
@@ -86,17 +92,41 @@ public class ChuyenTienService {
                 .lyDo(cut(lyDo))
                 .build();
 
-        // Điền sẵn tài khoản khách đã dùng để trả tiền, nếu ngân hàng có gửi kèm. Khách vẫn phải xác nhận.
-        phienRepository.findFirstByDonHang_MaDH(order.getDonHang().getMaDH())
-                .flatMap(phien -> giaoDichRepository.findFirstByPhien_MaPhienAndKetQuaOrderByMaGiaoDichDesc(
-                        phien.getMaPhien(), KetQuaDoiSoat.KHOP.name()))
-                .ifPresent(giaoDich -> dienSanTaiKhoan(yeuCau, giaoDich));
+        // Điền sẵn tài khoản nhận hoàn theo thứ tự ưu tiên:
+        //   1. tài khoản hoàn khách chọn lúc hủy đơn (hoặc ảnh QR khách tải lên);
+        //   2. tài khoản người chuyển trong giao dịch ngân hàng (Casso gửi kèm).
+        // Có tài khoản thì khoản hoàn vào thẳng CHO_XU_LY, Quản lý chuyển được ngay.
+        PhienThanhToan phien = phienRepository.findFirstByDonHang_MaDH(order.getDonHang().getMaDH()).orElse(null);
+        if (phien != null && coTaiKhoanUuTien(phien)) {
+            yeuCau.setMaNganHang(phien.getHoanMaNganHang());
+            yeuCau.setSoTaiKhoan(phien.getHoanSoTaiKhoan());
+            yeuCau.setTenChuTaiKhoan(phien.getHoanTenChuTaiKhoan());
+            yeuCau.setQrNganHangUrl(phien.getHoanQrUrl());
+        } else if (phien != null) {
+            giaoDichRepository.findFirstByPhien_MaPhienAndKetQuaOrderByMaGiaoDichDesc(
+                    phien.getMaPhien(), KetQuaDoiSoat.KHOP.name())
+                    .ifPresent(giaoDich -> dienSanTaiKhoan(yeuCau, giaoDich));
+        }
+        boolean daCoNoiNhan = (yeuCau.getSoTaiKhoan() != null && !yeuCau.getSoTaiKhoan().isBlank())
+                || (yeuCau.getQrNganHangUrl() != null && !yeuCau.getQrNganHangUrl().isBlank());
+        if (daCoNoiNhan) {
+            yeuCau.setTrangThai(TrangThaiChuyenTien.CHO_XU_LY.name());
+        }
 
         yeuCauRepository.save(yeuCau);
 
         String moTaDon = "Đơn #" + order.getMaDHCH() + " đã thanh toán trước bị hủy hoặc hoàn hàng.";
-        thongBaoService.canTaiKhoanHoanTien(khach, soTien, moTaDon);
-        thongBaoService.coKhoanCanChuyen(true, soTien, moTaDon + " Chờ khách nhập tài khoản nhận.");
+        if (daCoNoiNhan) {
+            thongBaoService.coKhoanCanChuyen(true, soTien, moTaDon + " Đã có tài khoản nhận, có thể chuyển ngay.");
+        } else {
+            thongBaoService.canTaiKhoanHoanTien(khach, soTien, moTaDon);
+            thongBaoService.coKhoanCanChuyen(true, soTien, moTaDon + " Chờ khách nhập tài khoản nhận.");
+        }
+    }
+
+    private static boolean coTaiKhoanUuTien(PhienThanhToan phien) {
+        return (phien.getHoanSoTaiKhoan() != null && !phien.getHoanSoTaiKhoan().isBlank())
+                || (phien.getHoanQrUrl() != null && !phien.getHoanQrUrl().isBlank());
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -143,7 +173,7 @@ public class ChuyenTienService {
 
         thongBaoService.coKhoanCanChuyen(false, soTien,
                 "Đơn #" + order.getMaDHCH() + " của \"" + cuaHang.getTenCuaHang() + "\" đã giao thành công.");
-        if (!coTaiKhoan(cuaHang)) {
+        if (!coNoiNhan(cuaHang)) {
             thongBaoService.canTaiKhoanNhanTien(cuaHang, order.getMaDHCH());
         }
     }
@@ -171,11 +201,14 @@ public class ChuyenTienService {
 
         boolean lanDau = TrangThaiChuyenTien.CHO_THONG_TIN.name().equals(yeuCau.getTrangThai());
 
-        yeuCau.setMaNganHang(request.maNganHang().trim());
-        yeuCau.setSoTaiKhoan(request.soTaiKhoan().trim());
-        yeuCau.setTenChuTaiKhoan(request.tenChuTaiKhoan().trim());
+        request.kiemTra();
+        yeuCau.setMaNganHang(request.maNganHangGon());
+        yeuCau.setSoTaiKhoan(request.soTaiKhoanGon());
+        yeuCau.setTenChuTaiKhoan(request.tenChuTaiKhoanGon());
+        yeuCau.setQrNganHangUrl(request.qrGon());
         yeuCau.setTrangThai(TrangThaiChuyenTien.CHO_XU_LY.name());
         yeuCauRepository.save(yeuCau);
+        eventPublisher.publishEvent(new VanHanhThayDoiEvent(VanHanhThayDoiEvent.REFUNDS));
 
         if (lanDau) {
             thongBaoService.coKhoanCanChuyen(true, yeuCau.getSoTien(),
@@ -193,8 +226,18 @@ public class ChuyenTienService {
     public PageResponse<YeuCauChuyenTienResponse> danhSach(
             LoaiChuyenTien loai, TrangThaiChuyenTien trangThai, int page, int size
     ) {
+        return danhSach(loai, trangThai, null, page, size);
+    }
+
+    /** tuKhoa: mã đơn, tên / SĐT / email người nhận; trống thì không lọc. */
+    @Transactional(readOnly = true)
+    public PageResponse<YeuCauChuyenTienResponse> danhSach(
+            LoaiChuyenTien loai, TrangThaiChuyenTien trangThai, String tuKhoa, int page, int size
+    ) {
+        String tk = tuKhoa == null ? "" : tuKhoa.trim().toLowerCase();
         return PageResponse.of(yeuCauRepository
-                .timTheoLoai(loai.name(), trangThai == null ? null : trangThai.name(), trang(page, size))
+                .timTheoLoaiVaTuKhoa(loai.name(), trangThai == null ? null : trangThai.name(),
+                        tk, "%" + tk + "%", trang(page, size))
                 .map(this::toResponse));
     }
 
@@ -203,6 +246,23 @@ public class ChuyenTienService {
         return PageResponse.of(giaoDichRepository
                 .findAllByOrderByMaGiaoDichDesc(trang(page, size))
                 .map(GiaoDichNganHangResponse::from));
+    }
+
+    /** Giao dịch có lọc, kèm tổng số / tổng tiền khớp / tổng tiền lệch của toàn bộ kết quả lọc. */
+    @Transactional(readOnly = true)
+    public GiaoDichTrang danhSachGiaoDich(
+            String tuKhoa, KetQuaDoiSoat ketQua, LocalDate tuNgay, LocalDate denNgay, int page, int size
+    ) {
+        String kq = ketQua == null ? "" : ketQua.name();
+        LocalDateTime tu = (tuNgay == null ? LocalDate.of(2000, 1, 1) : tuNgay).atStartOfDay();
+        LocalDateTime den = (denNgay == null ? LocalDate.of(2999, 1, 1) : denNgay).plusDays(1).atStartOfDay();
+        String mau = "%" + (tuKhoa == null ? "" : tuKhoa.trim().toLowerCase()) + "%";
+
+        var trangKetQua = giaoDichRepository.loc(kq, tu, den, mau, trang(page, size)).map(GiaoDichNganHangResponse::from);
+        var tomTat = giaoDichRepository.tomTat(kq, tu, den, mau);
+        return new GiaoDichTrang(trangKetQua.getContent(), trangKetQua.getNumber(), trangKetQua.getSize(),
+                trangKetQua.getTotalElements(), trangKetQua.getTotalPages(),
+                new TomTatGiaoDich(tomTat.getTongSo(), tomTat.getTongTienKhop(), tomTat.getTongTienLech()));
     }
 
     @Transactional
@@ -220,7 +280,7 @@ public class ChuyenTienService {
         if (hoanTien && !TrangThaiChuyenTien.CHO_XU_LY.name().equals(yeuCau.getTrangThai())) {
             throw new BusinessException("Khách chưa nhập tài khoản nhận hoàn tiền");
         }
-        if (!hoanTien && !coTaiKhoan(cuaHang)) {
+        if (!hoanTien && !coNoiNhan(cuaHang)) {
             throw new BusinessException("Cửa hàng chưa khai tài khoản nhận tiền");
         }
 
@@ -229,6 +289,7 @@ public class ChuyenTienService {
         yeuCau.setNguoiXuLy(taiKhoanRepository.getReferenceById(maTKXuLy));
         yeuCau.setNgayXuLy(now);
         yeuCauRepository.save(yeuCau);
+        eventPublisher.publishEvent(new VanHanhThayDoiEvent(hoanTien ? VanHanhThayDoiEvent.REFUNDS : VanHanhThayDoiEvent.PAYOUTS));
 
         // Khoản gắn với đơn hàng thì ghi thêm vào sổ thanh_toan, cùng chỗ với các khoản quyết toán khác.
         if (yeuCau.getDonHangCuaHang() != null) {
@@ -287,7 +348,11 @@ public class ChuyenTienService {
                 tenChuTaiKhoan,
                 vietQrLinkBuilder.build(maNganHang, soTaiKhoan, tenChuTaiKhoan, yeuCau.getSoTien(), noiDung),
                 yeuCau.getNgayTao(),
-                yeuCau.getNgayXuLy()
+                yeuCau.getNgayXuLy(),
+                order == null ? null : order.getHuyBoi(),
+                order == null ? null : order.getLyDoHuy(),
+                yeuCau.getMaDotChi(),
+                chiCuaHang && cuaHang != null ? cuaHang.getQrNganHangUrl() : yeuCau.getQrNganHangUrl()
         );
     }
 
@@ -299,6 +364,12 @@ public class ChuyenTienService {
         yeuCau.setMaNganHang(giaoDich.getMaNganHangChuyen());
         yeuCau.setSoTaiKhoan(giaoDich.getSoTaiKhoanChuyen());
         yeuCau.setTenChuTaiKhoan(giaoDich.getTenNguoiChuyen());
+    }
+
+    /** Có số tài khoản hoặc ảnh mã QR ngân hàng: đủ để Quản lý chuyển tiền. */
+    private static boolean coNoiNhan(CuaHang cuaHang) {
+        return coTaiKhoan(cuaHang) || (cuaHang != null && cuaHang.getQrNganHangUrl() != null
+                && !cuaHang.getQrNganHangUrl().isBlank());
     }
 
     private static boolean coTaiKhoan(CuaHang cuaHang) {

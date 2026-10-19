@@ -48,6 +48,10 @@ public class NghiepVuThongBaoService {
     private static final String TRANG_HOAN_TIEN = "/payment/refunds";
     private static final String TRANG_QUAN_LY_THANH_TOAN = "/management/payments";
 
+    /** Loại thông báo nhắc khai tài khoản; QuanLyChiTraService dựa vào đây để giới hạn mỗi người một lần mỗi giờ. */
+    public static final String LOAI_NHAC_KHAI_TAI_KHOAN = "NHAC_KHAI_TAI_KHOAN";
+    public static final String LOAI_NHAC_XAC_NHAN_DON = "NHAC_XAC_NHAN_DON";
+
     private final ThongBaoService thongBaoService;
     private final TaiKhoanRepository taiKhoanRepository;
 
@@ -298,6 +302,56 @@ public class NghiepVuThongBaoService {
                 "Đơn #" + maDHCH + " đã giao xong nhưng cửa hàng chưa khai tài khoản nhận tiền. "
                         + "Vui lòng bổ sung trong thông tin cửa hàng.",
                 TRANG_CUA_HANG
+        ));
+    }
+
+    /** Giao dịch ngân hàng không khớp phiên nào, hoặc khớp nhưng không tạo được đơn: Quản lý cần xem. */
+    @Transactional
+    public void giaoDichLech(BigDecimal soTien, String ketQua, String ghiChu) {
+        thongBaoService.guiChoVaiTro(VaiTro.QUAN_LY, null, new NoiDungThongBao(
+                "GIAO_DICH_LECH",
+                MucDoThongBao.QUAN_TRONG,
+                "Giao dịch ngân hàng bị lệch " + tien(soTien),
+                ("CAN_HOAN_TIEN".equals(ketQua) ? "Tiền đã về nhưng không tạo được đơn" : "Tiền về không khớp phiên nào")
+                        + (ghiChu == null ? "." : ": " + ghiChu),
+                TRANG_QUAN_LY_THANH_TOAN + "?tab=transactions"
+        ));
+    }
+
+    /** Quản lý nhắc chủ cửa hàng khai tài khoản nhận tiền. */
+    @Transactional
+    public void nhacKhaiTaiKhoanCuaHang(CuaHang cuaHang) {
+        guiChoChuCuaHang(cuaHang, new NoiDungThongBao(
+                LOAI_NHAC_KHAI_TAI_KHOAN,
+                MucDoThongBao.QUAN_TRONG,
+                "Vui lòng khai tài khoản nhận tiền",
+                "Sàn đang giữ tiền bán hàng của \"" + cuaHang.getTenCuaHang()
+                        + "\" nhưng chưa có tài khoản ngân hàng để chuyển. Hãy bổ sung trong thông tin cửa hàng.",
+                TRANG_CUA_HANG
+        ));
+    }
+
+    /** Quản lý nhắc cửa hàng xác nhận các đơn đang chờ quá lâu. */
+    @Transactional
+    public void nhacXacNhanDon(CuaHang cuaHang, long soDon) {
+        guiChoChuCuaHang(cuaHang, new NoiDungThongBao(
+                LOAI_NHAC_XAC_NHAN_DON,
+                MucDoThongBao.QUAN_TRONG,
+                "Có " + soDon + " đơn đang chờ bạn xác nhận",
+                "Khách đã đặt hàng quá 48 giờ nhưng đơn chưa được xác nhận. Vui lòng xác nhận hoặc hủy đơn sớm.",
+                TRANG_DON_CUA_HANG
+        ));
+    }
+
+    /** Quản lý nhắc khách khai tài khoản nhận hoàn tiền. */
+    @Transactional
+    public void nhacKhaiTaiKhoanHoanTien(NguoiDung khach, BigDecimal soTien) {
+        guiChoTaiKhoanCua(khach, VaiTro.KHACH_HANG, new NoiDungThongBao(
+                LOAI_NHAC_KHAI_TAI_KHOAN,
+                MucDoThongBao.QUAN_TRONG,
+                "Vui lòng nhập tài khoản nhận hoàn " + tien(soTien),
+                "Sàn chưa thể hoàn tiền vì chưa có tài khoản ngân hàng của bạn. Hãy bổ sung ở mục Hoàn tiền của tôi.",
+                TRANG_HOAN_TIEN
         ));
     }
 
