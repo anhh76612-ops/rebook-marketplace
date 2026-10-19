@@ -157,6 +157,43 @@
                         </table>
                     </div>
                 </section>
+
+                <!-- Chỉ xem và xuất CSV: cùng số liệu với trang Thống kê của Quản lý -->
+                <section id="cashflowSection" class="bg-surface-white rounded-xl p-space-lg shadow-sm space-y-space-md">
+                    <div class="flex items-center justify-between gap-space-sm pb-space-sm border-b border-surface-container">
+                        <div>
+                            <h2 class="font-headline-sm text-headline-sm text-primary">Dòng tiền sàn</h2>
+                            <p class="font-caption text-caption text-text-muted">Sàn đang giữ = khách đã trả vào − đã hoàn − đã chi cửa hàng − hoa hồng − phí ship của đơn đã giao.</p>
+                        </div>
+                        <button id="cashflowExport" type="button" disabled class="px-space-md py-2 rounded-lg border border-line-border font-label-lg text-label-lg text-primary disabled:opacity-50">Xuất CSV</button>
+                    </div>
+                    <table class="w-full font-body-sm text-body-sm text-on-surface-variant">
+                        <tbody id="cashflowRows"></tbody>
+                    </table>
+                </section>
+
+                <section id="categorySection" class="bg-surface-white rounded-xl p-space-lg shadow-sm space-y-space-md">
+                    <div class="flex items-center justify-between gap-space-sm pb-space-sm border-b border-surface-container">
+                        <div>
+                            <h2 class="font-headline-sm text-headline-sm text-primary">Theo danh mục</h2>
+                            <p class="font-caption text-caption text-text-muted">Đơn giao thành công trong kỳ, tính theo ngày giao.</p>
+                        </div>
+                        <button id="categoryExport" type="button" disabled class="px-space-md py-2 rounded-lg border border-line-border font-label-lg text-label-lg text-primary disabled:opacity-50">Xuất CSV</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full font-body-sm text-body-sm text-on-surface-variant">
+                            <thead>
+                            <tr class="font-label-md text-label-md text-text-muted">
+                                <th scope="col" class="py-2 text-left">Danh mục</th>
+                                <th scope="col" class="py-2 text-right">Doanh thu</th>
+                                <th scope="col" class="py-2 text-right">Hoa hồng</th>
+                                <th scope="col" class="py-2 text-right">% đang áp</th>
+                            </tr>
+                            </thead>
+                            <tbody id="categoryRows"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
         </div>

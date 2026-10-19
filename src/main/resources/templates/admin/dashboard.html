@@ -115,6 +115,22 @@
                         <a th:href="@{/admin/accounts(trangThai='BI_KHOA')}" class="text-primary font-semibold hover:underline">Xem danh sách →</a>
                     </div>
                 </div>
+
+                <div class="rounded-xl bg-surface-white p-space-md shadow-sm">
+                    <div class="flex items-start justify-between">
+                        <div class="space-y-1">
+                            <span class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider block">Sàn đang giữ</span>
+                            <div id="kpiSanDangGiu" class="font-headline-xl text-headline-xl text-primary font-bold tracking-tight">—</div>
+                        </div>
+                        <div class="w-11 h-11 rounded-xl bg-surface-container flex items-center justify-center text-primary-container">
+                            <span class="material-symbols-outlined text-[24px]">account_balance</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 -mx-space-md -mb-space-md px-space-md py-2 rounded-b-xl bg-surface-cream/50 flex items-center justify-between font-caption text-caption text-text-muted">
+                        <span>Tiền khách trả trước, chưa chi hoặc hoàn</span>
+                        <a th:href="@{/admin/reports}" class="text-primary font-semibold hover:underline">Chi tiết →</a>
+                    </div>
+                </div>
             </section>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
