@@ -6,13 +6,13 @@ const { boot, settle, sessionToken } = require('./dom-harness.cjs');
 const page = items => ({ content: items, page: 0, size: 20, totalElements: items.length, totalPages: items.length ? 1 : 0 });
 const profile = { hoTen: 'Người dùng dùng chung' };
 const roleHomes = {
-  KHACH_HANG: '/', CHU_CUA_HANG: '/store/books', QUAN_LY: '/store-moderation',
+  KHACH_HANG: '/', CHU_CUA_HANG: '/store/books', QUAN_LY: '/management',
   QUAN_TRI_VIEN: '/admin/dashboard', DON_VI_VAN_CHUYEN: '/'
 };
 const managementLinks = {
   CHU_CUA_HANG: [['/store/books', 'Cửa hàng của tôi']],
-  QUAN_LY: [['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển'], ['/management/payments', 'Quản lý thanh toán']],
-  QUAN_TRI_VIEN: [['/admin/accounts', 'Quản lý tài khoản'], ['/store-moderation', 'Kiểm duyệt cửa hàng và sách'], ['/management/shipping-carriers', 'Quản lý đơn vị vận chuyển']]
+  QUAN_LY: [['/management', 'Về cổng quản lý']],
+  QUAN_TRI_VIEN: [['/admin/dashboard', 'Về trang quản trị']]
 };
 // Header khách hàng: topbar có "Theo dõi đơn hàng", dropdown tài khoản có "Đơn hàng của tôi" và "Hoàn tiền của tôi", mainbar có "Yêu thích".
 // Giỏ hàng không còn trên header: nó là nút nổi trong fragments/cart-drawer.html.
@@ -103,7 +103,7 @@ test('saving a different role updates navigation and role labels immediately, an
 
 // Header cửa hàng và quản lý dùng cùng cơ chế: chủ cửa hàng quay về tài khoản khách hàng bằng một lần bấm.
 test('store and manager headers switch accounts the same way and no longer log the user out to do it', async () => {
-  for (const [fragment, role, home] of [['fragments/store/header.html', 'CHU_CUA_HANG', '/'], ['fragments/manager/header.html', 'QUAN_LY', '/']]) {
+  for (const [fragment, role, home] of [['fragments/store/header.html', 'CHU_CUA_HANG', '/'], ['fragments/manager/layout.html', 'QUAN_LY', '/']]) {
     const app = boot(fragment, [], async call => {
       if (call.url === '/api/profile') {
         return { ...profile, taiKhoans: [{ maTK: 2, vaiTro: role, trangThai: ACTIVE }, { maTK: 5, vaiTro: 'KHACH_HANG', trangThai: ACTIVE }] };
@@ -280,7 +280,7 @@ test('actual login script honors a safe redirect and falls back to role home for
 test('actual multi-role picker selects the exact account using the selection token before redirecting by its final role', async () => {
   const cases = Object.entries(roleHomes).map(([role, target]) => [role, '', target]);
   cases.push(['CHU_CUA_HANG', '?redirect=%2Fbooks%3Fq%3Djava', '/books?q=java']);
-  cases.push(['QUAN_LY', '?redirect=https%3A%2F%2Fexample.com', '/store-moderation']);
+  cases.push(['QUAN_LY', '?redirect=https%3A%2F%2Fexample.com', '/management']);
   for (const [role, search, target] of cases) {
     const app = loginApp(role, search, true);
     await submitLogin(app);
