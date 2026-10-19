@@ -22,6 +22,7 @@ function dashboard(handler, role = 'QUAN_TRI_VIEN', logsHandler = async () => lo
     if (call.url === '/api/profile') { return profile; }
     if (call.url === SUMMARY_URL) { return handler(call); }
     if (call.url === LOGS_URL) { return logsHandler(call); }
+    if (call.url.startsWith('/api/admin/bao-cao/dong-tien')) { return { sanDangGiu: 1500000 }; }
     throw new Error('Unexpected API call: ' + call.url);
   }, role, { pathname: '/admin/dashboard' });
 }
@@ -42,6 +43,7 @@ test('admin dashboard renders account KPIs and role distribution from the summar
   assert.equal(text(app, 'kpiChoXacThuc'), '6');
   assert.equal(text(app, 'kpiHoatDong'), '1.320');
   assert.equal(text(app, 'kpiHoatDongTyLe'), '97,1%');
+  assert.match(text(app, 'kpiSanDangGiu'), /^1\.500\.000 đ$/);
   assert.equal(text(app, 'kpiBiKhoa'), '34');
   assert.equal(text(app, 'kpiBiKhoaTyLe'), '2,5%');
 
@@ -56,9 +58,10 @@ test('admin dashboard renders account KPIs and role distribution from the summar
   assert.equal(app.get('dashError').classList.contains('hidden'), true);
   assert.equal(app.get('dashRefresh').disabled, false);
 
-  // Số liệu doanh thu nằm ở trang Báo cáo, dashboard chỉ theo dõi hệ thống.
+  // Số liệu doanh thu nằm ở trang Báo cáo; dashboard chỉ thêm thẻ "Sàn đang giữ" (chỉ xem) từ báo cáo dòng tiền.
   assert.equal(app.get('kpiGmv'), null);
-  assert.equal(app.calls.some(call => call.url.includes('bao-cao')), false);
+  assert.deepEqual(app.calls.filter(call => call.url.includes('bao-cao')).map(call => call.url.split('?')[0]),
+    ['/api/admin/bao-cao/dong-tien']);
 });
 
 test('admin dashboard never queries the API for guests or other roles', async () => {

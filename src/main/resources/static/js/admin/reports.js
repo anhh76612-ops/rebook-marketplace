@@ -10,6 +10,12 @@
     var $ = function (id) { return document.getElementById(id); };
 
     var API = '/api/admin/bao-cao/doanh-thu';
+    var API_CASHFLOW = '/api/admin/bao-cao/dong-tien';
+    var API_CATEGORY = '/api/admin/bao-cao/theo-danh-muc';
+
+    // Hai bảng chỉ xem + xuất CSV, nạp cùng kỳ với báo cáo doanh thu.
+    var cashflow = null;
+    var categories = null;
 
     // Kỳ dài hơn số ngày này thì biểu đồ gộp theo tháng cho dễ nhìn; bảng và file xuất vẫn theo ngày.
     var MAX_DAILY_BARS = 92;
@@ -386,6 +392,7 @@
                 }
                 renderReport(data);
                 $('reportError').classList.add('hidden');
+                loadExtras(from, to);
             })
             .catch(function (err) {
                 if (UI.handleApiError(err) || !$('reportSubmit')) {
@@ -397,6 +404,66 @@
             .then(function () {
                 setLoading(false);
             });
+    }
+
+    // =========================================================
+    // DÒNG TIỀN SÀN VÀ THEO DANH MỤC
+    // =========================================================
+
+    function esc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+        });
+    }
+
+    function loadExtras(from, to) {
+        var query = '?tuNgay=' + encodeURIComponent(from) + '&denNgay=' + encodeURIComponent(to);
+
+        OB.request('GET', API_CASHFLOW + query).then(function (data) {
+            if (!$('cashflowRows')) { return; }
+            cashflow = Object.assign({}, data, { tuNgay: from, denNgay: to });
+            $('cashflowRows').innerHTML = [
+                ['Khách đã trả vào', data.khachDaTra], ['Đã hoàn cho khách', data.daHoan],
+                ['Đã chi cửa hàng', data.daChiCuaHang], ['Hoa hồng', data.hoaHong],
+                ['Phí ship của đơn đã giao', data.phiShipDonDaGiao], ['Sàn đang giữ', data.sanDangGiu]
+            ].map(function (row) {
+                return '<tr class="border-b border-surface-container"><th scope="row" class="py-2 text-left font-normal">' + row[0]
+                    + '</th><td class="py-2 text-right tabular-nums">' + formatMoney(row[1]) + '</td></tr>';
+            }).join('') + '<tr><th scope="row" class="py-2 text-left font-normal">Giao dịch ngân hàng lệch</th><td class="py-2 text-right tabular-nums">'
+                + formatNumber(data.giaoDichLech) + '</td></tr>';
+            $('cashflowExport').disabled = false;
+        }).catch(function () { });
+
+        OB.request('GET', API_CATEGORY + query).then(function (data) {
+            if (!$('categoryRows')) { return; }
+            categories = { rows: data || [], tuNgay: from, denNgay: to };
+            $('categoryRows').innerHTML = categories.rows.map(function (row) {
+                return '<tr class="border-b border-surface-container"><th scope="row" class="py-2 text-left font-normal">' + esc(row.tenDanhMuc)
+                    + '</th><td class="py-2 text-right tabular-nums">' + formatMoney(row.doanhThu)
+                    + '</td><td class="py-2 text-right tabular-nums">' + formatMoney(row.hoaHong)
+                    + '</td><td class="py-2 text-right tabular-nums">' + row.tyLeDangApDung + '%</td></tr>';
+            }).join('');
+            $('categoryExport').disabled = false;
+        }).catch(function () { });
+    }
+
+    function exportCashflow() {
+        if (!cashflow) { return; }
+        var rows = [csvRow(['Chỉ tiêu', 'Số tiền (đ)']),
+            csvRow(['Khách đã trả vào', cashflow.khachDaTra]), csvRow(['Đã hoàn cho khách', cashflow.daHoan]),
+            csvRow(['Đã chi cửa hàng', cashflow.daChiCuaHang]), csvRow(['Hoa hồng', cashflow.hoaHong]),
+            csvRow(['Phí ship của đơn đã giao', cashflow.phiShipDonDaGiao]), csvRow(['Sàn đang giữ', cashflow.sanDangGiu]),
+            csvRow(['Giao dịch ngân hàng lệch (số lượng)', cashflow.giaoDichLech])];
+        UI.downloadFile('dong-tien-san_' + cashflow.tuNgay + '_' + cashflow.denNgay + '.csv', rows.join('\r\n'), 'text/csv;charset=utf-8;');
+    }
+
+    function exportCategories() {
+        if (!categories) { return; }
+        var rows = [csvRow(['Danh mục', 'Doanh thu (đ)', 'Hoa hồng (đ)', '% đang áp'])];
+        categories.rows.forEach(function (row) {
+            rows.push(csvRow([row.tenDanhMuc, row.doanhThu, row.hoaHong, row.tyLeDangApDung]));
+        });
+        UI.downloadFile('theo-danh-muc_' + categories.tuNgay + '_' + categories.denNgay + '.csv', rows.join('\r\n'), 'text/csv;charset=utf-8;');
     }
 
     // =========================================================
@@ -451,6 +518,8 @@
         });
 
         $('reportExport').addEventListener('click', exportCsv);
+        $('cashflowExport').addEventListener('click', exportCashflow);
+        $('categoryExport').addEventListener('click', exportCategories);
 
         var charts = $('reportCharts');
         charts.addEventListener('pointermove', function (event) {

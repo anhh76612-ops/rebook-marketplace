@@ -306,6 +306,21 @@
             });
     }
 
+    // Thẻ "Sàn đang giữ": toàn bộ thời gian, cùng số với báo cáo dòng tiền (chỉ xem).
+    function loadHolding() {
+        var node = $('kpiSanDangGiu');
+        if (!node) { return; }
+        // Kỳ tối đa 366 ngày: lấy 365 ngày gần nhất.
+        var iso = function (date) {
+            return date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
+        };
+        var now = new Date();
+        OB.request('GET', '/api/admin/bao-cao/dong-tien?tuNgay=' + iso(new Date(now.getTime() - 364 * 86400000)) + '&denNgay=' + iso(now))
+            .then(function (data) {
+                node.textContent = Number((data && data.sanDangGiu) || 0).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' đ';
+            }, function () { node.textContent = '—'; });
+    }
+
     function loadSummary() {
         if (loading) {
             return;
@@ -370,6 +385,7 @@
 
     function loadAll() {
         loadSummary();
+        loadHolding();
         loadRecentLogs();
     }
 

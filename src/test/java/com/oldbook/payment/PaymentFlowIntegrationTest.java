@@ -430,12 +430,13 @@ class PaymentFlowIntegrationTest {
 
         YeuCauChuyenTien refund = refunds(buyer).get(0);
         assertThat(refund.getSoTien()).isEqualByComparingTo("125000");
-        assertThat(refund.getTrangThai()).isEqualTo("CHO_THONG_TIN");
+        // Casso có gửi kèm tài khoản người chuyển nên khoản hoàn vào thẳng CHO_XU_LY, không cần khách nhập lại.
+        assertThat(refund.getTrangThai()).isEqualTo("CHO_XU_LY");
+        assertThat(refund.getSoTaiKhoan()).isEqualTo("8888888888");
+        assertThat(notifications(buyer)).doesNotContain("CAN_TAI_KHOAN_HOAN_TIEN");
+        assertThat(notifications(manager)).contains("CAN_HOAN_TIEN");
 
-        // Quản lý chưa chuyển được khi khách chưa xác nhận tài khoản nhận.
-        assertThat(request("POST", "/api/management/payments/transfers/" + refund.getMaYeuCau() + "/done",
-                manager.token(), null).statusCode()).isEqualTo(400);
-
+        // Khách vẫn đổi được sang tài khoản khác trước khi Quản lý chuyển.
         var account = request("PUT", "/api/payment/refunds/" + refund.getMaYeuCau() + "/account", buyer.token(),
                 Map.of("maNganHang", "970415", "soTaiKhoan", "1029384756", "tenChuTaiKhoan", "NGUYEN VAN KHACH"));
         assertThat(account.statusCode()).as(account.body()).isEqualTo(200);
@@ -559,6 +560,466 @@ class PaymentFlowIntegrationTest {
 
         assertThat(request("POST", donePath, manager.token(), null).statusCode()).isEqualTo(200);
         assertThat(notifications(owner)).contains("DA_CHI_CUA_HANG");
+    }
+
+    // ------------------------------------------------------------------
+    // Cổng Quản lý: chi gộp theo cửa hàng, nhắc khai tài khoản, lọc giao dịch, hoa hồng
+    // ------------------------------------------------------------------
+
+    private void giveShopABankAccount() {
+        transactions.executeWithoutResult(s -> {
+            CuaHang current = cuaHangRepository.findById(shop.getMaCH()).orElseThrow();
+            current.setMaNganHang("970436");
+            current.setSoTaiKhoan("0071000123456");
+            current.setTenChuTaiKhoan("TRAN THI CHU SHOP");
+            cuaHangRepository.save(current);
+        });
+    }
+
+    private DonHangCuaHang deliveredPaidOrder(Sach what) throws Exception {
+        DonHangCuaHang child = paidOrder(buyer, what);
+        deliver(child, confirm(child), "picked", "delivering", "delivered");
+        return child;
+    }
+
+    private List<Integer> payoutIds(Actor who) {
+        return transactions.execute(s -> yeuCauRepository
+                .findAllByLoaiAndNguoiNhan_MaNDOrderByMaYeuCauDesc("CHI_CUA_HANG", who.maND()).stream()
+                .map(YeuCauChuyenTien::getMaYeuCau).toList());
+    }
+
+    @Test
+    void managerSettlesSeveralOrdersOfOneShopInASingleBatch() throws Exception {
+        Sach second = book(shop, 1);
+        deliveredPaidOrder(book);
+        deliveredPaidOrder(second);
+        giveShopABankAccount();
+        List<Integer> ids = payoutIds(owner);
+        assertThat(ids).hasSize(2);
+
+        // Gom nhóm theo cửa hàng: một dòng cửa hàng, hai đơn con, tổng thực nhận 190.000.
+        JsonNode groups = json(request("GET", "/api/management/payments/store-payouts", manager.token(), null)).get("data");
+        JsonNode group = null;
+        for (JsonNode g : groups) {
+            if (g.get("maCH").asInt() == shop.getMaCH()) { group = g; }
+        }
+        assertThat(group).isNotNull();
+        assertThat(group.get("donCon")).hasSize(2);
+        assertThat(group.get("tongThucNhan").decimalValue()).isEqualByComparingTo("190000");
+        assertThat(group.get("tongHoaHong").decimalValue()).isEqualByComparingTo("10000");
+        assertThat(group.get("coTaiKhoan").asBoolean()).isTrue();
+
+        JsonNode preview = json(request("POST", "/api/management/payments/store-payouts/preview", manager.token(),
+                Map.of("maYeuCau", ids))).get("data");
+        String maDotChi = preview.get("maDotChi").asText();
+        assertThat(maDotChi).startsWith("DC").hasSize(10);
+        assertThat(preview.get("tongTien").decimalValue()).isEqualByComparingTo("190000");
+        assertThat(preview.get("qrUrl").asText()).contains("amount=190000").contains("addInfo=" + maDotChi);
+
+        // Mã đợt chi sai (hoặc danh sách đã đổi) thì bị từ chối và không khoản nào bị ghi.
+        assertThat(request("POST", "/api/management/payments/store-payouts/done", manager.token(),
+                Map.of("maDotChi", "DCSAISAI2", "maYeuCau", ids)).statusCode()).isEqualTo(400);
+        assertThat(request("POST", "/api/management/payments/store-payouts/done", manager.token(),
+                Map.of("maDotChi", maDotChi, "maYeuCau", List.of(ids.get(0)))).statusCode()).isEqualTo(400);
+        Boolean allStillWaiting = transactions.execute(s -> yeuCauRepository.findAllById(ids).stream()
+                .allMatch(y -> "CHO_XU_LY".equals(y.getTrangThai())));
+        assertThat(allStillWaiting).isTrue();
+
+        assertThat(request("POST", "/api/management/payments/store-payouts/done", manager.token(),
+                Map.of("maDotChi", maDotChi, "maYeuCau", ids)).statusCode()).isEqualTo(200);
+
+        transactions.executeWithoutResult(s -> {
+            for (YeuCauChuyenTien y : yeuCauRepository.findAllById(ids)) {
+                assertThat(y.getTrangThai()).isEqualTo("DA_CHUYEN");
+                assertThat(y.getMaDotChi()).isEqualTo(maDotChi);
+                assertThat(thanhToanRepository.existsByDonHangCuaHang_MaDHCHAndLoaiGiaoDich(
+                        y.getDonHangCuaHang().getMaDHCH(), "CHI_CUA_HANG")).isTrue();
+            }
+        });
+        assertThat(notifications(owner)).contains("DA_CHI_CUA_HANG");
+
+        // Chuyển lần hai bị từ chối.
+        assertThat(request("POST", "/api/management/payments/store-payouts/done", manager.token(),
+                Map.of("maDotChi", maDotChi, "maYeuCau", ids)).statusCode()).isEqualTo(400);
+    }
+
+    @Test
+    void aBatchCannotMixShopsOrIncludeAnythingButShopPayouts() throws Exception {
+        Actor owner2 = actor("CHU_CUA_HANG");
+        CuaHang shop2 = shop(owner2);
+        Sach book2 = book(shop2, 1);
+        deliveredPaidOrder(book);
+        // Đơn của cửa hàng thứ hai
+        var created = request("POST", "/api/payment/sessions", buyer.token(),
+                orderBody(address.getMaDiaChi(), List.of(addToCart(buyer, book2, 1)), List.of(shop2)));
+        assertThat(created.statusCode()).as(created.body()).isEqualTo(200);
+        JsonNode session = json(created).get("data");
+        webhook(cassoBody(MA_GIAO_DICH.incrementAndGet(), session.get("maThanhToan").asText(),
+                session.get("soTien").decimalValue().toPlainString()));
+        DonHangCuaHang other = children(orderOf(session)).get(0);
+        deliver(other, confirm(other), "picked", "delivering", "delivered");
+        giveShopABankAccount();
+
+        List<Integer> mixed = new ArrayList<>(payoutIds(owner));
+        mixed.addAll(payoutIds(owner2));
+        assertThat(mixed).hasSize(2);
+        assertThat(request("POST", "/api/management/payments/store-payouts/preview", manager.token(),
+                Map.of("maYeuCau", mixed)).statusCode()).isEqualTo(400);
+        assertThat(request("POST", "/api/management/payments/store-payouts/preview", manager.token(),
+                Map.of("maYeuCau", List.of())).statusCode()).isEqualTo(400);
+        // Cửa hàng chưa khai tài khoản thì chưa tạo được đợt chi.
+        assertThat(request("POST", "/api/management/payments/store-payouts/preview", manager.token(),
+                Map.of("maYeuCau", payoutIds(owner2))).statusCode()).isEqualTo(400);
+        assertThat(request("POST", "/api/management/payments/store-payouts/preview", manager.token(),
+                Map.of("maYeuCau", payoutIds(owner))).statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void remindingForABankAccountIsLimitedToOncePerHour() throws Exception {
+        deliveredPaidOrder(book);
+
+        String remindStore = "/api/management/payments/stores/" + shop.getMaCH() + "/remind-bank";
+        assertThat(request("POST", remindStore, manager.token(), null).statusCode()).isEqualTo(200);
+        assertThat(notifications(owner)).contains("NHAC_KHAI_TAI_KHOAN");
+        assertThat(request("POST", remindStore, manager.token(), null).statusCode()).isEqualTo(400);
+
+        // Khách có khoản hoàn đang chờ khai tài khoản: nhắc một lần, lần hai trong giờ bị từ chối.
+        Integer line = addToCart(buyer, book(shop, 1), 1);
+        JsonNode session = createSession(buyer, line);
+        webhook(cassoBody(MA_GIAO_DICH.incrementAndGet(), session.get("maThanhToan").asText(), "100000"));
+        YeuCauChuyenTien refund = transactions.execute(s -> refunds(buyer).get(0));
+        assertThat(refund.getTrangThai()).isEqualTo("CHO_THONG_TIN");
+        String remindRefund = "/api/management/payments/refunds/" + refund.getMaYeuCau() + "/remind-bank";
+        assertThat(request("POST", remindRefund, manager.token(), null).statusCode()).isEqualTo(200);
+        assertThat(notifications(buyer)).contains("NHAC_KHAI_TAI_KHOAN");
+        assertThat(request("POST", remindRefund, manager.token(), null).statusCode()).isEqualTo(400);
+
+        // Cửa hàng đã khai tài khoản thì không cần nhắc nữa.
+        giveShopABankAccount();
+        assertThat(request("POST", remindStore, manager.token(), null).statusCode()).isEqualTo(400);
+    }
+
+    @Test
+    void unmatchedTransfersNotifyManagersAndTheLedgerCanBeFiltered() throws Exception {
+        long lech = MA_GIAO_DICH.incrementAndGet();
+        assertThat(webhook(cassoBody(lech, "chuyen tien an trua ZZTEST", "50000")).statusCode()).isEqualTo(200);
+        assertThat(notifications(manager)).contains("GIAO_DICH_LECH");
+
+        DonHangCuaHang child = paidOrder(buyer, book);
+        assertThat(child).isNotNull();
+
+        JsonNode all = json(request("GET", "/api/management/payments/transactions?tuKhoa=ZZTEST", manager.token(), null))
+                .get("data");
+        assertThat(all.get("content")).hasSize(1);
+        assertThat(all.get("tomTat").get("tongSo").asInt()).isEqualTo(1);
+        assertThat(all.get("tomTat").get("tongTienLech").decimalValue()).isEqualByComparingTo("50000");
+        assertThat(all.get("tomTat").get("tongTienKhop").decimalValue()).isEqualByComparingTo("0");
+
+        JsonNode matched = json(request("GET", "/api/management/payments/transactions?ketQua=KHOP&size=100",
+                manager.token(), null)).get("data");
+        assertThat(matched.get("tomTat").get("tongTienKhop").decimalValue()).isGreaterThanOrEqualTo(new BigDecimal("125000"));
+        for (JsonNode row : matched.get("content")) {
+            assertThat(row.get("ketQua").asText()).isEqualTo("KHOP");
+        }
+
+        // Lọc theo ngày: kỳ trong quá khứ không có giao dịch nào.
+        JsonNode old = json(request("GET", "/api/management/payments/transactions?tuNgay=2001-01-01&denNgay=2001-01-02",
+                manager.token(), null)).get("data");
+        assertThat(old.get("content")).isEmpty();
+        assertThat(old.get("tomTat").get("tongSo").asInt()).isZero();
+    }
+
+    @Test
+    void refundListCanBeSearchedAndCarriesTheCancellationReason() throws Exception {
+        DonHangCuaHang child = paidOrder(buyer, book);
+        var cancelled = request("POST", "/api/order/orders/store-orders/" + child.getMaDHCH() + "/cancel",
+                buyer.token(), Map.of("lyDo", LY_DO_HUY));
+        assertThat(cancelled.statusCode()).as(cancelled.body()).isEqualTo(200);
+
+        JsonNode hit = json(request("GET", "/api/management/payments/transfers?loai=HOAN_TIEN_KHACH&tuKhoa="
+                + child.getMaDHCH(), manager.token(), null)).get("data").get("content");
+        assertThat(hit).hasSize(1);
+        assertThat(hit.get(0).get("huyBoi").asText()).isEqualTo("KHACH_HANG");
+        assertThat(hit.get(0).get("lyDoHuy").asText()).isEqualTo(LY_DO_HUY);
+
+        JsonNode miss = json(request("GET", "/api/management/payments/transfers?loai=HOAN_TIEN_KHACH&tuKhoa=khongcoai",
+                manager.token(), null)).get("data").get("content");
+        assertThat(miss).isEmpty();
+    }
+
+    @Test
+    void changingACommissionClosesTheOldRecordAndAppliesToLaterDeliveries() throws Exception {
+        String url = "/api/management/commissions/" + category.getMaDM();
+
+        assertThat(request("PUT", url, manager.token(), Map.of("tyLe", 10, "ghiChu", "Khuyến khích bán")).statusCode())
+                .isEqualTo(200);
+        DonHangCuaHang first = deliveredPaidOrder(book);
+        assertThat(donHangCuaHangRepository.findById(first.getMaDHCH()).orElseThrow().getCommissionTien())
+                .isEqualByComparingTo("10000");
+
+        assertThat(request("PUT", url, manager.token(), Map.of("tyLe", 20)).statusCode()).isEqualTo(200);
+        DonHangCuaHang second = deliveredPaidOrder(book(shop, 1));
+        assertThat(donHangCuaHangRepository.findById(second.getMaDHCH()).orElseThrow().getCommissionTien())
+                .isEqualByComparingTo("20000");
+        // Đơn đã giao trước khi đổi giữ nguyên tỷ lệ cũ.
+        assertThat(donHangCuaHangRepository.findById(first.getMaDHCH()).orElseThrow().getCommissionTien())
+                .isEqualByComparingTo("10000");
+
+        JsonNode history = json(request("GET", url + "/history", manager.token(), null)).get("data");
+        assertThat(history).hasSize(2);
+        assertThat(history.get(0).get("tyLe").decimalValue()).isEqualByComparingTo("20");
+        assertThat(history.get(0).get("ngayKetThuc").isNull()).isTrue();
+        assertThat(history.get(1).get("tyLe").decimalValue()).isEqualByComparingTo("10");
+        assertThat(history.get(1).get("ngayKetThuc").isNull()).isFalse();
+        assertThat(history.get(1).get("ghiChu").asText()).isEqualTo("Khuyến khích bán");
+
+        // Đổi sang đúng tỷ lệ đang áp dụng, hoặc ngoài khoảng 0-100 thì bị từ chối.
+        assertThat(request("PUT", url, manager.token(), Map.of("tyLe", 20)).statusCode()).isEqualTo(400);
+        assertThat(request("PUT", url, manager.token(), Map.of("tyLe", 101)).statusCode()).isEqualTo(400);
+        assertThat(request("PUT", url, manager.token(), Map.of("tyLe", -1)).statusCode()).isEqualTo(400);
+
+        JsonNode list = json(request("GET", "/api/management/commissions", manager.token(), null)).get("data");
+        for (JsonNode row : list) {
+            if (row.get("maDM").asInt() == category.getMaDM()) {
+                assertThat(row.get("tyLe").decimalValue()).isEqualByComparingTo("20");
+                assertThat(row.get("macDinh").asBoolean()).isFalse();
+            }
+        }
+    }
+
+    @Test
+    void overviewAndManagementApisAreForManagersOnly() throws Exception {
+        DonHangCuaHang child = deliveredPaidOrder(book);
+        assertThat(child).isNotNull();
+
+        JsonNode overview = json(request("GET", "/api/management/overview", manager.token(), null)).get("data");
+        assertThat(overview.get("cuaHangChoChi").asInt()).isGreaterThanOrEqualTo(1);
+        assertThat(overview.get("tongTienChoChi").decimalValue()).isGreaterThanOrEqualTo(new BigDecimal("95000"));
+        assertThat(overview.get("hoaHongThangNay").decimalValue()).isGreaterThanOrEqualTo(new BigDecimal("5000"));
+        assertThat(overview.get("hangDoi").size()).isBetween(1, 5);
+        assertThat(request("GET", "/api/management/overview/badges", manager.token(), null).statusCode()).isEqualTo(200);
+
+        Actor admin = actor("QUAN_TRI_VIEN");
+        for (String path : List.of("/api/management/overview", "/api/management/overview/badges",
+                "/api/management/commissions", "/api/management/payments/store-payouts")) {
+            assertThat(request("GET", path, buyer.token(), null).statusCode()).as(path).isEqualTo(403);
+            assertThat(request("GET", path, owner.token(), null).statusCode()).as(path).isEqualTo(403);
+            assertThat(request("GET", path, admin.token(), null).statusCode()).as(path).isEqualTo(403);
+        }
+        assertThat(request("PUT", "/api/management/commissions/" + category.getMaDM(), buyer.token(),
+                Map.of("tyLe", 3)).statusCode()).isEqualTo(403);
+        assertThat(request("POST", "/api/management/payments/store-payouts/done", owner.token(),
+                Map.of("maDotChi", "DCXXXXXXXX", "maYeuCau", List.of(1))).statusCode()).isEqualTo(403);
+
+        // Các trang HTML của cổng là công khai; dữ liệu mới cần đăng nhập.
+        for (String page : List.of("/management", "/management/commissions", "/management/payments")) {
+            assertThat(request("GET", page, null, null).statusCode()).as(page).isEqualTo(200);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Ảnh mã QR thay cho số tài khoản; tài khoản hoàn ưu tiên khi hủy đơn; thống kê vận hành
+    // ------------------------------------------------------------------
+
+    private static final String ANH_QR = "https://res.cloudinary.com/oldbook/image/upload/oldbook/bank-qr/mau.png";
+
+    @Test
+    void storeCanReceivePayoutsWithOnlyAQrImage() throws Exception {
+        String url = "/api/store/me/bank-account";
+
+        // Thiếu cả tài khoản lẫn ảnh, thiếu một phần tài khoản, hoặc ảnh không phải https đều bị từ chối.
+        assertThat(request("PUT", url, owner.token(), Map.of("tenChuTaiKhoan", "")).statusCode()).isEqualTo(400);
+        assertThat(request("PUT", url, owner.token(), Map.of("maNganHang", "970436")).statusCode()).isEqualTo(400);
+        assertThat(request("PUT", url, owner.token(), Map.of("qrNganHangUrl", "http://example.com/qr.png")).statusCode())
+                .isEqualTo(400);
+
+        var saved = request("PUT", url, owner.token(), Map.of("qrNganHangUrl", ANH_QR));
+        assertThat(saved.statusCode()).as(saved.body()).isEqualTo(200);
+        assertThat(json(saved).get("data").get("qrNganHangUrl").asText()).isEqualTo(ANH_QR);
+
+        deliveredPaidOrder(book);
+        // Có ảnh QR là Quản lý chi được: không còn bị chặn vì "chưa khai tài khoản".
+        List<Integer> ids = payoutIds(owner);
+        JsonNode preview = json(request("POST", "/api/management/payments/store-payouts/preview", manager.token(),
+                Map.of("maYeuCau", ids))).get("data");
+        assertThat(preview.get("qrUrl").isNull()).isTrue();
+        assertThat(preview.get("anhQrNganHang").asText()).isEqualTo(ANH_QR);
+
+        JsonNode groups = json(request("GET", "/api/management/payments/store-payouts", manager.token(), null)).get("data");
+        for (JsonNode g : groups) {
+            if (g.get("maCH").asInt() == shop.getMaCH()) {
+                assertThat(g.get("coTaiKhoan").asBoolean()).isTrue();
+                assertThat(g.get("soTaiKhoan").isNull()).isTrue();
+                assertThat(g.get("qrNganHangUrl").asText()).isEqualTo(ANH_QR);
+            }
+        }
+        assertThat(request("POST", "/api/management/payments/store-payouts/done", manager.token(),
+                Map.of("maDotChi", preview.get("maDotChi").asText(), "maYeuCau", ids)).statusCode()).isEqualTo(200);
+
+        // Đổi lại sang đủ tài khoản thì chuyển khoản dựng được VietQR.
+        assertThat(request("PUT", url, owner.token(), Map.of("maNganHang", "970436", "soTaiKhoan", "0071000123456",
+                "tenChuTaiKhoan", "TRAN THI CHU SHOP")).statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void customerCanReceiveARefundWithOnlyAQrImage() throws Exception {
+        JsonNode session = createSession(buyer, addToCart(buyer, book, 1));
+        webhook(cassoBody(MA_GIAO_DICH.incrementAndGet(), session.get("maThanhToan").asText(), "100000"));
+        YeuCauChuyenTien refund = transactions.execute(s -> refunds(buyer).get(0));
+        String url = "/api/payment/refunds/" + refund.getMaYeuCau() + "/account";
+
+        assertThat(request("PUT", url, buyer.token(), Map.of("soTaiKhoan", "123456789")).statusCode()).isEqualTo(400);
+        var saved = request("PUT", url, buyer.token(), Map.of("qrNganHangUrl", ANH_QR));
+        assertThat(saved.statusCode()).as(saved.body()).isEqualTo(200);
+        assertThat(json(saved).get("data").get("trangThai").asText()).isEqualTo("CHO_XU_LY");
+
+        JsonNode row = find(json(request("GET", "/api/management/payments/transfers?loai=HOAN_TIEN_KHACH&trangThai=CHO_XU_LY",
+                manager.token(), null)).get("data").get("content"), refund.getMaYeuCau());
+        assertThat(row.get("qrNganHangUrl").asText()).isEqualTo(ANH_QR);
+        assertThat(row.get("soTaiKhoan").isNull()).isTrue();
+        assertThat(request("POST", "/api/management/payments/transfers/" + refund.getMaYeuCau() + "/done",
+                manager.token(), null).statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void cancellingUsesThePreferredRefundAccountTheCustomerChose() throws Exception {
+        DonHangCuaHang child = paidOrder(buyer, book);
+        Integer maDH = child.getDonHang().getMaDH();
+        String url = "/api/payment/orders/" + maDH + "/refund-account";
+
+        // Hộp thoại hủy: hệ thống đã biết tài khoản người chuyển (che bớt số).
+        JsonNode info = json(request("GET", url, buyer.token(), null)).get("data");
+        assertThat(info.get("chuyenKhoan").asBoolean()).isTrue();
+        assertThat(info.get("soTaiKhoanDaChuyenRutGon").asText()).isEqualTo("***8888");
+        assertThat(info.get("soTaiKhoanUuTien").isNull()).isTrue();
+
+        // Chỉ chủ đơn mới xem hoặc đặt được; thiếu thông tin thì bị từ chối.
+        Actor stranger = actor("KHACH_HANG");
+        assertThat(request("GET", url, stranger.token(), null).statusCode()).isEqualTo(400);
+        assertThat(request("PUT", url, stranger.token(), Map.of("qrNganHangUrl", ANH_QR)).statusCode()).isEqualTo(400);
+        assertThat(request("PUT", url, buyer.token(), Map.of("maNganHang", "970436")).statusCode()).isEqualTo(400);
+        assertThat(request("PUT", url, owner.token(), Map.of("qrNganHangUrl", ANH_QR)).statusCode()).isEqualTo(403);
+
+        var saved = request("PUT", url, buyer.token(), Map.of("maNganHang", "970436", "soTaiKhoan", "0071000123456",
+                "tenChuTaiKhoan", "NGUYEN VAN KHACH", "qrNganHangUrl", ANH_QR));
+        assertThat(saved.statusCode()).as(saved.body()).isEqualTo(200);
+        assertThat(json(saved).get("data").get("soTaiKhoanUuTien").asText()).isEqualTo("0071000123456");
+
+        // API hủy giữ nguyên; khoản hoàn được điền sẵn theo tài khoản khách chọn, không theo người chuyển.
+        donHangService.cancelStoreOrder(buyer.maND(), child.getMaDHCH(), LY_DO_HUY);
+        YeuCauChuyenTien refund = transactions.execute(s -> refunds(buyer).get(0));
+        assertThat(refund.getTrangThai()).isEqualTo("CHO_XU_LY");
+        assertThat(refund.getMaNganHang()).isEqualTo("970436");
+        assertThat(refund.getSoTaiKhoan()).isEqualTo("0071000123456");
+        assertThat(refund.getTenChuTaiKhoan()).isEqualTo("NGUYEN VAN KHACH");
+        assertThat(refund.getQrNganHangUrl()).isEqualTo(ANH_QR);
+    }
+
+    @Test
+    void cancellingWithoutAnyKnownAccountStillWaitsForTheCustomer() throws Exception {
+        // Đơn hủy khi chưa có giao dịch nào kèm tài khoản và khách chưa chọn: khoản hoàn chờ khách nhập, khách được nhắc.
+        DonHangCuaHang child = paidOrder(buyer, book);
+        transactions.executeWithoutResult(s -> {
+            for (GiaoDichNganHang g : giaoDichRepository.findAll()) {
+                if (g.getPhien() != null && g.getPhien().getDonHang() != null
+                        && g.getPhien().getDonHang().getMaDH().equals(child.getDonHang().getMaDH())) {
+                    g.setSoTaiKhoanChuyen(null);
+                    g.setMaNganHangChuyen(null);
+                    g.setTenNguoiChuyen(null);
+                    giaoDichRepository.save(g);
+                }
+            }
+        });
+        JsonNode info = json(request("GET", "/api/payment/orders/" + child.getDonHang().getMaDH() + "/refund-account",
+                buyer.token(), null)).get("data");
+        assertThat(info.get("soTaiKhoanDaChuyenRutGon").isNull()).isTrue();
+
+        donHangService.cancelStoreOrder(buyer.maND(), child.getMaDHCH(), LY_DO_HUY);
+        YeuCauChuyenTien refund = transactions.execute(s -> refunds(buyer).get(0));
+        assertThat(refund.getTrangThai()).isEqualTo("CHO_THONG_TIN");
+        assertThat(notifications(buyer)).contains("CAN_TAI_KHOAN_HOAN_TIEN");
+    }
+
+    @Test
+    void codOrdersHaveNoRefundAccount() throws Exception {
+        Integer line = addToCart(buyer, book, 1);
+        Map<String, Object> cod = new java.util.HashMap<>(orderBody(buyer, line));
+        cod.put("phuongThucTT", "COD");
+        var created = request("POST", "/api/order/orders", buyer.token(), cod);
+        assertThat(created.statusCode()).as(created.body()).isEqualTo(200);
+        Integer maDH = json(created).get("data").get("maDH").asInt();
+
+        JsonNode info = json(request("GET", "/api/payment/orders/" + maDH + "/refund-account", buyer.token(), null)).get("data");
+        assertThat(info.get("chuyenKhoan").asBoolean()).isFalse();
+        assertThat(request("PUT", "/api/payment/orders/" + maDH + "/refund-account", buyer.token(),
+                Map.of("qrNganHangUrl", ANH_QR)).statusCode()).isEqualTo(400);
+    }
+
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Test
+    void statsShareNumbersWithTheAdminReportAndManagersCanNudgeOverdueShops() throws Exception {
+        deliveredPaidOrder(book);
+        DonHangCuaHang waiting = paidOrder(buyer, book(shop, 1));
+        jdbc.update("update don_hang set ngay_tao = ? where ma_dh = ?",
+                java.sql.Timestamp.valueOf(LocalDateTime.now().minusHours(60)), waiting.getDonHang().getMaDH());
+
+        Actor admin = actor("QUAN_TRI_VIEN");
+        String today = java.time.LocalDate.now().toString();
+        String range = "?tuNgay=" + today + "&denNgay=" + today;
+
+        JsonNode stats = json(request("GET", "/api/management/stats" + range, manager.token(), null)).get("data");
+        JsonNode revenue = json(request("GET", "/api/admin/bao-cao/doanh-thu" + range, admin.token(), null)).get("data");
+        JsonNode cashflow = json(request("GET", "/api/admin/bao-cao/dong-tien" + range, admin.token(), null)).get("data");
+        JsonNode byCategory = json(request("GET", "/api/admin/bao-cao/theo-danh-muc" + range, admin.token(), null)).get("data");
+
+        // Hoa hồng ở Thống kê của Quản lý khớp báo cáo doanh thu và báo cáo dòng tiền của Admin.
+        assertThat(stats.get("dongTien").get("hoaHong").decimalValue()).isEqualByComparingTo(revenue.get("tongHoaHong").decimalValue());
+        assertThat(cashflow.get("hoaHong").decimalValue()).isEqualByComparingTo(revenue.get("tongHoaHong").decimalValue());
+        assertThat(cashflow.get("sanDangGiu").decimalValue()).isEqualByComparingTo(stats.get("dongTien").get("sanDangGiu").decimalValue());
+        assertThat(stats.get("dongTien").get("hoaHong").decimalValue()).isGreaterThanOrEqualTo(new BigDecimal("5000"));
+        BigDecimal categoryCommission = BigDecimal.ZERO;
+        for (JsonNode row : byCategory) {
+            categoryCommission = categoryCommission.add(row.get("hoaHong").decimalValue());
+        }
+        assertThat(categoryCommission).isEqualByComparingTo(revenue.get("tongHoaHong").decimalValue());
+
+        JsonNode mine = null;
+        for (JsonNode row : stats.get("cuaHang")) {
+            if (row.get("maCH").asInt() == shop.getMaCH()) { mine = row; }
+        }
+        assertThat(mine).isNotNull();
+        assertThat(mine.get("soDonHoanTat").asInt()).isEqualTo(1);
+        // Đơn chờ xác nhận được lùi ngày đặt ra ngoài kỳ "hôm nay", nên chỉ đơn đã giao nằm trong tỉ lệ của kỳ.
+        assertThat(mine.get("tongDon").asInt()).isEqualTo(1);
+
+        // Đơn đặt quá 48 giờ mà chưa xác nhận: hiện trong danh sách quá hạn, có thể nhắc, mỗi giờ một lần.
+        boolean overdue = false;
+        for (JsonNode row : stats.get("donQuaHan")) {
+            if (row.get("maDHCH").asInt() == waiting.getMaDHCH()) { overdue = true; }
+        }
+        assertThat(overdue).isTrue();
+        String remind = "/api/management/stats/stores/" + shop.getMaCH() + "/remind-confirm";
+        assertThat(request("POST", remind, manager.token(), null).statusCode()).isEqualTo(200);
+        assertThat(notifications(owner)).contains("NHAC_XAC_NHAN_DON");
+        assertThat(request("POST", remind, manager.token(), null).statusCode()).isEqualTo(400);
+
+        // Kỳ sai bị từ chối; Admin xem được báo cáo nhưng không gọi được API của Quản lý; khách không xem được gì.
+        assertThat(request("GET", "/api/management/stats?tuNgay=2026-02-01&denNgay=2026-01-01", manager.token(), null)
+                .statusCode()).isEqualTo(400);
+        assertThat(request("GET", "/api/management/stats", admin.token(), null).statusCode()).isEqualTo(403);
+        assertThat(request("GET", "/api/admin/bao-cao/dong-tien", manager.token(), null).statusCode()).isEqualTo(403);
+        assertThat(request("GET", "/api/management/stats", buyer.token(), null).statusCode()).isEqualTo(403);
+        assertThat(request("POST", remind, admin.token(), null).statusCode()).isEqualTo(403);
+    }
+
+    @Test
+    void uploadingABankQrIsLimitedByRole() throws Exception {
+        // Tải ảnh: khách chỉ qua /api/payment/bank-qr, chủ cửa hàng chỉ qua /api/store/me/bank-qr.
+        assertThat(request("POST", "/api/payment/bank-qr", null, null).statusCode()).isEqualTo(401);
+        assertThat(request("POST", "/api/payment/bank-qr", owner.token(), null).statusCode()).isEqualTo(403);
+        assertThat(request("POST", "/api/store/me/bank-qr", buyer.token(), null).statusCode()).isEqualTo(403);
+        assertThat(request("POST", "/api/store/me/bank-qr", manager.token(), null).statusCode()).isEqualTo(403);
     }
 
     // ------------------------------------------------------------------

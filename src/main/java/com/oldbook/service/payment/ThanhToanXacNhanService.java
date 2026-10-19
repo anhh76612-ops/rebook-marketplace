@@ -239,6 +239,9 @@ public class ThanhToanXacNhanService {
                 giaoDich.setPhien(phienRepository.getReferenceById(maPhien));
             }
             giaoDichRepository.save(giaoDich);
+            if (ketQua == KetQuaDoiSoat.KHONG_KHOP || ketQua == KetQuaDoiSoat.CAN_HOAN_TIEN) {
+                thongBaoService.giaoDichLech(giaoDich.getSoTien(), ketQua.name(), ghiChu);
+            }
         });
         log.info("Giao dịch ngân hàng {}: {}{}", maGiaoDich, ketQua, ghiChu == null ? "" : " (" + ghiChu + ")");
         return ketQua;

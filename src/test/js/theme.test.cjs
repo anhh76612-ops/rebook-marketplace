@@ -101,11 +101,11 @@ test('theme.js never creates window.OldBook, so auth.js still starts normally', 
   assert.equal('auth' in app.window.OldBookTheme, false);
 });
 
-test('store and manager headers carry the same picker', () => {
-  for (const template of ['fragments/store/header.html', 'fragments/manager/header.html']) {
-    const app = themedPage('magazine', template);
+test('store header carries the full picker and the manager layout offer all three themes', () => {
+  for (const [template, options] of [['fragments/store/header.html', ['default', 'dark', 'magazine']], ['fragments/manager/layout.html', ['default', 'dark', 'magazine']]]) {
+    const app = themedPage(options.includes('magazine') ? 'magazine' : 'dark', template);
     assert.deepEqual(app.document.querySelectorAll('[data-theme-option]').map(option => option.getAttribute('data-theme-option')),
-      ['default', 'dark', 'magazine'], template);
-    assert.deepEqual(app.current(), ['magazine'], template);
+      options, template);
+    assert.deepEqual(app.current(), [options.includes('magazine') ? 'magazine' : 'dark'], template);
   }
 });

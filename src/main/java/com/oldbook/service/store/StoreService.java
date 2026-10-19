@@ -109,7 +109,12 @@ public class StoreService {
         Integer maND = storeAccess.requireOwner();
         CuaHang cuaHang = cuaHangRepository.findByChuShopMaNDForUpdate(maND)
                 .orElseThrow(() -> new BusinessException("Bạn chưa đăng ký cửa hàng"));
-        ganTaiKhoanNhanTien(cuaHang, request.maNganHang(), request.soTaiKhoan(), request.tenChuTaiKhoan());
+        // Có đủ ba trường tài khoản hoặc có ảnh mã QR là hợp lệ; đổi sang chỉ ảnh QR thì xóa tài khoản cũ.
+        request.kiemTra();
+        cuaHang.setMaNganHang(request.maNganHangGon());
+        cuaHang.setSoTaiKhoan(request.soTaiKhoanGon());
+        cuaHang.setTenChuTaiKhoan(request.tenChuTaiKhoanGon());
+        cuaHang.setQrNganHangUrl(request.qrGon());
         return CuaHangResponse.from(cuaHangRepository.save(cuaHang));
     }
 
