@@ -22,7 +22,7 @@ Mọi thay đổi đi qua `ShipmentSyncService`:
 | Hệ thống tự chuyển (xác nhận, hết lượt giao → hoàn hàng) | — | `HE_THONG` |
 
 Cả hai dùng chung: kiểm tra bước chuyển, đếm số lần giao thất bại, tự hoàn hàng khi đạt
-`shipping.max-delivery-attempts`, chốt doanh thu COD (`DA_GIAO`) hoặc hoàn kho (`DA_HOAN_TRA`).
+`shipping.max-delivery-attempts`, quyết toán đơn khi `DA_GIAO` (hoa hồng, doanh thu cửa hàng; đơn chuyển khoản thì lập khoản chi cho cửa hàng) hoặc hoàn kho khi `DA_HOAN_TRA` (đơn chuyển khoản thì lập khoản hoàn tiền).
 
 ## Chọn nguồn cập nhật: `shipping.sync.provider`
 

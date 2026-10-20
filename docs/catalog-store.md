@@ -2,41 +2,29 @@
 
 ## Chạy và kiểm thử
 
-Dự án dùng Maven, Java 21 trở lên. Cấu hình compiler khai báo Lombok annotation processor rõ ràng để build được cả trên JDK 23 trở lên ([Lombok Maven](https://projectlombok.org/setup/maven)).
+Cách chạy ứng dụng và test xem [README](../README.md#cài-đặt-và-chạy-dự-án). Cấu hình compiler khai báo Lombok annotation processor rõ ràng để build được cả trên JDK 23 trở lên ([Lombok Maven](https://projectlombok.org/setup/maven)).
+
+Nếu Maven trên máy trỏ nhầm cache vào `C:\.m2\repository`, chỉ định cache người dùng:
 
 ```powershell
-mvn clean verify
-mvn spring-boot:run
+./mvnw "-Dmaven.repo.local=$env:USERPROFILE\.m2\repository" clean verify
 ```
 
-Nếu Maven trên máy này trỏ nhầm cache vào `C:\.m2\repository`, chỉ định cache người dùng:
-
-```powershell
-mvn "-Dmaven.repo.local=$env:USERPROFILE\.m2\repository" clean verify
-```
-
-Kiểm thử tự động dùng profile `test,catalog-test` và database H2 trong bộ nhớ, không ghi vào SQL Server thật. Khi chạy ứng dụng, datasource vẫn lấy cấu hình SQL Server hiện có. Kiểm tra kết nối database trước khi chạy ứng dụng.
+Kiểm thử tự động dùng profile `test,catalog-test` và database H2 trong bộ nhớ, không ghi vào SQL Server thật.
 
 Trang công khai:
 
-- `/` hoặc `/books`: giao diện sách hiện tại, tìm theo từ khóa/danh mục và thêm sách vào giỏ.
-- `/books/tim-kiem`: tìm kiếm, lọc, sắp xếp, phân trang sách thật.
+- `/` hoặc `/books`: trang chủ, tìm theo từ khóa/danh mục và thêm sách vào giỏ.
+- `/books/tim-kiem`: tìm kiếm, lọc, sắp xếp, phân trang.
 - `/books/{maSach}`: chi tiết sách; sách không công khai trả trang 404.
 
-Quản lý shop và kiểm duyệt có giao diện gọi REST API:
+Trang quản lý shop và kiểm duyệt:
 
-- `/store/books` hoặc `/store`: chủ cửa hàng đăng ký/sửa cửa hàng, xem trạng thái duyệt, quản lý sách, tồn kho và trạng thái bán.
-- `/store-moderation`: quản lý/quản trị viên lọc, xem chi tiết và duyệt/từ chối cửa hàng hoặc sách.
-- `/admin/accounts`: quản trị viên quản lý tài khoản và thêm vai trò.
 - `/store/register`: khách hàng tự đăng ký gian hàng.
+- `/store/books` (hoặc `/store`): chủ cửa hàng sửa thông tin cửa hàng và tài khoản nhận tiền, xem trạng thái duyệt và lý do từ chối; xem chi tiết sách ở mọi trạng thái, thêm/sửa sách, cập nhật tồn kho, bật/ngừng bán, lọc và phân trang sách của mình.
+- `/store-moderation`: Quản lý lọc và phân trang cửa hàng/sách, xem đầy đủ chi tiết, duyệt hoặc từ chối kèm lý do (trang nằm trong cổng Quản lý).
 
-Menu và trang đích sau đăng nhập phụ thuộc vai trò trong JWT. Các trang HTML tải JWT từ trình duyệt khi gọi API; quyền truy cập dữ liệu vẫn được kiểm tra ở backend.
-Quản lý shop và kiểm duyệt đã có giao diện gọi REST API:
-
-- `/store/books` (hoặc `/store`): chủ cửa hàng đăng ký/sửa cửa hàng, xem trạng thái duyệt và lý do từ chối; xem chi tiết sách ở mọi trạng thái, thêm/sửa sách, cập nhật tồn kho, bật/ngừng bán, lọc và phân trang sách của mình.
-- `/store-moderation`: quản lý/quản trị viên lọc và phân trang cửa hàng/sách, xem đầy đủ chi tiết, duyệt hoặc từ chối kèm lý do.
-
-Menu hiển thị chức năng theo vai trò đăng nhập. Các trang này tải JWT từ trình duyệt và gửi `Authorization: Bearer <JWT>` khi gọi API; quyền truy cập dữ liệu vẫn được kiểm tra tại backend. Thông tin cửa hàng và sách lấy từ API, không dùng dữ liệu mẫu. Thao tác ghi sách chỉ được bật khi cửa hàng `DA_DUYET`. Ảnh sách nhập bằng URL vì API hiện tại chưa hỗ trợ tải tệp.
+Các trang này tải JWT từ trình duyệt và gửi `Authorization: Bearer <JWT>` khi gọi API; quyền truy cập dữ liệu vẫn được kiểm tra ở backend. Thao tác ghi sách chỉ bật khi cửa hàng `DA_DUYET`. Ảnh sách tải lên Cloudinary, mỗi sách tối đa 10 ảnh.
 
 ## Trạng thái và quyền
 
@@ -50,7 +38,7 @@ Cửa hàng và sách mới ở `CHO_DUYET`. Người bán không nhận quyền
 
 `CHU_CUA_HANG` được đăng ký/xem/sửa cửa hàng của mình. Cửa hàng phải được duyệt trước khi thêm/sửa sách, thay tồn kho hoặc đổi trạng thái bán. Người bán vẫn xem được sách của mình ở tất cả trạng thái.
 
-`QUAN_LY` và `QUAN_TRI_VIEN` được kiểm duyệt. Tài khoản phải có vai trò tương ứng từ module tài khoản hiện có; đăng ký khách hàng không tự cấp quyền chủ shop hay quản lý.
+Chỉ `QUAN_LY` được kiểm duyệt (`/api/store/kiem-duyet/**`); Quản trị viên muốn duyệt phải có thêm tài khoản vai trò Quản lý. Tài khoản phải có vai trò tương ứng từ module tài khoản hiện có; đăng ký khách hàng không tự cấp quyền chủ shop hay quản lý.
 
 Sửa thông tin cửa hàng hoặc nội dung sách đưa đối tượng về `CHO_DUYET`. Sửa nội dung sách giữ nguyên tồn kho/trạng thái bán và xóa lý do từ chối cũ. Điều chỉnh tồn kho hoặc ngừng/bật bán giữ nguyên trạng thái duyệt. Chỉ đối tượng `CHO_DUYET` được duyệt/từ chối; duyệt sách yêu cầu cửa hàng đã `DA_DUYET`.
 
@@ -166,7 +154,7 @@ Tồn kho được cập nhật theo số lượng tuyệt đối, không phải
 
 ## API kiểm duyệt
 
-Tất cả request cần JWT của `QUAN_LY` hoặc `QUAN_TRI_VIEN`.
+Tất cả request cần JWT của `QUAN_LY`.
 
 | Method | Endpoint | Nội dung |
 |---|---|---|

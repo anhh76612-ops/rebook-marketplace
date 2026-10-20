@@ -1,13 +1,12 @@
-# Đặt hàng và hủy đơn hàng – OldBook (rebook-marketplace)
+# Hủy đơn hàng
 
-Tài liệu mô tả quy trình từ lúc khách bấm đặt hàng đến khi đơn bị hủy: ai được hủy, hủy khi nào, hệ thống xử lý tồn kho và thanh toán ra sao.
-Phần giỏ hàng/checkout phía giao diện xem thêm `docs/order.md`; phần vận chuyển xem `docs/shipping.md`.
+Ai được hủy đơn, hủy khi nào, và hệ thống xử lý tồn kho, thanh toán, hoàn tiền ra sao. Luồng đặt hàng xem [order.md](order.md), vận chuyển xem [shipping.md](shipping.md), hoàn tiền cho đơn chuyển khoản xem [payment.md](payment.md).
 
 ---
 
 ## 1. Tổng quan
 
-- Thanh toán hiện **chỉ có COD**. Không có hoàn tiền (`tienHoanTra` luôn bằng 0).
+- Hai cách thanh toán: **COD** (khách chưa trả gì nên hủy không phải hoàn tiền, `tienHoanTra = 0`) và **chuyển khoản** (khách đã trả đủ khi đặt, nên hủy hoặc hoàn trả thì lập khoản hoàn tiền bằng tổng đơn con).
 - Một lần đặt hàng tạo **1 `DonHang` (đơn tổng)** và **N `DonHangCuaHang` (đơn con, mỗi cửa hàng một đơn)**.
 - **Trạng thái, giao hàng và hủy đều xử lý ở đơn con (`maDHCH`)**. Hủy một đơn con không ảnh hưởng đơn con khác của cùng đơn tổng.
 - Tồn kho **trừ ngay khi đặt**, **cộng lại khi hủy hoặc hoàn trả**.
@@ -39,76 +38,12 @@ Dùng cho đơn con (`trangThaiThanhToanShop`) và đơn tổng (`trangThaiThanh
 
 ---
 
-## 2. Quy trình đặt hàng
+## 2. Đặt hàng (tóm tắt)
 
-### 2.1. Luồng tổng quát
+Chi tiết ở [order.md](order.md). Điểm liên quan tới hủy đơn:
 
-```
-/cart ──(tích chọn + Đặt hàng)──► /checkout ──POST /api/order/orders──► /order-success
-                                                                         │
-                                                              /orders (xem và hủy đơn)
-```
-
-### 2.2. API khách hàng (`DonHangController`, chỉ vai trò `KHACH_HANG`)
-
-| Method | URL | Việc làm |
-|---|---|---|
-| POST | `/api/order/orders` | Đặt hàng |
-| GET | `/api/order/orders` | Danh sách đơn của mình |
-| GET | `/api/order/orders/{maDH}` | Chi tiết đơn (chỉ xem được đơn của chính mình) |
-| POST | `/api/order/orders/store-orders/{maDHCH}/cancel` | Hủy đơn con (xem mục 3) |
-
-### 2.3. Request đặt hàng (`CreateOrderRequest`)
-
-```json
-{
-  "maDiaChi": 3,
-  "phuongThucTT": "COD",
-  "maCTGioHangs": [15, 18, 21],
-  "storeOrders": [
-    { "maCH": 2, "maDVVC": 1, "ghiChu": "Giao giờ hành chính" },
-    { "maCH": 5, "maDVVC": 2, "ghiChu": null }
-  ]
-}
-```
-
-| Trường | Ý nghĩa | Ràng buộc |
-|---|---|---|
-| `maDiaChi` | Địa chỉ giao hàng | Bắt buộc, phải thuộc tài khoản đang đăng nhập |
-| `phuongThucTT` | Phương thức thanh toán | Bắt buộc, hiện chỉ `COD` |
-| `maCTGioHangs` | Các dòng giỏ hàng đã tích chọn | Bắt buộc, ít nhất 1 phần tử |
-| `storeOrders` | Đơn vị vận chuyển + ghi chú từng cửa hàng | Bắt buộc, mỗi cửa hàng của sản phẩm đã chọn có đúng 1 mục; `ghiChu` tối đa 1000 ký tự |
-
-### 2.4. Backend xử lý (`DonHangService.createOrder`)
-
-Toàn bộ chạy trong một transaction: lỗi ở bất kỳ bước nào thì không có gì được ghi (kể cả tồn kho).
-
-1. Kiểm tra thanh toán: chỉ nhận COD.
-2. Kiểm tra người dùng và địa chỉ (địa chỉ phải thuộc người dùng này).
-3. Khóa giỏ hàng (`findByIdForUpdate`) để hai request đặt hàng đồng thời không dùng chung một giỏ.
-4. Lọc các dòng giỏ theo `maCTGioHangs`. Nếu số dòng khớp khác số id gửi lên (có dòng đã bị xóa...) thì báo lỗi.
-5. Khóa từng sách (`findByIdForUpdate`) rồi kiểm tra lại (`validateCanOrder`):
-   - số lượng > 0;
-   - sách `DA_DUYET` và `DANG_BAN`, cửa hàng `DA_DUYET`;
-   - sách có giá > 0 (`giaBanCu`);
-   - đủ tồn kho;
-   - không phải sách của chính cửa hàng mình.
-   Đơn giá lấy tại thời điểm đặt.
-6. Gom theo cửa hàng và đối chiếu `storeOrders`: mỗi cửa hàng đúng một lựa chọn, không có cửa hàng lạ, đơn vị vận chuyển phải `HOAT_DONG`.
-7. Tính tiền: phí ship lấy theo đơn vị vận chuyển **của từng cửa hàng**.
-8. Ghi dữ liệu:
-
-| Bảng/Entity | Nội dung lúc tạo |
-|---|---|
-| `DonHang` | Tổng tiền hàng, tổng phí ship, giảm giá 0, `tongThanhToan = tiền hàng + phí ship`, COD, `CHO_THANH_TOAN`, ảnh chụp địa chỉ giao |
-| `DonHangCuaHang` | Mỗi cửa hàng một bản ghi: đơn vị vận chuyển, `tienHangCH`, `phiShipCH`, `tongTienShopOrder`, ghi chú, trạng thái `CHO_XU_LY`, `CHO_THANH_TOAN` |
-| `ChiTietDonHang` | Mỗi sách một dòng: số lượng, đơn giá, thành tiền |
-
-9. **Trừ tồn kho** từng sách theo số lượng đặt.
-10. Chỉ xóa khỏi giỏ các dòng đã đặt; sản phẩm không tích vẫn còn trong giỏ.
-11. Trả `OrderResponse` (đơn tổng kèm `storeOrders[]`).
-
-> Voucher/khuyến mãi chưa áp dụng: mọi khoản giảm giá đều bằng 0.
+- Đặt hàng trừ tồn kho ngay; đơn con mới ở `CHO_XU_LY`, thanh toán `CHO_THANH_TOAN` (COD) hoặc `DA_THANH_TOAN` (chuyển khoản).
+- `POST /api/order/orders` chỉ nhận `COD`; đơn chuyển khoản được tạo khi tiền về, qua phiên thanh toán.
 
 ---
 
@@ -120,7 +55,7 @@ Toàn bộ chạy trong một transaction: lỗi ở bất kỳ bước nào th�
 - Mọi lần hủy thật sự đều đi qua `OrderSettlementService.settleCancelled(order, huyBoi, lyDo)`:
   1. Cộng lại `soLuongTon` cho từng dòng sách (khóa sách trước khi cộng).
   2. Đặt `trangThaiDonHang = DA_HUY`, ghi `ngayHuy`, `huyBoi` (`KHACH_HANG` hoặc `CHU_CUA_HANG`), `lyDoHuy`.
-  3. Đặt `commissionTien`, `doanhThuShop`, `tienHoanTra` = 0 và `trangThaiThanhToanShop = KHONG_THANH_TOAN`.
+  3. Đặt `commissionTien`, `doanhThuShop` = 0 và `trangThaiThanhToanShop = KHONG_THANH_TOAN`. `tienHoanTra` = 0 với đơn COD; với đơn chuyển khoản là `tongTienShopOrder` và hệ thống lập khoản hoàn tiền (`ChuyenTienService.taoHoanTienChoDon`) cho Quản lý xử lý.
   4. Tính lại `trangThaiThanhToan` của đơn tổng từ các đơn con.
 - Hàm này **chạy lặp không gây hại**: đơn đã `DA_HUY` thì bỏ qua, không cộng tồn kho hai lần.
 - Đơn của người khác hoặc shop khác luôn báo "Đơn hàng không tồn tại" để không lộ dữ liệu.
@@ -206,9 +141,9 @@ Thông báo khi không hủy được: khách thấy "Đơn hàng đã được 
 | Đặt hàng | Trừ | `CHO_THANH_TOAN` | |
 | Hủy (`settleCancelled`) | Cộng lại | `KHONG_THANH_TOAN` | `ngayHuy`, `huyBoi`, `lyDoHuy` |
 | Hoàn trả (`settleReturned`) | Cộng lại | `KHONG_THANH_TOAN` | `ngayHoanTra` |
-| Giao thành công (`settleDelivered`) | Không đổi | `DA_THANH_TOAN` | Hoa hồng, doanh thu shop, 3 dòng `ThanhToan` (`THU_HO_COD`, `HOA_HONG`, `DOANH_THU_SHOP`) |
+| Giao thành công (`settleDelivered`) | Không đổi | `DA_THANH_TOAN` | Hoa hồng, doanh thu shop, các dòng `ThanhToan` (`THU_HO_COD` chỉ với đơn COD, `HOA_HONG`, `DOANH_THU_SHOP`); đơn chuyển khoản thêm khoản chi cho cửa hàng |
 
-Trạng thái thanh toán của đơn tổng được tính lại từ các đơn con sau mỗi lần chốt:
+Với đơn chuyển khoản, hủy và hoàn trả còn lập khoản hoàn tiền cho khách. Trạng thái thanh toán của đơn tổng được tính lại từ các đơn con sau mỗi lần chốt. Đơn COD:
 
 | Điều kiện | Đơn tổng |
 |---|---|
@@ -216,6 +151,8 @@ Trạng thái thanh toán của đơn tổng được tính lại từ các đơ
 | Có đơn con `DA_GIAO` nhưng chưa phải tất cả | `THANH_TOAN_MOT_PHAN` |
 | Không có đơn nào giao, tất cả đã kết thúc | `KHONG_THANH_TOAN` |
 | Còn lại | `CHO_THANH_TOAN` |
+
+Đơn chuyển khoản (khách đã trả đủ từ đầu): không có đơn con nào hủy hoặc hoàn trả thì `DA_THANH_TOAN`; một phần thì `THANH_TOAN_MOT_PHAN`; tất cả thì `KHONG_THANH_TOAN`.
 
 Hoa hồng = thành tiền × tỷ lệ chiết khấu của danh mục (`CauHinhChietKhau`), mặc định `marketplace.commission.default-rate = 5.00` (%). Doanh thu shop = tiền hàng − giảm giá shop − hoa hồng (không âm).
 
@@ -225,7 +162,7 @@ Hoa hồng = thành tiền × tỷ lệ chiết khấu của danh mục (`CauHin
 
 | Thông báo | Nguyên nhân |
 |---|---|
-| Phương thức thanh toán hiện hỗ trợ: COD | `phuongThucTT` khác COD |
+| Phương thức thanh toán hiện hỗ trợ: COD | Gọi `POST /api/order/orders` với `phuongThucTT` khác COD (đơn chuyển khoản phải đi qua phiên thanh toán) |
 | Sản phẩm được chọn không còn trong giỏ hàng... | Dòng giỏ đã bị xóa hoặc không thuộc giỏ của bạn |
 | Vui lòng chọn đơn vị vận chuyển cho cửa hàng "..." | Thiếu lựa chọn vận chuyển của một cửa hàng |
 | Mỗi cửa hàng chỉ được chọn một đơn vị vận chuyển | `storeOrders` trùng `maCH` |
